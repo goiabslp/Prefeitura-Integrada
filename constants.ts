@@ -1,45 +1,56 @@
+
 import { AppState, FontFamily, User, Order, Signature } from './types';
 
 export const INITIAL_STATE: AppState = {
   branding: {
     logoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
-    primaryColor: '#4f46e5', // indigo-600
-    secondaryColor: '#0f172a', // slate-900
+    primaryColor: '#4f46e5',
+    secondaryColor: '#0f172a',
     fontFamily: FontFamily.SANS,
-    logoWidth: 76, // Tamanho fixo solicitado
+    logoWidth: 76,
     logoAlignment: 'left',
     watermark: {
       enabled: false,
       imageUrl: null,
-      opacity: 20, // Opacidade padrão solicitada
+      opacity: 20,
       size: 55,    
       grayscale: true 
     }
   },
   document: {
-    headerText: 'São José do Goiabal - MG', // Apenas a cidade, conforme solicitado
-    footerText: 'ENDEREÇO: Praça Cônego João Pio, 30 - Centro – 35.986-000\nSão José do Goiabal-MG. CNPJ: 18.402.552/0001-91', // Texto solicitado em duas linhas
+    headerText: 'São José do Goiabal - MG',
+    footerText: 'ENDEREÇO: Praça Cônego João Pio, 30 - Centro – 35.986-000\nSão José do Goiabal-MG. CNPJ: 18.402.552/0001-91',
     showDate: true,
     showPageNumbers: true,
-    showSignature: false, // Padrão desligado
+    showSignature: false,
+    showLeftBlock: false,
+    showRightBlock: false,
     titleStyle: {
-      size: 10, // Tamanho solicitado (pt)
-      color: '#131216', // Cor solicitada
+      size: 10,
+      color: '#131216',
       alignment: 'left'
+    },
+    leftBlockStyle: {
+      size: 10,
+      color: '#131216'
+    },
+    rightBlockStyle: {
+      size: 10,
+      color: '#131216'
     }
   },
   content: {
-    title: 'Pedido de Compra #001',
-    body: `Descreva aqui os detalhes do seu pedido, justificativa e especificações técnicas.
-    
-O sistema formatará este texto automaticamente respeitando a identidade visual da empresa.`,
+    title: 'Ofício nº 001/2024',
+    body: `Descreva aqui os detalhes do seu documento.`,
     signatureName: '',
     signatureRole: '',
-    signatureSector: ''
+    signatureSector: '',
+    leftBlockText: 'Ofício nº 001/2024\nAssunto: Solicitação de Material',
+    rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade'
   },
   ui: {
     homeLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
-    homeLogoHeight: 56, // Equivalente a h-14 (14 * 4px)
+    homeLogoHeight: 56,
     homeLogoPosition: 'left'
   }
 };
@@ -65,7 +76,7 @@ export const DEFAULT_USERS: User[] = [
     role: 'admin', 
     sector: 'Administração Municipal', 
     jobTitle: 'Secretário Administrativo Municipal', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3'] // Admin tem acesso a todas
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3']
   },
   { 
     id: '2', 
@@ -75,7 +86,7 @@ export const DEFAULT_USERS: User[] = [
     role: 'collaborator', 
     sector: 'Administração', 
     jobTitle: 'Tecnico Administrativo', 
-    allowedSignatureIds: ['sig3', 'sig2'] // Acesso ao secretário e prefeito
+    allowedSignatureIds: ['sig3', 'sig2']
   },
   { 
     id: '3', 
@@ -85,7 +96,7 @@ export const DEFAULT_USERS: User[] = [
     role: 'collaborator', 
     sector: 'Gabinete do Prefeito', 
     jobTitle: 'Chefe De Gabinete', 
-    allowedSignatureIds: ['sig1', 'sig2'] // Acesso a própria e prefeito
+    allowedSignatureIds: ['sig1', 'sig2']
   },
 ];
 
