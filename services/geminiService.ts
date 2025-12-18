@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
@@ -6,6 +7,7 @@ const getAiClient = () => {
     console.warn("API_KEY is not set in the environment.");
     return null;
   }
+  // Initializing GoogleGenAI client according to guidelines
   return new GoogleGenAI({ apiKey });
 };
 
@@ -31,21 +33,33 @@ export const generateDocumentContent = async (
     - O texto deve ser bem estruturado, com introdução, desenvolvimento (pontos chave) e conclusão.
     - NÃO use formatação Markdown complexa (como **negrito** ou # headers). Use apenas quebras de linha para separar parágrafos.
     - Crie um Título Profissional e conciso para este documento baseado no contexto.
-
-    FORMATO DE SAÍDA (JSON OBRIGATÓRIO):
-    Responda APENAS com um objeto JSON válido contendo dois campos: "title" e "body".
-    Exemplo: { "title": "Proposta de Serviço X", "body": "Prezados,\\n\\nSegue a proposta..." }
   `;
 
   try {
+    // Correct usage of generateContent with both model name and prompt, and JSON schema
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: prompt,
       config: {
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: {
+              type: Type.STRING,
+              description: 'The professional and concise title of the document.',
+            },
+            body: {
+              type: Type.STRING,
+              description: 'The body text of the document, separated by line breaks.',
+            },
+          },
+          required: ['title', 'body'],
+        },
       }
     });
     
+    // Extracting text output directly from .text property
     const textResponse = response.text;
     if (!textResponse) throw new Error("Sem resposta da IA");
 

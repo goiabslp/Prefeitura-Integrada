@@ -177,8 +177,8 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                     </>
                   )}
                   
-                  {/* Conteúdo Dinâmico */}
-                  <div className="max-w-none text-gray-700 whitespace-pre-wrap leading-loose text-justify text-[11pt] break-words w-full" dangerouslySetInnerHTML={{ __html: pageContent }} />
+                  {/* Conteúdo Dinâmico - Removido whitespace-pre-wrap para suportar HTML rico */}
+                  <div className="max-w-none text-gray-700 leading-loose text-justify text-[11pt] break-words w-full rich-content" dangerouslySetInnerHTML={{ __html: pageContent }} />
 
                   {/* Assinatura colada ao texto (mt-10 garante proximidade) */}
                   {isLastPage && docConfig.showSignature && (

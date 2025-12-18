@@ -1,14 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  X, Upload, Palette, Type, Layout, Image as ImageIcon, 
+  X, Upload, Palette, Image as ImageIcon, 
   FileText, Settings, Users, Home, Loader2, 
-  Download, Check, Save, ChevronDown, AlignLeft, 
-  AlignCenter, AlignRight, FileType,
-  PenTool, ChevronRight, ArrowLeft, Trash2, Heading, ShieldCheck, Columns
+  Check, Save, AlignLeft, 
+  AlignCenter, AlignRight, AlignJustify,
+  PenTool, ArrowLeft, Heading, Columns,
+  Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting
 } from 'lucide-react';
-import { AppState, FontFamily, User, Signature } from '../types';
-import { FONT_OPTIONS } from '../constants';
+import { AppState, User, Signature } from '../types';
 
 interface AdminSidebarProps {
   state: AppState;
@@ -44,13 +44,22 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uiLogoInputRef = useRef<HTMLInputElement>(null);
-  const watermarkInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   
   const { branding, document: docConfig, content, ui } = state;
 
   const allowedSignatures = availableSignatures.filter(sig => 
     currentUser.role === 'admin' || (currentUser.allowedSignatureIds || []).includes(sig.id)
   );
+
+  // Sincroniza o conteúdo inicial do editor
+  useEffect(() => {
+    if (editorRef.current && mode === 'editor' && activeTab === 'content') {
+      if (editorRef.current.innerHTML !== content.body) {
+        editorRef.current.innerHTML = content.body;
+      }
+    }
+  }, [activeTab, mode, content.body]);
 
   const handleUpdate = (section: keyof AppState, key: string, value: any) => {
     onUpdate({
@@ -66,13 +75,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     onUpdate({
       ...state,
       [section]: {
-        ...state[section],
+        ...(state[section] as any),
         [subSection]: {
           ...(state[section] as any)[subSection],
           [key]: value
         }
       }
-    });
+    } as AppState);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,12 +102,63 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     }
   };
 
-  const handleWatermarkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => handleDeepUpdate('branding', 'watermark', 'imageUrl', reader.result as string);
-      reader.readAsDataURL(file);
+  const execCommand = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      handleUpdate('content', 'body', editorRef.current.innerHTML);
+    }
+  };
+
+  // Função personalizada para aplicar tamanho de fonte em PT
+  const applyFontSize = (size: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    document.execCommand('fontSize', false, '7');
+    
+    const fontTags = editorRef.current?.querySelectorAll('font[size="7"]');
+    fontTags?.forEach(tag => {
+      const span = document.createElement('span');
+      span.style.fontSize = size;
+      span.innerHTML = tag.innerHTML;
+      tag.parentNode?.replaceChild(span, tag);
+    });
+    
+    if (editorRef.current) {
+      handleUpdate('content', 'body', editorRef.current.innerHTML);
+    }
+  };
+
+  // Função personalizada para aplicar Citação (Aspas, Itálico e Fonte distinta)
+  const applyCitation = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+    // Marcamos a seleção temporariamente
+    document.execCommand('foreColor', false, '#f0000f'); // Cor arbitrária para identificação
+    
+    const highlightedTags = editorRef.current?.querySelectorAll('font[color="#f0000f"]');
+    highlightedTags?.forEach(tag => {
+      const span = document.createElement('span');
+      // Estilo de citação: Fonte distinta (Serif), itálico e aspas
+      span.style.fontFamily = "'Merriweather', serif";
+      span.style.fontStyle = 'italic';
+      span.style.color = 'inherit'; // Resetamos a cor usada para marcação
+      
+      // Fix: Cast 'tag' to HTMLElement to access 'innerText' property which is not available on base 'Element' type
+      const cleanText = (tag as HTMLElement).innerText?.trim() || '';
+      // Adicionamos aspas se já não houver
+      if (!cleanText.startsWith('"') && !cleanText.endsWith('"')) {
+        span.innerHTML = `"${tag.innerHTML}"`;
+      } else {
+        span.innerHTML = tag.innerHTML;
+      }
+      
+      tag.parentNode?.replaceChild(span, tag);
+    });
+
+    if (editorRef.current) {
+      handleUpdate('content', 'body', editorRef.current.innerHTML);
     }
   };
 
@@ -334,9 +394,62 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       <label className="block text-xs font-semibold text-slate-500 mb-2">Título do Documento</label>
                       <input value={content.title} onChange={(e) => handleUpdate('content', 'title', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-800" placeholder="Ex: Proposta Comercial" />
                    </div>
-                   <div>
+                   
+                   {/* Editor de Texto Rico */}
+                   <div className="space-y-2">
                       <label className="block text-xs font-semibold text-slate-500 mb-2">Conteúdo do Documento</label>
-                      <textarea value={content.body.replace(/<br\s*\/?>/gi, '\n')} onChange={(e) => handleUpdate('content', 'body', e.target.value.replace(/\r?\n/g, '<br>'))} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm leading-relaxed" rows={12} placeholder="Digite o conteúdo aqui..." />
+                      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                        {/* Toolbar do Editor */}
+                        <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-1 sticky top-0 z-10">
+                          <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Negrito"><Bold className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Itálico"><Italic className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Sublinhado"><Underline className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('hiliteColor', 'yellow')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Grifar"><Highlighter className="w-4 h-4" /></button>
+                          
+                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                          
+                          <select 
+                            onChange={(e) => applyFontSize(e.target.value)} 
+                            className="bg-white border border-slate-200 rounded text-[10px] px-1 h-7 focus:outline-none" 
+                            title="Tamanho da Fonte (pt)"
+                            defaultValue="11pt"
+                          >
+                            <option value="10pt">10pt</option>
+                            <option value="11pt">11pt (Padrão)</option>
+                            <option value="12pt">12pt</option>
+                            <option value="14pt">14pt</option>
+                            <option value="16pt">16pt</option>
+                            <option value="18pt">18pt</option>
+                            <option value="20pt">20pt</option>
+                            <option value="24pt">24pt</option>
+                            <option value="28pt">28pt</option>
+                          </select>
+                          
+                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                          
+                          <button onClick={() => execCommand('justifyLeft')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Alinhar Esquerda"><AlignLeft className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('justifyCenter')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Centralizar"><AlignCenter className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('justifyRight')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Alinhar Direita"><AlignRight className="w-4 h-4" /></button>
+                          <button onClick={() => execCommand('justifyFull')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Justificar"><AlignJustify className="w-4 h-4" /></button>
+                          
+                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                          
+                          <button onClick={applyCitation} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-indigo-600" title="Inserir Citação"><Quote className="w-4 h-4" /></button>
+                          
+                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                          
+                          <button onClick={() => execCommand('removeFormat')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-red-500" title="Limpar Formatação"><RemoveFormatting className="w-4 h-4" /></button>
+                        </div>
+                        
+                        {/* Área Editável */}
+                        <div 
+                          ref={editorRef}
+                          contentEditable
+                          onInput={(e) => handleUpdate('content', 'body', (e.target as HTMLDivElement).innerHTML)}
+                          className="w-full bg-white p-4 text-sm leading-relaxed min-h-[400px] outline-none prose prose-slate max-w-none"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 italic">* Use a barra de ferramentas para formatar o texto selecionado.</p>
                    </div>
                  </div>
               </div>

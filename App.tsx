@@ -156,6 +156,7 @@ const App: React.FC = () => {
         userName={currentUser.name}
         userJobTitle={currentUser.jobTitle}
         uiConfig={globalDefaults.ui}
+        permissions={currentUser.permissions || []}
       />
     );
   }

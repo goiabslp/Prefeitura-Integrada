@@ -76,7 +76,8 @@ export const DEFAULT_USERS: User[] = [
     role: 'admin', 
     sector: 'Administração Municipal', 
     jobTitle: 'Secretário Administrativo Municipal', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3']
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao']
   },
   { 
     id: '2', 
@@ -86,7 +87,8 @@ export const DEFAULT_USERS: User[] = [
     role: 'collaborator', 
     sector: 'Administração', 
     jobTitle: 'Tecnico Administrativo', 
-    allowedSignatureIds: ['sig3', 'sig2']
+    allowedSignatureIds: ['sig3', 'sig2'],
+    permissions: ['parent_criar_oficio', 'parent_compras']
   },
   { 
     id: '3', 
@@ -96,7 +98,8 @@ export const DEFAULT_USERS: User[] = [
     role: 'collaborator', 
     sector: 'Gabinete do Prefeito', 
     jobTitle: 'Chefe De Gabinete', 
-    allowedSignatureIds: ['sig1', 'sig2']
+    allowedSignatureIds: ['sig1', 'sig2'],
+    permissions: ['parent_criar_oficio']
   },
 ];
 

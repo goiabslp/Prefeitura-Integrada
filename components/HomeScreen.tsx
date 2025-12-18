@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { FilePlus, Package, ArrowRight, LogOut, LayoutDashboard, History, ArrowLeft, FileText, Sparkles } from 'lucide-react';
-import { UserRole, UIConfig } from '../types';
+import { FilePlus, Package, LogOut, LayoutDashboard, History, FileText, ShieldAlert, ArrowRight, ArrowLeft, ShoppingCart, ShoppingBag, ListChecks, Gavel, FileSignature, ClipboardList } from 'lucide-react';
+import { UserRole, UIConfig, AppPermission } from '../types';
 
 interface HomeScreenProps {
   onNewOrder: () => void;
@@ -12,6 +12,7 @@ interface HomeScreenProps {
   userName: string;
   userJobTitle?: string;
   uiConfig?: UIConfig;
+  permissions: AppPermission[];
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ 
@@ -22,32 +23,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   userRole, 
   userName,
   userJobTitle,
-  uiConfig
+  uiConfig,
+  permissions = []
 }) => {
-  const [showSubMenu, setShowSubMenu] = useState(false);
-  const isAdmin = userRole === 'admin';
-  const canCreateOrder = userRole === 'admin' || userRole === 'collaborator';
+  const [activeParent, setActiveParent] = useState<'oficio' | 'compras' | 'licitacao' | null>(null);
   
+  const canAccessAdmin = permissions.includes('parent_admin');
+  const canAccessOficio = permissions.includes('parent_criar_oficio');
+  const canAccessCompras = permissions.includes('parent_compras');
+  const canAccessLicitacao = permissions.includes('parent_licitacao');
+
+  const hasAnyPermission = canAccessOficio || canAccessCompras || canAccessLicitacao;
+
   const logoUrl = uiConfig?.homeLogoUrl || "https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png";
   const logoHeight = uiConfig?.homeLogoHeight || 56;
   const isLogoCentered = uiConfig?.homeLogoPosition === 'center';
 
-  const handleMainClick = () => {
-    if (canCreateOrder) {
-      setShowSubMenu(true);
-    }
-  };
-
-  // Pega apenas o primeiro nome para uma saudação mais amigável
   const firstName = userName.split(' ')[0];
 
   return (
     <div className="h-screen bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white flex flex-col overflow-hidden">
-      {/* Navbar com Separador Visual */}
+      {/* Navbar - Bloco Pai Admin */}
       <header className="w-full bg-white border-b border-slate-200 shrink-0 shadow-sm z-30">
         <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full relative">
           <div className="flex items-center gap-4 z-20">
-             {isAdmin && (
+             {/* Validação Bloco Pai: Painel Administrativo */}
+             {canAccessAdmin && (
                <button 
                  onClick={() => onOpenAdmin(null)}
                  className="p-2 -ml-2 rounded-xl bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md text-slate-700 transition-all hover:text-indigo-600"
@@ -102,130 +103,214 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </nav>
       </header>
 
-      {/* Área de Conteúdo Principal com Espaçamento Superior (pt-12) */}
-      <main className="flex-1 flex flex-col items-center justify-center pt-12 px-6 overflow-hidden bg-gradient-to-b from-white to-slate-50">
+      {/* Área de Conteúdo Principal */}
+      <main className="flex-1 flex flex-col items-center justify-center pt-8 px-6 overflow-hidden bg-gradient-to-b from-white to-slate-50">
         
-        {/* Mensagem de Boas-Vindas Mais Compacta */}
-        {!showSubMenu && (
-          <div className="text-center mb-8 animate-fade-in shrink-0">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-1">
+        {!activeParent && (
+          <div className="text-center mb-10 animate-fade-in shrink-0">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
               Olá, <span className="text-indigo-600">{firstName}</span>!
             </h1>
             <p className="text-slate-500 text-base font-medium">
-              O que você deseja fazer hoje?
+              {hasAnyPermission ? 'Selecione um bloco para começar:' : 'Você não possui permissões de acesso.'}
             </p>
           </div>
         )}
 
-        <div className="w-full max-w-4xl transition-all duration-500 ease-in-out flex flex-col items-center">
-          {!showSubMenu ? (
-            <div className="flex flex-col items-center animate-slide-up w-full">
-              <button
-                onClick={handleMainClick}
-                disabled={!canCreateOrder}
-                className={`group relative p-8 md:p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full max-w-xl h-64 md:h-[280px] ${
-                  canCreateOrder 
-                    ? 'bg-white border-slate-200 shadow-indigo-500/5 hover:shadow-indigo-500/15 hover:border-indigo-300 cursor-pointer scale-100 hover:scale-[1.01]' 
-                    : 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
-                }`}
-              >
-                {/* Background Decoration */}
-                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-50 rounded-tr-full -ml-8 -mb-8 transition-transform duration-700 group-hover:scale-125 opacity-30"></div>
-                
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 ${
-                     canCreateOrder 
-                      ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 shadow-indigo-500/30 group-hover:scale-110 group-hover:rotate-3' 
-                      : 'bg-slate-300'
-                  }`}>
-                    <FileText className="w-8 h-8 md:w-10 md:h-10 text-white" />
+        <div className="w-full max-w-6xl transition-all duration-500 ease-in-out flex flex-col items-center">
+          {!activeParent ? (
+            <div className={`grid grid-cols-1 ${[canAccessOficio, canAccessCompras, canAccessLicitacao].filter(Boolean).length > 1 ? 'md:grid-cols-2 lg:grid-cols-3' : 'max-w-xl mx-auto'} gap-8 animate-slide-up w-full`}>
+              {/* Bloco Pai: Criar Ofício */}
+              {canAccessOficio && (
+                <button
+                  onClick={() => setActiveParent('oficio')}
+                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-indigo-500/5 hover:shadow-indigo-500/15 hover:border-indigo-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                >
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-indigo-600 to-indigo-700 shadow-indigo-500/30 group-hover:scale-110 group-hover:rotate-3">
+                      <FileText className="w-10 h-10 text-white" />
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Ofícios</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Gerenciamento de documentos oficiais e histórico de emissões.</p>
                   </div>
-                  
-                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">
-                     Criar Ofício
-                  </h2>
-                  
-                  <p className="text-slate-500 font-medium leading-relaxed text-sm md:text-base max-w-sm mx-auto">
-                    {canCreateOrder 
-                      ? 'Crie documentos de maneira rápida e profissional'
-                      : 'Sua permissão não permite criar novos documentos.'}
-                  </p>
-                </div>
-
-                {canCreateOrder && (
                   <div className="relative z-10 flex items-center gap-3 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
-                    Acessar Opções
-                    <ArrowRight className="w-5 h-5" />
+                    Acessar Módulo <ArrowRight className="w-5 h-5" />
                   </div>
-                )}
-              </button>
+                </button>
+              )}
+
+              {/* Bloco Pai: Compras */}
+              {canAccessCompras && (
+                <button
+                  onClick={() => setActiveParent('compras')}
+                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-emerald-500/5 hover:shadow-emerald-500/15 hover:border-emerald-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                >
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-emerald-500/30 group-hover:scale-110 group-hover:-rotate-3">
+                      <ShoppingCart className="w-10 h-10 text-white" />
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Compras</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Solicite novos materiais e acompanhe seus pedidos realizados.</p>
+                  </div>
+                  <div className="relative z-10 flex items-center gap-3 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
+                    Acessar Módulo <ArrowRight className="w-5 h-5" />
+                  </div>
+                </button>
+              )}
+
+              {/* Bloco Pai: Licitação */}
+              {canAccessLicitacao && (
+                <button
+                  onClick={() => setActiveParent('licitacao')}
+                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-blue-500/5 hover:shadow-blue-500/15 hover:border-blue-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                >
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-blue-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-500/30 group-hover:scale-110 group-hover:rotate-6">
+                      <Gavel className="w-10 h-10 text-white" />
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Licitação</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Crie novas demandas de licitação e acompanhe processos em curso.</p>
+                  </div>
+                  <div className="relative z-10 flex items-center gap-3 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
+                    Acessar Módulo <ArrowRight className="w-5 h-5" />
+                  </div>
+                </button>
+              )}
+
+              {!hasAnyPermission && (
+                <div className="p-10 rounded-[2.5rem] border border-slate-200 bg-slate-50 text-center flex flex-col items-center justify-center w-full max-w-xl mx-auto opacity-60 col-span-full">
+                   <ShieldAlert className="w-12 h-12 text-slate-300 mb-4" />
+                   <h2 className="text-xl font-bold text-slate-600">Acesso Restrito</h2>
+                   <p className="text-slate-500 text-sm mt-2">Você não possui blocos funcionais ativos. Contate o administrador.</p>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="space-y-6 animate-fade-in w-full">
-              <div className="flex flex-col items-center text-center mb-4">
-                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Escolha uma ação</h2>
-                <p className="text-slate-500 text-sm font-medium">Selecione entre criar ou consultar.</p>
+            <div className="space-y-6 animate-fade-in w-full max-w-4xl">
+              <div className="flex flex-col items-center text-center mb-6">
+                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {activeParent === 'oficio' ? 'Módulo de Ofícios' : activeParent === 'compras' ? 'Módulo de Compras' : 'Módulo de Licitação'}
+                </h2>
+                <p className="text-slate-500 text-sm font-medium">Funcionalidades do bloco pai selecionado.</p>
               </div>
 
               <button 
-                onClick={() => setShowSubMenu(false)}
-                className="group flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold transition-all mb-2"
+                onClick={() => setActiveParent(null)}
+                className="group flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold transition-all mb-4"
               >
                 <div className="p-1.5 rounded-full bg-white border border-slate-200 group-hover:border-indigo-200 group-hover:bg-indigo-50 transition-all">
                   <ArrowLeft className="w-4 h-4" />
                 </div>
-                <span className="text-xs">Voltar</span>
+                <span className="text-xs">Voltar aos Blocos</span>
               </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Opção: Novo Ofício */}
-                <button
-                  onClick={onNewOrder}
-                  className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-indigo-300 hover:shadow-indigo-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-48 md:h-56 justify-center"
-                >
-                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-indigo-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
-                  
-                  <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
-                    <FilePlus className="w-7 h-7 text-white" />
-                  </div>
-                  
-                  <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Novo Ofício</h3>
-                  <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">
-                    Inicie a criação de um novo documento.
-                  </p>
-                  
-                  <div className="mt-4 flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
-                    Criar <ArrowRight className="w-3 h-3" />
-                  </div>
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {activeParent === 'oficio' ? (
+                  <>
+                    <button
+                      onClick={onNewOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-indigo-300 hover:shadow-indigo-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-indigo-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <FilePlus className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Novo Ofício</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Inicie a criação de um novo documento oficial.</p>
+                      <div className="mt-4 flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Criar <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
 
-                {/* Opção: Histórico */}
-                <button
-                  onClick={onTrackOrder}
-                  className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-purple-300 hover:shadow-purple-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-48 md:h-56 justify-center"
-                >
-                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
-                  
-                  <div className="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
-                    <History className="w-7 h-7 text-white" />
-                  </div>
-                  
-                  <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Histórico</h3>
-                  <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">
-                    Gerencie ofícios já criados.
-                  </p>
+                    <button
+                      onClick={onTrackOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-purple-300 hover:shadow-purple-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <History className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Histórico</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Consulte todos os documentos criados.</p>
+                      <div className="mt-4 flex items-center gap-2 text-purple-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Ver <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+                  </>
+                ) : activeParent === 'compras' ? (
+                  <>
+                    <button
+                      onClick={onNewOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-emerald-300 hover:shadow-emerald-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <ShoppingBag className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Novo Pedido</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Solicite novos suprimentos ou serviços.</p>
+                      <div className="mt-4 flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Abrir <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
 
-                  <div className="mt-4 flex items-center gap-2 text-purple-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
-                    Acessar <ArrowRight className="w-3 h-3" />
-                  </div>
-                </button>
+                    <button
+                      onClick={onTrackOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-blue-300 hover:shadow-blue-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <ListChecks className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Acompanhar Pedido</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Verifique o status das suas compras.</p>
+                      <div className="mt-4 flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Ver <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={onNewOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-blue-400 hover:shadow-blue-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <FileSignature className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Nova Demanda</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Inicie uma solicitação de processo licitatório.</p>
+                      <div className="mt-4 flex items-center gap-2 text-blue-700 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Criar <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={onTrackOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-indigo-400 hover:shadow-indigo-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-indigo-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <ClipboardList className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Acompanhar Demanda</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Gestão de todas as demandas enviadas.</p>
+                      <div className="mt-4 flex items-center gap-2 text-indigo-700 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Ver <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        <div className="mt-auto py-6 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] shrink-0">
+        <div className="mt-auto py-8 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] shrink-0">
           <Package className="w-4 h-4" />
           <span>BrandDoc Integrado v1.0.0</span>
         </div>
