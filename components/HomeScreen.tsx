@@ -44,13 +44,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   // Determina o nome do bloco atual para exibição no header
   const getBlockName = () => {
-    if (!activeParent) return "Início";
+    if (!activeParent) return "";
     switch (activeParent) {
       case 'oficio': return "Módulo de Ofícios";
       case 'compras': return "Módulo de Compras";
       case 'licitacao': return "Módulo de Licitação";
       case 'diarias': return "Diárias e Custeio";
-      default: return "Início";
+      default: return "";
     }
   };
 
@@ -80,9 +80,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     className="w-auto object-contain transition-all duration-300" 
                   />
                )}
-               <span className="text-xl font-bold text-slate-900 tracking-tight transition-all duration-300">
-                  {getBlockName()}
-               </span>
+               {activeParent && (
+                 <span className="text-xl font-bold text-slate-900 tracking-tight transition-all duration-300">
+                    {getBlockName()}
+                 </span>
+               )}
              </div>
           </div>
 
