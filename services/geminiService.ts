@@ -1,23 +1,18 @@
-import { GoogleGenAI } from "@google/genai";
 
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.warn("API_KEY is not set in the environment.");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
-};
+import { GoogleGenAI } from "@google/genai";
 
 export const generateDocumentContent = async (
   topic: string, 
   tone: string, 
   docType: string
 ): Promise<{ title: string; body: string }> => {
-  const ai = getAiClient();
-  if (!ai) {
+  // O uso de process.env.API_KEY é obrigatório e injetado automaticamente pelo ambiente.
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
     throw new Error("Chave de API não encontrada.");
   }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
     Atue como um redator profissional especializado em documentos corporativos e governamentais.
@@ -39,7 +34,7 @@ export const generateDocumentContent = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -57,7 +52,6 @@ export const generateDocumentContent = async (
     };
   } catch (error) {
     console.error("Erro ao gerar conteúdo:", error);
-    // Fallback em caso de erro de parse
     return {
       title: "Erro na Geração",
       body: "Não foi possível estruturar o documento. Tente novamente."
