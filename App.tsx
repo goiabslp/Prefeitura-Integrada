@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AdminSidebar } from './components/AdminSidebar';
 import { DocumentPreview } from './components/DocumentPreview';
 import { HomeScreen } from './components/HomeScreen';
@@ -9,25 +9,43 @@ import { UserManagementScreen } from './components/UserManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_ORDERS, MOCK_SIGNATURES } from './constants';
-import { AppState, FontFamily, User, Order, Signature } from './types';
-import { Menu, FileText, ArrowLeft, Home, LogOut, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard } from 'lucide-react';
+import { AppState, User, Order, Signature } from './types';
+import { Menu, FileText, LogOut, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard } from 'lucide-react';
 
-// Declaração para a biblioteca html2pdf carregada via CDN
 declare var html2pdf: any;
+
+const STORAGE_KEY = 'branddoc_settings_v1';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [signatures, setSignatures] = useState<Signature[]>(MOCK_SIGNATURES);
+  
+  // Estado para as configurações persistentes
   const [globalDefaults, setGlobalDefaults] = useState<AppState>(INITIAL_STATE);
+  const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
+  
   const [currentView, setCurrentView] = useState<'home' | 'editor' | 'tracking' | 'admin'>('home');
   const [adminTab, setAdminTab] = useState<string | null>(null);
-  const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const componentRef = useRef<HTMLDivElement>(null);
+
+  // Efeito para carregar as configurações salvas no localStorage ao iniciar
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(STORAGE_KEY);
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setGlobalDefaults(parsedSettings);
+        setAppState(parsedSettings);
+      } catch (e) {
+        console.error("Erro ao carregar configurações salvas:", e);
+      }
+    }
+  }, []);
 
   const handleLogin = (username: string, pass: string): boolean => {
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === pass);
@@ -87,6 +105,8 @@ const App: React.FC = () => {
 
   const handleSaveGlobalDefaults = () => {
     setGlobalDefaults(appState);
+    // Persistência física no LocalStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
   };
 
   const handleAddUser = (newUser: User) => setUsers([...users, newUser]);
@@ -144,7 +164,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Determina o título dinâmico do bloco atual para o header
   const getHeaderTitle = () => {
     if (currentView === 'editor') return "Editor de Documento";
     if (currentView === 'tracking') return "Central de Pedidos";
