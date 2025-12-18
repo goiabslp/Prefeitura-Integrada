@@ -31,7 +31,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
     // Espaço ocupado pelos blocos laterais no topo da página 1
     const LATERAL_BLOCKS_COST = (docConfig.showLeftBlock || docConfig.showRightBlock) ? 9 : 0;
     
-    // Custo da assinatura (Espaço mt-10 + Linha + Nome + Cargo + Setor)
+    // Custo da assinatura (Espaço mt-[45px] + Linha + Nome + Cargo + Setor)
     const SIGNATURE_COST = 7; 
 
     const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
@@ -180,9 +180,9 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   {/* Conteúdo Dinâmico - Removido whitespace-pre-wrap para suportar HTML rico */}
                   <div className="max-w-none text-gray-700 leading-loose text-justify text-[11pt] break-words w-full rich-content" dangerouslySetInnerHTML={{ __html: pageContent }} />
 
-                  {/* Assinatura colada ao texto (mt-10 garante proximidade) */}
+                  {/* Assinatura colada ao texto (mt-[45px] garante proximidade com pequeno aumento conforme solicitado) */}
                   {isLastPage && docConfig.showSignature && (
-                    <div className="mt-10 mb-4 flex flex-col items-center justify-center pointer-events-none shrink-0">
+                    <div className="mt-[45px] mb-4 flex flex-col items-center justify-center pointer-events-none shrink-0">
                       <div className="w-80 border-t border-black pt-4 text-center">
                           <p className="text-gray-900 font-bold text-sm leading-tight uppercase">{content.signatureName}</p>
                           <p className="text-gray-600 text-sm mt-1">{content.signatureRole}</p>
