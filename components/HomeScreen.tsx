@@ -35,11 +35,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const hasAnyPermission = canAccessOficio || canAccessCompras || canAccessLicitacao;
 
-  const logoUrl = uiConfig?.homeLogoUrl || "https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png";
-  const logoHeight = uiConfig?.homeLogoHeight || 56;
+  const logoUrl = uiConfig?.headerLogoUrl || "https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png";
+  const logoHeight = uiConfig?.headerLogoHeight || 40;
   const isLogoCentered = uiConfig?.homeLogoPosition === 'center';
 
   const firstName = userName.split(' ')[0];
+
+  // Determina o nome do bloco atual para exibição no header
+  const getBlockName = () => {
+    if (!activeParent) return "Início";
+    switch (activeParent) {
+      case 'oficio': return "Módulo de Ofícios";
+      case 'compras': return "Módulo de Compras";
+      case 'licitacao': return "Módulo de Licitação";
+      default: return "Início";
+    }
+  };
 
   return (
     <div className="h-screen bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white flex flex-col overflow-hidden">
@@ -58,20 +69,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                </button>
              )}
              
-             {!isLogoCentered && (
-               <div className="flex items-center gap-2">
-                 {logoUrl ? (
-                   <img 
-                     src={logoUrl} 
-                     alt="Logo" 
-                     style={{ height: `${logoHeight * 0.8}px` }}
-                     className="w-auto object-contain transition-all duration-300" 
-                   />
-                 ) : (
-                   <span className="text-xl font-bold text-slate-900 tracking-tight">BrandDoc Pro</span>
-                 )}
-               </div>
-             )}
+             <div className="flex items-center gap-3">
+               {!isLogoCentered && logoUrl && (
+                  <img 
+                    src={logoUrl} 
+                    alt="Logo" 
+                    style={{ height: `${logoHeight}px` }}
+                    className="w-auto object-contain transition-all duration-300" 
+                  />
+               )}
+               <span className="text-xl font-bold text-slate-900 tracking-tight transition-all duration-300">
+                  {getBlockName()}
+               </span>
+             </div>
           </div>
 
           {isLogoCentered && logoUrl && (
@@ -79,7 +89,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                <img 
                   src={logoUrl} 
                   alt="Logo" 
-                  style={{ height: `${logoHeight * 0.8}px` }}
+                  style={{ height: `${logoHeight}px` }}
                   className="w-auto object-contain transition-all duration-300" 
                />
             </div>

@@ -32,11 +32,11 @@ export const INITIAL_STATE: AppState = {
     },
     leftBlockStyle: {
       size: 10,
-      color: '#131216'
+      color: '#191822'
     },
     rightBlockStyle: {
       size: 10,
-      color: '#131216'
+      color: '#191822'
     }
   },
   content: {
@@ -49,8 +49,10 @@ export const INITIAL_STATE: AppState = {
     rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade'
   },
   ui: {
-    homeLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
-    homeLogoHeight: 56,
+    loginLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
+    loginLogoHeight: 80,
+    headerLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
+    headerLogoHeight: 40,
     homeLogoPosition: 'left'
   }
 };
@@ -88,7 +90,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Administração', 
     jobTitle: 'Tecnico Administrativo', 
     allowedSignatureIds: ['sig3', 'sig2'],
-    permissions: ['parent_criar_oficio', 'parent_compras']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_admin']
   },
   { 
     id: '3', 

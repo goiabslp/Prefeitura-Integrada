@@ -61,8 +61,10 @@ export interface ContentData {
 }
 
 export interface UIConfig {
-  homeLogoUrl: string | null;
-  homeLogoHeight: number;
+  loginLogoUrl: string | null;
+  loginLogoHeight: number;
+  headerLogoUrl: string | null;
+  headerLogoHeight: number;
   homeLogoPosition: 'left' | 'center';
 }
 

@@ -7,6 +7,7 @@ import { TrackingScreen } from './components/TrackingScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagementScreen } from './components/UserManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
+import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_ORDERS, MOCK_SIGNATURES } from './constants';
 import { AppState, FontFamily, User, Order, Signature } from './types';
 import { Menu, FileText, ArrowLeft, Home, LogOut, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard } from 'lucide-react';
@@ -143,6 +144,22 @@ const App: React.FC = () => {
     }
   };
 
+  // Determina o título dinâmico do bloco atual para o header
+  const getHeaderTitle = () => {
+    if (currentView === 'editor') return "Editor de Documento";
+    if (currentView === 'tracking') return "Central de Pedidos";
+    if (currentView === 'admin') {
+      switch (adminTab) {
+        case 'users': return "Gestão de Usuários";
+        case 'signatures': return "Gestão de Assinaturas";
+        case 'ui': return "Personalização de Interface";
+        case 'design': return "Identidade do Documento";
+        default: return "Painel Administrativo";
+      }
+    }
+    return "Início";
+  };
+
   if (!currentUser) return <LoginScreen onLogin={handleLogin} uiConfig={globalDefaults.ui} />;
 
   if (currentView === 'home') {
@@ -172,34 +189,36 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 font-sans overflow-hidden">
       <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 truncate">
            <button 
              onClick={() => setIsSidebarOpen(true)}
-             className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-all hover:text-indigo-600"
+             className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-all hover:text-indigo-600 shrink-0"
            >
              <Menu className="w-6 h-6" />
            </button>
-           <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
-           <div className="flex items-center gap-3">
-             <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/20">
+           <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block shrink-0"></div>
+           <div className="flex items-center gap-3 truncate">
+             <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/20 shrink-0">
                 <FileText className="w-4 h-4 text-white" />
              </div>
-             <span className="font-bold text-slate-900 tracking-tight hidden md:block text-lg">BrandDoc Pro</span>
-             {isAdminMode && (
-                <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-[10px] font-black uppercase tracking-widest border border-orange-200">
-                  Admin Panel
+             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg transition-all duration-300 truncate">
+                {getHeaderTitle()}
+             </span>
+             {isAdminMode && !adminTab && (
+                <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-[10px] font-black uppercase tracking-widest border border-orange-200 shrink-0 hidden xs:inline-block">
+                  Admin
                 </span>
              )}
            </div>
         </div>
         <button 
           onClick={() => setCurrentView('home')}
-          className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-lg rounded-xl transition-all duration-300 font-bold text-sm"
+          className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-lg rounded-xl transition-all duration-300 font-bold text-sm shrink-0"
         >
           <div className="w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-white flex items-center justify-center transition-all group-hover:rotate-12">
             <LayoutDashboard className="w-4 h-4" />
           </div>
-          <span>Dashboard</span>
+          <span className="hidden sm:inline">Dashboard</span>
         </button>
       </nav>
 
@@ -242,6 +261,8 @@ const App: React.FC = () => {
                 onUpdateSignature={handleUpdateSignature}
                 onDeleteSignature={handleDeleteSignature}
              />
+          ) : isAdminMode && adminTab === 'ui' ? (
+             <UIPreviewScreen ui={appState.ui} />
           ) : (
             <>
               <DocumentPreview 
@@ -257,7 +278,7 @@ const App: React.FC = () => {
                      <button
                        onClick={handleDownloadPdf}
                        disabled={isDownloading}
-                       className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center border border-indigo-400/20 z-20"
+                       className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30 shadow-indigo-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center border border-indigo-400/20 z-20"
                      >
                        {isDownloading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileDown className="w-6 h-6" />}
                      </button>

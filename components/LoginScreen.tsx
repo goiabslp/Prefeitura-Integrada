@@ -29,9 +29,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, uiConfig }) =
     }, 600);
   };
 
-  const logoUrl = uiConfig?.homeLogoUrl;
-  // Aumenta um pouco o tamanho base para a tela de login para ter mais impacto
-  const logoHeight = uiConfig?.homeLogoHeight ? uiConfig.homeLogoHeight * 1.5 : 80;
+  const logoUrl = uiConfig?.loginLogoUrl;
+  const logoHeight = uiConfig?.loginLogoHeight || 80;
 
   return (
     <div className="min-h-screen font-sans flex items-center justify-center p-6 relative overflow-hidden bg-slate-900">
@@ -69,8 +68,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, uiConfig }) =
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white/20 blur-xl rounded-full -z-10 group-hover:bg-white/30 transition-all duration-500"></div>
            </div>
 
-           {!logoUrl && <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-md">BrandDoc Pro</h1>}
-           <p className="text-sm text-indigo-100/80 mt-2 font-medium">Acesse seu ambiente de trabalho</p>
+           {!logoUrl && <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-md">Acesso ao Sistema</h1>}
+           <p className="text-sm text-indigo-100/80 mt-2 font-medium">Autenticação de Usuário</p>
         </div>
 
         <form onSubmit={handleSubmit} className="px-8 pb-10 space-y-5">

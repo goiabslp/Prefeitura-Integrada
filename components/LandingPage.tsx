@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Sparkles, FileText, Layout, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -14,10 +15,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
            <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/30">
             <FileText className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-slate-900 tracking-tight">BrandDoc Pro</span>
+          <span className="text-xl font-bold text-slate-900 tracking-tight">Gerador de Documentos</span>
         </div>
-        <button className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
-          Login
+        <button onClick={onStart} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
+          Entrar no Sistema
         </button>
       </nav>
 
@@ -42,7 +43,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
               onClick={onStart}
               className="px-8 py-4 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl text-lg font-bold transition-all shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-1 flex items-center justify-center gap-2 group"
             >
-              Criar Documento Agora
+              Começar Agora
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button className="px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-lg font-bold transition-all shadow-sm flex items-center justify-center gap-2">

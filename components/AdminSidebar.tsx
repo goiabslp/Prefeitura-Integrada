@@ -6,7 +6,8 @@ import {
   Check, Save, AlignLeft, 
   AlignCenter, AlignRight, AlignJustify,
   PenTool, ArrowLeft, Heading, Columns,
-  Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting
+  Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting, Droplets, Maximize,
+  Monitor, Layout, LogIn
 } from 'lucide-react';
 import { AppState, User, Signature } from '../types';
 
@@ -43,7 +44,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const [finishStatus, setFinishStatus] = useState<'idle' | 'loading' | 'success'>('idle');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uiLogoInputRef = useRef<HTMLInputElement>(null);
+  const loginLogoInputRef = useRef<HTMLInputElement>(null);
+  const headerLogoInputRef = useRef<HTMLInputElement>(null);
+  const watermarkInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   
   const { branding, document: docConfig, content, ui } = state;
@@ -93,11 +96,29 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     }
   };
 
-  const handleHomeLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLoginLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => handleUpdate('ui', 'homeLogoUrl', reader.result as string);
+      reader.onloadend = () => handleUpdate('ui', 'loginLogoUrl', reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleHeaderLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => handleUpdate('ui', 'headerLogoUrl', reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleWatermarkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => handleDeepUpdate('branding', 'watermark', 'imageUrl', reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -145,7 +166,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       span.style.fontStyle = 'italic';
       span.style.color = 'inherit'; // Resetamos a cor usada para marcação
       
-      // Fix: Cast 'tag' to HTMLElement to access 'innerText' property which is not available on base 'Element' type
       const cleanText = (tag as HTMLElement).innerText?.trim() || '';
       // Adicionamos aspas se já não houver
       if (!cleanText.startsWith('"') && !cleanText.endsWith('"')) {
@@ -229,6 +249,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             <div className="space-y-6 animate-slide-up">
                {renderSectionHeader('Design & Identidade', 'Configure cores, logos e fontes do documento')}
                
+               {/* Logotipo */}
                <div className="space-y-4">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Logotipo do Documento</h3>
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
@@ -269,35 +290,78 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   </div>
                </div>
 
-               {/* Estilo dos Blocos Laterais (Invertidos para refletir o preview) */}
+               {/* Marca d'Água */}
                <div className="space-y-4 border-t border-slate-200 pt-6">
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Columns className="w-4 h-4" /> Design dos Blocos Laterais</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                      {/* Bloco Direito (Agora na Esquerda no painel para casar com o preview) */}
-                      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bloco Direito (Endereçamento)</span>
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Fonte (pt)</label>
-                            <input type="number" value={docConfig.rightBlockStyle.size} onChange={(e) => handleDeepUpdate('document', 'rightBlockStyle', 'size', Number(e.target.value))} className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs" />
-                         </div>
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Cor</label>
-                            <input type="color" value={docConfig.rightBlockStyle.color} onChange={(e) => handleDeepUpdate('document', 'rightBlockStyle', 'color', e.target.value)} className="w-full h-6 rounded cursor-pointer border-0 p-0" />
-                         </div>
-                      </div>
-                      {/* Bloco Esquerdo (Agora na Direita no painel para casar com o preview) */}
-                      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bloco Esquerdo (Ofício Info)</span>
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Fonte (pt)</label>
-                            <input type="number" value={docConfig.leftBlockStyle.size} onChange={(e) => handleDeepUpdate('document', 'leftBlockStyle', 'size', Number(e.target.value))} className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs" />
-                         </div>
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Cor</label>
-                            <input type="color" value={docConfig.leftBlockStyle.color} onChange={(e) => handleDeepUpdate('document', 'leftBlockStyle', 'color', e.target.value)} className="w-full h-6 rounded cursor-pointer border-0 p-0" />
-                         </div>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Droplets className="w-4 h-4" /> Marca d'Água</h3>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked={branding.watermark.enabled} onChange={(e) => handleDeepUpdate('branding', 'watermark', 'enabled', e.target.checked)} className="sr-only peer" />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
                   </div>
+                  
+                  {branding.watermark.enabled && (
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4 animate-fade-in">
+                       <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-3">Imagem da Marca d'Água</label>
+                          <div className="flex items-center gap-4">
+                             <div className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
+                                {branding.watermark.imageUrl ? (
+                                  <img 
+                                    src={branding.watermark.imageUrl} 
+                                    alt="Watermark" 
+                                    className="w-full h-full object-contain p-1" 
+                                    style={{ filter: branding.watermark.grayscale ? 'grayscale(100%)' : 'none' }}
+                                  />
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-medium">Nenhuma</span>
+                                )}
+                             </div>
+                             <div className="flex-1">
+                                <input type="file" ref={watermarkInputRef} onChange={handleWatermarkUpload} accept="image/*" className="hidden" />
+                                <button onClick={() => watermarkInputRef.current?.click()} className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+                                  <Upload className="w-3 h-3" /> Alterar
+                                </button>
+                             </div>
+                          </div>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                             <label className="block text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Maximize className="w-3 h-3" /> Tamanho (%)</label>
+                             <input 
+                               type="range" min="10" max="100" 
+                               value={branding.watermark.size} 
+                               onChange={(e) => handleDeepUpdate('branding', 'watermark', 'size', Number(e.target.value))} 
+                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
+                             />
+                             <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{branding.watermark.size}%</div>
+                          </div>
+                          <div>
+                             <label className="block text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Droplets className="w-3 h-3" /> Opacidade (%)</label>
+                             <input 
+                               type="range" min="5" max="100" 
+                               value={branding.watermark.opacity} 
+                               onChange={(e) => handleDeepUpdate('branding', 'watermark', 'opacity', Number(e.target.value))} 
+                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
+                             />
+                             <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{branding.watermark.opacity}%</div>
+                          </div>
+                       </div>
+
+                       <div className="pt-2">
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                             <input 
+                                type="checkbox" 
+                                checked={branding.watermark.grayscale} 
+                                onChange={(e) => handleDeepUpdate('branding', 'watermark', 'grayscale', e.target.checked)}
+                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                             />
+                             <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">Converter para Monocromático (Cinza)</span>
+                          </label>
+                       </div>
+                    </div>
+                  )}
                </div>
 
                <div className="space-y-4 border-t border-slate-200 pt-6">
@@ -320,25 +384,67 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           )}
 
           {activeTab === 'ui' && (
-            <div className="space-y-6 animate-slide-up">
-              {renderSectionHeader('Interface do App', 'Personalize a tela de login e home')}
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-3">Logo da Aplicação</label>
-                    <div className="flex items-center gap-4">
-                        <div className="w-24 h-24 bg-slate-900 border border-slate-700 rounded-lg flex items-center justify-center overflow-hidden relative group">
-                            {ui.homeLogoUrl ? <img src={ui.homeLogoUrl} alt="Logo Home" className="w-full h-full object-contain p-2" /> : <span className="text-xs text-slate-500 font-medium">Sem Logo</span>}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button onClick={() => handleUpdate('ui', 'homeLogoUrl', null)} className="text-white text-xs hover:underline">Remover</button>
-                            </div>
-                        </div>
-                        <div className="flex-1">
-                            <input type="file" ref={uiLogoInputRef} onChange={handleHomeLogoUpload} accept="image/*" className="hidden" />
-                            <button onClick={() => uiLogoInputRef.current?.click()} className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-indigo-600 transition-colors flex items-center gap-2"><Upload className="w-4 h-4" />Carregar Imagem</button>
-                        </div>
+            <div className="space-y-8 animate-slide-up">
+              {renderSectionHeader('Interface do App', 'Configure as logos do sistema (Previsualize no painel ao lado)')}
+              
+              {/* Configuração Logo Header */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Layout className="w-4 h-4" /> Header (Topo) do Sistema</h3>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-3">Upload da Logo (Header)</label>
+                      <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden relative group shrink-0">
+                              {ui.headerLogoUrl ? <img src={ui.headerLogoUrl} alt="Logo Header" className="w-full h-full object-contain p-1.5" /> : <span className="text-[10px] text-slate-400 font-medium">Vazio</span>}
+                              {ui.headerLogoUrl && (
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button onClick={() => handleUpdate('ui', 'headerLogoUrl', null)} className="text-white text-[10px] hover:underline">Limpar</button>
+                                </div>
+                              )}
+                          </div>
+                          <div className="flex-1">
+                              <input type="file" ref={headerLogoInputRef} onChange={handleHeaderLogoUpload} accept="image/*" className="hidden" />
+                              <button onClick={() => headerLogoInputRef.current?.click()} className="w-full px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"><Upload className="w-3 h-3" />{ui.headerLogoUrl ? 'Alterar' : 'Subir'} Logo</button>
+                          </div>
+                      </div>
                     </div>
-                  </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-2">Ajustar Tamanho (px)</label>
+                        <input type="range" min="20" max="100" value={ui.headerLogoHeight} onChange={(e) => handleUpdate('ui', 'headerLogoHeight', Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                        <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{ui.headerLogoHeight}px</div>
+                    </div>
+                </div>
               </div>
+
+              {/* Configuração Logo Login */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><LogIn className="w-4 h-4" /> Tela de Login</h3>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-3">Upload da Logo (Login)</label>
+                      <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden relative group shrink-0">
+                              {ui.loginLogoUrl ? <img src={ui.loginLogoUrl} alt="Logo Login" className="w-full h-full object-contain p-1.5" /> : <span className="text-[10px] text-slate-500 font-medium">Vazio</span>}
+                              {ui.loginLogoUrl && (
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button onClick={() => handleUpdate('ui', 'loginLogoUrl', null)} className="text-white text-[10px] hover:underline">Limpar</button>
+                                </div>
+                              )}
+                          </div>
+                          <div className="flex-1">
+                              <input type="file" ref={loginLogoInputRef} onChange={handleLoginLogoUpload} accept="image/*" className="hidden" />
+                              <button onClick={() => loginLogoInputRef.current?.click()} className="w-full px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2"><Upload className="w-3 h-3" />{ui.loginLogoUrl ? 'Alterar' : 'Subir'} Logo</button>
+                          </div>
+                      </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-2">Ajustar Tamanho (px)</label>
+                        <input type="range" min="30" max="200" value={ui.loginLogoHeight} onChange={(e) => handleUpdate('ui', 'loginLogoHeight', Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                        <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{ui.loginLogoHeight}px</div>
+                    </div>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -347,7 +453,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <div className="space-y-4">
                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Columns className="w-4 h-4" /> Blocos de Texto Laterais</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Ativação Bloco Direito (Agora na Esquerda no painel para casar com o preview) */}
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
                        <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-800 uppercase">Bloco Direito (Endereçamento)</span>
@@ -366,7 +471,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                        )}
                     </div>
 
-                    {/* Ativação Bloco Esquerdo (Agora na Direita no painel para casar com o preview) */}
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
                        <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-800 uppercase">Bloco Esquerdo (Ofício Info)</span>
@@ -395,11 +499,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       <input value={content.title} onChange={(e) => handleUpdate('content', 'title', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-800" placeholder="Ex: Proposta Comercial" />
                    </div>
                    
-                   {/* Editor de Texto Rico */}
                    <div className="space-y-2">
                       <label className="block text-xs font-semibold text-slate-500 mb-2">Conteúdo do Documento</label>
                       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-                        {/* Toolbar do Editor */}
                         <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-1 sticky top-0 z-10">
                           <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Negrito"><Bold className="w-4 h-4" /></button>
                           <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Itálico"><Italic className="w-4 h-4" /></button>
@@ -441,7 +543,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                           <button onClick={() => execCommand('removeFormat')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-red-500" title="Limpar Formatação"><RemoveFormatting className="w-4 h-4" /></button>
                         </div>
                         
-                        {/* Área Editável */}
                         <div 
                           ref={editorRef}
                           contentEditable
