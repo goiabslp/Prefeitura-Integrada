@@ -25,10 +25,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSignatures
 }) => {
   const stats = [
-    { label: 'PDFs Gerados', value: '124', icon: <FileText className="w-5 h-5" />, color: 'bg-blue-500' },
-    { label: 'Usuários Ativos', value: '12', icon: <Users className="w-5 h-5" />, color: 'bg-indigo-500' },
-    { label: 'Pendentes', value: '5', icon: <Clock className="w-5 h-5" />, color: 'bg-amber-500' },
-    { label: 'Taxa de Sucesso', value: '98%', icon: <CheckCircle className="w-5 h-5" />, color: 'bg-emerald-500' },
+    { label: 'PDFs Gerados', value: '0', icon: <FileText className="w-5 h-5" />, color: 'bg-blue-500' },
+    { label: 'Usuários Ativos', value: '3', icon: <Users className="w-5 h-5" />, color: 'bg-indigo-500' },
+    { label: 'Pendentes', value: '0', icon: <Clock className="w-5 h-5" />, color: 'bg-amber-500' },
+    { label: 'Taxa de Sucesso', value: '-', icon: <CheckCircle className="w-5 h-5" />, color: 'bg-emerald-500' },
   ];
 
   const quickActions = [
@@ -144,16 +144,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {[1, 2, 3].map((i) => (
-                <tr key={i} className="hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={onHistory}>
-                  <td className="px-6 py-4 font-mono text-xs text-slate-500">#REQ-2024-00{40+i}</td>
-                  <td className="px-6 py-4 font-bold text-slate-800 text-sm">Ofício de Solicitação #{i}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">Concluído</span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-500 font-medium">15/05/2024</td>
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={4} className="px-6 py-12 text-center text-slate-400 font-medium">
+                  Nenhum documento gerado recentemente.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

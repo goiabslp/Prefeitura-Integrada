@@ -70,8 +70,8 @@ export const MOCK_SIGNATURES: Signature[] = [
 export const DEFAULT_USERS: User[] = [
   { 
     id: '1', 
-    username: 'guilherme.santos', 
-    password: 'Gafds.086', 
+    username: 'a', 
+    password: 'a', 
     name: 'Guilherme Araújo Ferreira dos Santos', 
     role: 'admin', 
     sector: 'Administração Municipal', 
@@ -100,9 +100,4 @@ export const DEFAULT_USERS: User[] = [
   },
 ];
 
-export const MOCK_ORDERS: Order[] = [
-  { id: '101', protocol: '#REQ-2024-0042', title: 'Aquisição de Notebooks', status: 'completed', createdAt: '2024-02-15', userId: '2', userName: 'Juliana Miranda' },
-  { id: '102', protocol: '#REQ-2024-0043', title: 'Material de Escritório', status: 'pending', createdAt: '2024-02-16', userId: '2', userName: 'Juliana Miranda' },
-  { id: '103', protocol: '#REQ-2024-0044', title: 'Licença de Software', status: 'pending', createdAt: '2024-02-17', userId: '1', userName: 'Guilherme Araújo' },
-  { id: '104', protocol: '#REQ-2024-0045', title: 'Serviço de Limpeza', status: 'canceled', createdAt: '2024-02-14', userId: '99', userName: 'Outro Usuário' },
-];
+export const MOCK_ORDERS: Order[] = [];
