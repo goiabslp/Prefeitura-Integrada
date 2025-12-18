@@ -133,10 +133,18 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   <div className="absolute top-0 flex" style={{ left: branding.logoAlignment === 'left' ? 0 : branding.logoAlignment === 'center' ? '50%' : 'auto', right: branding.logoAlignment === 'right' ? 0 : 'auto', transform: branding.logoAlignment === 'center' ? 'translateX(-50%)' : 'none' }}>
                     {branding.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="object-contain" style={{ width: `${branding.logoWidth}mm`, maxHeight: '32mm' }} /> : <div className="bg-slate-50 border rounded flex items-center justify-center text-[10px]" style={{ width: `${branding.logoWidth}mm`, height: '20mm' }}>Logo</div>}
                   </div>
+                  
+                  {/* Cabeçalho Cascata: Setor -> Cidade -> Data */}
                   <div className="absolute top-0 right-0 text-right flex flex-col items-end">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">{content.signatureSector || 'Departamento Administrativo'}</span>
-                    <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>{docConfig.headerText}</h2>
-                    <p className="text-[10px] text-gray-400 font-mono">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">
+                      {content.signatureSector || 'Departamento Administrativo'}
+                    </span>
+                    <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>
+                      {docConfig.city}
+                    </h2>
+                    <p className="text-[10px] text-gray-400 font-mono">
+                      {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
                   </div>
                 </div>
 
@@ -177,10 +185,10 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                     </>
                   )}
                   
-                  {/* Conteúdo Dinâmico - Removido whitespace-pre-wrap para suportar HTML rico */}
+                  {/* Conteúdo Dinâmico */}
                   <div className="max-w-none text-gray-700 leading-loose text-justify text-[11pt] break-words w-full rich-content" dangerouslySetInnerHTML={{ __html: pageContent }} />
 
-                  {/* Assinatura colada ao texto (mt-[45px] garante proximidade com pequeno aumento conforme solicitado) */}
+                  {/* Assinatura colada ao texto */}
                   {isLastPage && docConfig.showSignature && (
                     <div className="mt-[45px] mb-4 flex flex-col items-center justify-center pointer-events-none shrink-0">
                       <div className="w-80 border-t border-black pt-4 text-center">
@@ -192,7 +200,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   )}
                 </main>
 
-                {/* Rodapé Fixo (Posicionado em bottom-8 para manter consistência visual) */}
+                {/* Rodapé Fixo */}
                 <div className="absolute bottom-8 left-[20mm] right-[20mm] pt-4 border-t-2 border-gray-800 flex justify-between items-end text-sm z-20 bg-white">
                   <div className="flex flex-col gap-1 max-w-[75%]">
                       <span className="font-bold text-gray-900">Prefeitura de São José do Goiabal - MG</span>

@@ -7,7 +7,7 @@ import {
   AlignCenter, AlignRight, AlignJustify,
   PenTool, ArrowLeft, Heading, Columns,
   Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting, Droplets, Maximize,
-  Monitor, Layout, LogIn
+  Monitor, Layout, LogIn, MapPin
 } from 'lucide-react';
 import { AppState, User, Signature } from '../types';
 
@@ -287,6 +287,22 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                            </div>
                         </div>
                       </div>
+                  </div>
+               </div>
+
+               {/* Cidade / Localização */}
+               <div className="space-y-4 border-t border-slate-200 pt-6">
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-4 h-4" /> Informações Locais</h3>
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <label className="block text-xs font-semibold text-slate-500 mb-2">Cidade do Documento</label>
+                    <input 
+                      type="text" 
+                      value={docConfig.city} 
+                      onChange={(e) => handleUpdate('document', 'city', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      placeholder="Ex: São José do Goiabal - MG"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-2 italic">* Este valor será exibido no cabeçalho em formato cascata.</p>
                   </div>
                </div>
 

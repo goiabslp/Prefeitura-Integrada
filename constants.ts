@@ -20,6 +20,7 @@ export const INITIAL_STATE: AppState = {
   document: {
     headerText: 'São José do Goiabal - MG',
     footerText: 'ENDEREÇO: Praça Cônego João Pio, 30 - Centro – 35.986-000\nSão José do Goiabal-MG. CNPJ: 18.402.552/0001-91',
+    city: 'São José do Goiabal - MG',
     showDate: true,
     showPageNumbers: true,
     showSignature: false,

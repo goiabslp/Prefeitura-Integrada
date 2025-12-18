@@ -34,6 +34,7 @@ export interface TextStyle {
 export interface DocumentConfig {
   headerText: string;
   footerText: string;
+  city: string;
   showDate: boolean;
   showPageNumbers: boolean;
   showSignature: boolean;

@@ -112,9 +112,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, uiConfig }) =
 
         {/* Lado Direito - Form de Login */}
         <div className="p-8 lg:p-16 flex flex-col justify-center bg-white/[0.02]">
-          <div className="mb-10 text-center lg:text-left">
+          <div className="mb-10 text-center">
             {logoUrl ? (
-               <div className="mb-8 flex justify-center lg:justify-start">
+               <div className="mb-8 flex justify-center">
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
