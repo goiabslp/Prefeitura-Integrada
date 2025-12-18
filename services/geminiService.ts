@@ -34,13 +34,13 @@ export const generateDocumentContent = async (
 
     FORMATO DE SAÍDA (JSON OBRIGATÓRIO):
     Responda APENAS com um objeto JSON válido contendo dois campos: "title" e "body".
-    Exemplo: { "title": "Proposta de Serviço X", "body": "Prezados,\n\nSegue a proposta..." }
+    Exemplo: { "title": "Proposta de Serviço X", "body": "Prezados,\\n\\nSegue a proposta..." }
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+      model: 'gemini-3-flash-preview',
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json'
       }
@@ -57,10 +57,10 @@ export const generateDocumentContent = async (
     };
   } catch (error) {
     console.error("Erro ao gerar conteúdo:", error);
-    // Fallback em caso de erro de parse
+    // Fallback em caso de erro de parse ou conexão
     return {
       title: "Erro na Geração",
-      body: "Não foi possível estruturar o documento. Tente novamente."
+      body: "Não foi possível estruturar o documento automaticamente. Verifique sua conexão e tente novamente."
     };
   }
 };
