@@ -79,7 +79,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Administração Municipal', 
     jobTitle: 'Secretário Administrativo Municipal', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao']
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
   },
   { 
     id: '2', 

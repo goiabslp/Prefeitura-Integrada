@@ -78,7 +78,7 @@ export interface AppState {
 export type UserRole = 'admin' | 'collaborator' | 'licitacao';
 
 // Permissões focadas nos blocos pai
-export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao';
+export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias';
 
 export interface User {
   id: string;

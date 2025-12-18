@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FilePlus, Package, LogOut, LayoutDashboard, History, FileText, ShieldAlert, ArrowRight, ArrowLeft, ShoppingCart, ShoppingBag, ListChecks, Gavel, FileSignature, ClipboardList } from 'lucide-react';
+import { FilePlus, Package, LogOut, LayoutDashboard, History, FileText, ShieldAlert, ArrowRight, ArrowLeft, ShoppingCart, ShoppingBag, ListChecks, Gavel, FileSignature, ClipboardList, Wallet, Banknote, UserCheck, ReceiptText } from 'lucide-react';
 import { UserRole, UIConfig, AppPermission } from '../types';
 
 interface HomeScreenProps {
@@ -26,14 +26,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   uiConfig,
   permissions = []
 }) => {
-  const [activeParent, setActiveParent] = useState<'oficio' | 'compras' | 'licitacao' | null>(null);
+  const [activeParent, setActiveParent] = useState<'oficio' | 'compras' | 'licitacao' | 'diarias' | null>(null);
   
   const canAccessAdmin = permissions.includes('parent_admin');
   const canAccessOficio = permissions.includes('parent_criar_oficio');
   const canAccessCompras = permissions.includes('parent_compras');
   const canAccessLicitacao = permissions.includes('parent_licitacao');
+  const canAccessDiarias = permissions.includes('parent_diarias');
 
-  const hasAnyPermission = canAccessOficio || canAccessCompras || canAccessLicitacao;
+  const hasAnyPermission = canAccessOficio || canAccessCompras || canAccessLicitacao || canAccessDiarias;
 
   const logoUrl = uiConfig?.headerLogoUrl || "https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png";
   const logoHeight = uiConfig?.headerLogoHeight || 40;
@@ -48,6 +49,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       case 'oficio': return "Módulo de Ofícios";
       case 'compras': return "Módulo de Compras";
       case 'licitacao': return "Módulo de Licitação";
+      case 'diarias': return "Diárias e Custeio";
       default: return "Início";
     }
   };
@@ -129,23 +131,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         <div className="w-full max-w-6xl transition-all duration-500 ease-in-out flex flex-col items-center">
           {!activeParent ? (
-            <div className={`grid grid-cols-1 ${[canAccessOficio, canAccessCompras, canAccessLicitacao].filter(Boolean).length > 1 ? 'md:grid-cols-2 lg:grid-cols-3' : 'max-w-xl mx-auto'} gap-8 animate-slide-up w-full`}>
+            <div className={`grid grid-cols-1 ${[canAccessOficio, canAccessCompras, canAccessLicitacao, canAccessDiarias].filter(Boolean).length > 1 ? 'md:grid-cols-2 lg:grid-cols-4' : 'max-w-xl mx-auto'} gap-6 animate-slide-up w-full`}>
               {/* Bloco Pai: Criar Ofício */}
               {canAccessOficio && (
                 <button
                   onClick={() => setActiveParent('oficio')}
-                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-indigo-500/5 hover:shadow-indigo-500/15 hover:border-indigo-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                  className="group relative p-8 rounded-[2rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-indigo-500/5 hover:shadow-indigo-500/15 hover:border-indigo-300 cursor-pointer h-64 scale-100 hover:scale-[1.01]"
                 >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-indigo-600 to-indigo-700 shadow-indigo-500/30 group-hover:scale-110 group-hover:rotate-3">
-                      <FileText className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-lg mb-3 transition-all duration-500 bg-gradient-to-br from-indigo-600 to-indigo-700 shadow-indigo-500/30 group-hover:scale-110 group-hover:rotate-3">
+                      <FileText className="w-8 h-8 text-white" />
                     </div>
-                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Ofícios</h2>
-                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Gerenciamento de documentos oficiais e histórico de emissões.</p>
+                    <h2 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">Ofícios</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-xs max-w-[200px] mx-auto">Documentos oficiais e histórico.</p>
                   </div>
-                  <div className="relative z-10 flex items-center gap-3 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
-                    Acessar Módulo <ArrowRight className="w-5 h-5" />
+                  <div className="relative z-10 flex items-center gap-2 text-indigo-600 font-black text-[9px] uppercase tracking-[0.2em] mt-4 group-hover:gap-4 transition-all duration-300">
+                    Acessar <ArrowRight className="w-4 h-4" />
                   </div>
                 </button>
               )}
@@ -154,18 +156,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               {canAccessCompras && (
                 <button
                   onClick={() => setActiveParent('compras')}
-                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-emerald-500/5 hover:shadow-emerald-500/15 hover:border-emerald-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                  className="group relative p-8 rounded-[2rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-emerald-500/5 hover:shadow-emerald-500/15 hover:border-emerald-300 cursor-pointer h-64 scale-100 hover:scale-[1.01]"
                 >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-emerald-500/30 group-hover:scale-110 group-hover:-rotate-3">
-                      <ShoppingCart className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-lg mb-3 transition-all duration-500 bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-emerald-500/30 group-hover:scale-110 group-hover:-rotate-3">
+                      <ShoppingCart className="w-8 h-8 text-white" />
                     </div>
-                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Compras</h2>
-                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Solicite novos materiais e acompanhe seus pedidos realizados.</p>
+                    <h2 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">Compras</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-xs max-w-[200px] mx-auto">Pedidos e solicitações.</p>
                   </div>
-                  <div className="relative z-10 flex items-center gap-3 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
-                    Acessar Módulo <ArrowRight className="w-5 h-5" />
+                  <div className="relative z-10 flex items-center gap-2 text-emerald-600 font-black text-[9px] uppercase tracking-[0.2em] mt-4 group-hover:gap-4 transition-all duration-300">
+                    Acessar <ArrowRight className="w-4 h-4" />
                   </div>
                 </button>
               )}
@@ -174,18 +176,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               {canAccessLicitacao && (
                 <button
                   onClick={() => setActiveParent('licitacao')}
-                  className="group relative p-10 rounded-[2.5rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-blue-500/5 hover:shadow-blue-500/15 hover:border-blue-300 cursor-pointer h-72 scale-100 hover:scale-[1.01]"
+                  className="group relative p-8 rounded-[2rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-blue-500/5 hover:shadow-blue-500/15 hover:border-blue-300 cursor-pointer h-64 scale-100 hover:scale-[1.01]"
                 >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-blue-50 rounded-bl-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -mr-8 -mt-8 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl mb-4 transition-all duration-500 bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-500/30 group-hover:scale-110 group-hover:rotate-6">
-                      <Gavel className="w-10 h-10 text-white" />
+                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-lg mb-3 transition-all duration-500 bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-500/30 group-hover:scale-110 group-hover:rotate-6">
+                      <Gavel className="w-8 h-8 text-white" />
                     </div>
-                    <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Licitação</h2>
-                    <p className="text-slate-500 font-medium leading-relaxed text-sm max-w-sm mx-auto">Crie novas demandas de licitação e acompanhe processos em curso.</p>
+                    <h2 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">Licitação</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-xs max-w-[200px] mx-auto">Processos licitatórios.</p>
                   </div>
-                  <div className="relative z-10 flex items-center gap-3 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mt-6 group-hover:gap-5 transition-all duration-300">
-                    Acessar Módulo <ArrowRight className="w-5 h-5" />
+                  <div className="relative z-10 flex items-center gap-2 text-blue-600 font-black text-[9px] uppercase tracking-[0.2em] mt-4 group-hover:gap-4 transition-all duration-300">
+                    Acessar <ArrowRight className="w-4 h-4" />
+                  </div>
+                </button>
+              )}
+
+              {/* Bloco Pai: Diárias e Custeio */}
+              {canAccessDiarias && (
+                <button
+                  onClick={() => setActiveParent('diarias')}
+                  className="group relative p-8 rounded-[2rem] border shadow-xl transition-all duration-500 text-center flex flex-col items-center justify-center overflow-hidden w-full bg-white border-slate-200 shadow-amber-500/5 hover:shadow-amber-500/15 hover:border-amber-300 cursor-pointer h-64 scale-100 hover:scale-[1.01]"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-full -mr-8 -mt-8 transition-transform duration-700 group-hover:scale-125 opacity-40"></div>
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-lg mb-3 transition-all duration-500 bg-gradient-to-br from-amber-600 to-amber-700 shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6">
+                      <Wallet className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mb-1 tracking-tight leading-tight">Diárias e Custeio</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed text-xs max-w-[200px] mx-auto">Gestão de despesas e diárias.</p>
+                  </div>
+                  <div className="relative z-10 flex items-center gap-2 text-amber-600 font-black text-[9px] uppercase tracking-[0.2em] mt-4 group-hover:gap-4 transition-all duration-300">
+                    Acessar <ArrowRight className="w-4 h-4" />
                   </div>
                 </button>
               )}
@@ -199,10 +221,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               )}
             </div>
           ) : (
-            <div className="space-y-6 animate-fade-in w-full max-w-4xl">
+            <div className="space-y-6 animate-fade-in w-full max-w-5xl">
               <div className="flex flex-col items-center text-center mb-6">
                 <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {activeParent === 'oficio' ? 'Módulo de Ofícios' : activeParent === 'compras' ? 'Módulo de Compras' : 'Módulo de Licitação'}
+                  {getBlockName()}
                 </h2>
                 <p className="text-slate-500 text-sm font-medium">Funcionalidades do bloco pai selecionado.</p>
               </div>
@@ -217,7 +239,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <span className="text-xs">Voltar aos Blocos</span>
               </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className={`grid grid-cols-1 ${activeParent === 'diarias' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8`}>
                 {activeParent === 'oficio' ? (
                   <>
                     <button
@@ -282,7 +304,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       </div>
                     </button>
                   </>
-                ) : (
+                ) : activeParent === 'licitacao' ? (
                   <>
                     <button
                       onClick={onNewOrder}
@@ -314,6 +336,53 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       </div>
                     </button>
                   </>
+                ) : (
+                  <>
+                    <button
+                      onClick={onNewOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-amber-400 hover:shadow-amber-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <UserCheck className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Nova Diária</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Solicite uma nova diária de viagem.</p>
+                      <div className="mt-4 flex items-center gap-2 text-amber-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Criar <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={onNewOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-rose-400 hover:shadow-rose-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-rose-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <ReceiptText className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Novo Custeio</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Inicie uma solicitação de custeio/reembolso.</p>
+                      <div className="mt-4 flex items-center gap-2 text-rose-600 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Criar <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={onTrackOrder}
+                      className="group relative p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl hover:border-slate-400 hover:shadow-slate-500/5 transition-all duration-500 flex flex-col items-center text-center overflow-hidden h-56 justify-center"
+                    >
+                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-slate-50 rounded-full opacity-40 group-hover:scale-150 transition-transform duration-700"></div>
+                      <div className="w-14 h-14 bg-slate-700 rounded-xl flex items-center justify-center shadow-lg shadow-slate-500/20 mb-4 group-hover:scale-110 transition-all duration-300 relative z-10">
+                        <History className="w-7 h-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-1 relative z-10">Histórico</h3>
+                      <p className="text-slate-500 font-medium text-xs relative z-10 max-w-[180px]">Gestão de todas as solicitações enviadas.</p>
+                      <div className="mt-4 flex items-center gap-2 text-slate-700 font-bold text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 transition-all duration-300">
+                        Ver <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -322,7 +391,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         <div className="mt-auto py-8 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] shrink-0">
           <Package className="w-4 h-4" />
-          <span>BrandDoc Integrado v1.0.0</span>
+          <span>BrandDoc Integrado v1.1.0</span>
         </div>
       </main>
     </div>
