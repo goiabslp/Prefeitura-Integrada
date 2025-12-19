@@ -11,11 +11,11 @@ import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import { AppState, User, Order, Signature } from './types';
 import { Menu, FileText, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard } from 'lucide-react';
+import * as db from './services/dbService';
 
 declare var html2pdf: any;
 
 const STORAGE_KEY = 'branddoc_settings_v2';
-const ORDERS_STORAGE_KEY = 'branddoc_orders_v1';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -33,33 +33,30 @@ const App: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const componentRef = useRef<HTMLDivElement>(null);
 
+  // Carregar Configurações e Ordens
   useEffect(() => {
-    const savedSettings = localStorage.getItem(STORAGE_KEY);
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setGlobalDefaults(parsedSettings);
-        setAppState(parsedSettings);
-      } catch (e) {
-        console.error("Erro ao carregar configurações salvas:", e);
+    const loadData = async () => {
+      const savedSettings = localStorage.getItem(STORAGE_KEY);
+      if (savedSettings) {
+        try {
+          const parsedSettings = JSON.parse(savedSettings);
+          setGlobalDefaults(parsedSettings);
+          setAppState(parsedSettings);
+        } catch (e) {
+          console.error("Erro ao carregar configurações salvas:", e);
+        }
       }
-    }
 
-    const savedOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (savedOrders) {
       try {
-        setOrders(JSON.parse(savedOrders));
+        const savedOrders = await db.getAllOrders();
+        setOrders(savedOrders);
       } catch (e) {
-        console.error("Erro ao carregar histórico:", e);
+        console.error("Erro ao carregar histórico do IndexedDB:", e);
       }
-    }
+    };
+    
+    loadData();
   }, []);
-
-  useEffect(() => {
-    if (orders.length > 0) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-    }
-  }, [orders]);
 
   const handleLogin = (username: string, pass: string): boolean => {
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === pass);
@@ -118,7 +115,7 @@ const App: React.FC = () => {
     setIsSidebarOpen(true);
   };
 
-  const handleFinishDocument = () => {
+  const handleFinishDocument = async () => {
     if (!currentUser) return;
     
     const currentYear = new Date().getFullYear();
@@ -137,9 +134,16 @@ const App: React.FC = () => {
       documentSnapshot: JSON.parse(JSON.stringify(appState))
     };
 
-    setOrders([newOrder, ...orders]);
-    setIsSidebarOpen(false);
-    setCurrentView('home');
+    try {
+      await db.saveOrder(newOrder);
+      const updatedOrders = await db.getAllOrders();
+      setOrders(updatedOrders);
+      setIsSidebarOpen(false);
+      setCurrentView('home');
+    } catch (error) {
+      console.error("Erro ao salvar ordem:", error);
+      alert("Erro ao salvar no banco de dados local. Tente limpar o histórico se o problema persistir.");
+    }
   };
 
   const handleOpenAdmin = (tab: string | null = null) => {
@@ -150,8 +154,25 @@ const App: React.FC = () => {
   };
 
   const handleSaveGlobalDefaults = () => {
-    setGlobalDefaults(appState);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    try {
+      setGlobalDefaults(appState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    } catch (e) {
+      console.error("Erro de Quota localStorage:", e);
+      alert("Limite de armazenamento do navegador atingido. O sistema tentará otimizar os dados.");
+      
+      // Fallback: Tenta salvar sem imagens pesadas
+      const leanState = JSON.parse(JSON.stringify(appState));
+      if (leanState.branding) leanState.branding.logoUrl = null;
+      if (leanState.ui) leanState.ui.loginLogoUrl = null;
+      if (leanState.ui) leanState.ui.headerLogoUrl = null;
+      
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(leanState));
+      } catch (innerError) {
+        localStorage.clear();
+      }
+    }
   };
 
   const handleAddUser = (newUser: User) => setUsers([...users, newUser]);
@@ -185,10 +206,8 @@ const App: React.FC = () => {
 
     setIsDownloading(true);
 
-    // Se estivermos baixando do histórico, aplicamos o snapshot temporariamente
     if (customSnapshot) {
         setAppState(customSnapshot);
-        // Aguarda re-renderização do DOM
         await new Promise(resolve => setTimeout(resolve, 300));
     }
 
@@ -203,7 +222,6 @@ const App: React.FC = () => {
 
     const originalTransform = scaler.style.transform;
     scaler.style.transform = 'scale(1)';
-    // Pequena pausa para o navegador processar o estilo
     await new Promise(resolve => setTimeout(resolve, 200));
 
     const safeTitle = stateToUse.content.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -224,11 +242,17 @@ const App: React.FC = () => {
       console.error("Erro PDF", error);
     } finally {
       scaler.style.transform = originalTransform; 
-      // Restaura o estado original se foi um snapshot
       if (customSnapshot) {
         setAppState(originalState);
       }
       setIsDownloading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (window.confirm("Tem certeza que deseja apagar TODO o histórico? Esta ação não pode ser desfeita.")) {
+      await db.clearAllOrders();
+      setOrders([]);
     }
   };
 
@@ -255,7 +279,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 font-sans overflow-hidden">
-      {/* Overlay de Download Global */}
       {isDownloading && (
         <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 max-w-xs text-center border border-slate-200">
@@ -270,7 +293,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Navbar principal do sistema */}
       <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
         <div className="flex items-center gap-4 truncate">
            <button 
@@ -304,7 +326,6 @@ const App: React.FC = () => {
       </nav>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Renderização Condicional da Sidebar (Apenas no Admin ou Editor) */}
         {(currentView === 'editor' || currentView === 'admin') && (
            <AdminSidebar 
              state={appState} 
@@ -327,7 +348,6 @@ const App: React.FC = () => {
         )}
         
         <div className="flex-1 h-full overflow-hidden relative">
-           {/* Visualização de Home ou Histórico ocupam a tela toda */}
            {currentView === 'home' && (
               <HomeScreen 
                 onNewOrder={handleStartNewOrder} 
@@ -343,10 +363,15 @@ const App: React.FC = () => {
            )}
 
            {currentView === 'tracking' && (
-              <TrackingScreen onBack={() => setCurrentView('home')} currentUser={currentUser} orders={orders} onDownloadPdf={handleDownloadPdf} />
+              <TrackingScreen 
+                onBack={() => setCurrentView('home')} 
+                currentUser={currentUser} 
+                orders={orders} 
+                onDownloadPdf={handleDownloadPdf} 
+                onClearAll={handleClearHistory}
+              />
            )}
 
-           {/* Editor e Admin compartilham o DocumentPreview no DOM */}
            {(currentView === 'editor' || currentView === 'admin' || isDownloading) && (
               <div 
                 className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${

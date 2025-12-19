@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Search, PackageX, FileText, Clock, CheckCircle2, AlertCircle, Filter, FileDown, Calendar, Hash, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash } from 'lucide-react';
 import { User, Order, AppState } from '../types';
 
 interface TrackingScreenProps {
@@ -8,9 +8,10 @@ interface TrackingScreenProps {
   currentUser: User;
   orders: Order[];
   onDownloadPdf: (snapshot?: AppState) => void;
+  onClearAll: () => void;
 }
 
-export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders, onDownloadPdf }) => {
+export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders, onDownloadPdf, onClearAll }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredOrders = orders.filter(order => {
@@ -56,15 +57,27 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
                </p>
              </div>
              
-             <div className="relative w-full md:w-96 group">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por Título ou Número..."
-                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all group-hover:bg-white"
-                />
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+             <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-80 group">
+                   <input
+                     type="text"
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                     placeholder="Buscar por Título ou Número..."
+                     className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all group-hover:bg-white"
+                   />
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                </div>
+                {currentUser.role === 'admin' && orders.length > 0 && (
+                   <button 
+                     onClick={onClearAll}
+                     className="p-3.5 bg-red-50 text-red-500 border border-red-100 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center gap-2 font-bold text-xs uppercase"
+                     title="Limpar Todo o Histórico"
+                   >
+                     <Trash2 className="w-5 h-5" />
+                     <span className="hidden lg:inline">Limpar Tudo</span>
+                   </button>
+                )}
              </div>
           </div>
         </div>
@@ -75,9 +88,8 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
             <div className="min-w-full inline-block align-middle">
               <div className="border-b border-slate-100 bg-slate-50/50 hidden md:grid md:grid-cols-12 gap-4 px-8 py-4">
                 <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3 h-3" /> Nº Ofício</div>
-                <div className="md:col-span-4 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><FileText className="w-3 h-3" /> Título do Documento</div>
+                <div className="md:col-span-6 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><FileText className="w-3 h-3" /> Título do Documento</div>
                 <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Calendar className="w-3 h-3" /> Data de Criação</div>
-                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserIcon className="w-3 h-3" /> Autor</div>
                 <div className="md:col-span-2 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</div>
               </div>
 
@@ -96,22 +108,14 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
                     </div>
 
                     {/* Título */}
-                    <div className="md:col-span-4">
+                    <div className="md:col-span-6">
                        <h3 className="text-sm font-bold text-slate-800 leading-tight">{order.title}</h3>
-                       <div className="md:hidden flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-slate-400 font-medium">Por: {order.userName}</span>
-                       </div>
                     </div>
 
                     {/* Data */}
                     <div className="md:col-span-2 flex items-center gap-2 text-slate-500 text-xs font-medium">
                        <Clock className="w-3 h-3 opacity-40" />
                        {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-
-                    {/* Autor */}
-                    <div className="md:col-span-2 hidden md:block">
-                       <p className="text-xs font-bold text-slate-600 truncate">{order.userName}</p>
                     </div>
 
                     {/* Ações */}
@@ -145,7 +149,10 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
         {/* Footer da Central */}
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
            <span>Total: {filteredOrders.length} registros</span>
-           <span>BrandDoc Pro • v1.1.0</span>
+           <span className="flex items-center gap-2">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+             Armazenamento IndexedDB Ativo
+           </span>
         </div>
       </div>
     </div>
