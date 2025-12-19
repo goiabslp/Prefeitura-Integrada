@@ -47,24 +47,29 @@ const App: React.FC = () => {
 
   const componentRef = useRef<HTMLDivElement>(null);
 
+  // Carregamento Inicial com Persistência em Banco (IndexedDB)
   useEffect(() => {
     const loadData = async () => {
       try {
+        // 1. Configurações Visuais de Design (Prioridade: IndexedDB)
         const dbSettings = await db.getGlobalSettings();
         if (dbSettings) {
           setGlobalDefaults(dbSettings);
           setAppState(dbSettings);
         } else {
+          // Primeira inicialização: usa INITIAL_STATE e salva no banco
           await db.saveGlobalSettings(INITIAL_STATE);
           setGlobalDefaults(INITIAL_STATE);
           setAppState(INITIAL_STATE);
         }
 
+        // 2. Contador Global (Inalterado por módulo)
         const savedCounter = localStorage.getItem(COUNTER_KEY);
         if (savedCounter) {
           setOficioCounter(parseInt(savedCounter, 10));
         }
 
+        // 3. Usuários e Assinaturas (Seeding se necessário)
         let dbUsers = await db.getAllUsers();
         if (dbUsers.length === 0) {
           for (const u of DEFAULT_USERS) {
@@ -144,6 +149,8 @@ const App: React.FC = () => {
 
     const currentYear = new Date().getFullYear();
     const protocolNumber = nextNumber.toString().padStart(3, '0');
+    
+    // Prefixo baseado no bloco (opcional, mantendo padrão solicitado)
     const blockPrefix = activeBlock.toUpperCase();
     const protocolStr = `${blockPrefix}-${protocolNumber}/${currentYear}`;
 
@@ -154,11 +161,10 @@ const App: React.FC = () => {
         signatureName: initialSigName,
         signatureRole: initialSigRole,
         signatureSector: initialSigSector,
-        title: '', 
+        title: activeBlock === 'diarias' ? '' : '', 
         body: globalDefaults.content.body,
         leftBlockText: `Protocolo nº ${protocolStr}\nAssunto: `,
-        subType: undefined,
-        diariaFields: undefined
+        subType: undefined 
       },
       document: {
         ...globalDefaults.document,
@@ -177,48 +183,62 @@ const App: React.FC = () => {
   const handleEditOrder = (order: Order) => {
     if (order.documentSnapshot) {
       setAppState(JSON.parse(JSON.stringify(order.documentSnapshot)));
-      setActiveBlock(order.blockType);
       setIsFinalized(false);
       setIsSidebarOpen(true);
       setAdminTab('content');
       setCurrentView('editor');
       setCurrentOrder(order);
+    } else {
+      showToast("Este registro não possui dados de edição salvos.", "error");
     }
   };
 
   const handleFinishDocument = async () => {
     if (!currentUser || !activeBlock) return;
 
+    // Validação de subType para Diárias
     if (activeBlock === 'diarias' && !appState.content.subType) {
-        showToast("Escolha entre Diária ou Custeio.", "error");
+        showToast("Selecione o tipo de requisição (Diária ou Custeio).", "error");
         return;
     }
     
     let orderToSave: Order;
-    const protocolMatch = appState.content.leftBlockText.match(/nº ([A-Z0-9-/]+)/);
-    const protocolStr = protocolMatch ? protocolMatch[1] : `${oficioCounter.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
 
-    orderToSave = {
-      id: currentOrder?.id || Date.now().toString(),
-      protocol: protocolStr,
-      title: appState.content.title || 'Documento sem título',
-      status: 'completed',
-      createdAt: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      blockType: activeBlock,
-      documentSnapshot: JSON.parse(JSON.stringify(appState))
-    };
+    if (currentOrder) {
+      orderToSave = {
+        ...currentOrder,
+        title: appState.content.title || 'Documento sem título',
+        createdAt: new Date().toISOString(),
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+    } else {
+      const protocolMatch = appState.content.leftBlockText.match(/nº ([A-Z0-9-/]+)/);
+      const protocolStr = protocolMatch ? protocolMatch[1] : `${oficioCounter.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
+
+      orderToSave = {
+        id: Date.now().toString(),
+        protocol: protocolStr,
+        title: appState.content.title || 'Documento sem título',
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        blockType: activeBlock,
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+    }
 
     try {
       await db.saveOrder(orderToSave);
       const updatedOrders = await db.getAllOrders();
       setOrders(updatedOrders);
+      
       setIsSidebarOpen(false);
       setIsFinalized(true);
       setCurrentOrder(orderToSave);
-      showToast("Documento salvo com sucesso!");
+      showToast("Documento salvo no histórico!");
     } catch (error) {
+      console.error("Erro ao salvar:", error);
       showToast("Erro ao salvar no banco de dados.", "error");
     }
   };
@@ -227,15 +247,15 @@ const App: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: "Excluir Registro",
-      message: "Tem certeza que deseja remover este registro do histórico?",
+      message: "Tem certeza que deseja remover este registro do histórico? Esta ação é definitiva.",
       type: 'danger',
       onConfirm: async () => {
         try {
           await db.deleteOrder(id);
           setOrders(prev => prev.filter(order => order.id !== id));
-          showToast("Registro removido.");
+          showToast("Registro removido com sucesso.");
         } catch (error) {
-          showToast("Falha ao excluir.", "error");
+          showToast("Falha ao excluir registro.", "error");
         } finally {
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
@@ -248,15 +268,20 @@ const App: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: `Limpar Histórico de ${activeBlock.toUpperCase()}`,
-      message: "Deseja apagar todos os registros deste bloco?",
+      message: "Deseja apagar todos os registros deste bloco? O contador global de numeração permanecerá inalterado.",
       type: 'danger',
       onConfirm: async () => {
         try {
+          // Apenas limpa localmente filtrando o bloco ativo para o bulk delete (se o db suportasse)
+          // Como dbService.clearAllOrders limpa TUDO, aqui vamos remover apenas os do bloco ativo individualmente se necessário
+          // Por simplicidade na persistência local, vamos filtrar os que NÃO são do bloco ativo e salvar
           const otherOrders = orders.filter(o => o.blockType !== activeBlock);
           await db.clearAllOrders();
-          for(const o of otherOrders) { await db.saveOrder(o); }
+          for(const o of otherOrders) {
+            await db.saveOrder(o);
+          }
           setOrders(otherOrders);
-          showToast("Histórico limpo.");
+          showToast("Histórico do módulo limpo.");
         } catch (error) {
           showToast("Erro ao limpar histórico.", "error");
         } finally {
@@ -266,91 +291,132 @@ const App: React.FC = () => {
     });
   };
 
-  const handleOpenAdmin = (tab?: string | null) => {
+  const handleOpenAdmin = (tab: string | null = null) => {
+    setAppState(globalDefaults);
+    setAdminTab(tab);
     setCurrentView('admin');
-    setAdminTab(tab || 'users');
-    setIsSidebarOpen(false);
+    setIsSidebarOpen(true);
+    setIsFinalized(false);
+    setCurrentOrder(null);
   };
 
+  const handleSaveGlobalDefaults = async () => {
+    try {
+      await db.saveGlobalSettings(appState);
+      setGlobalDefaults(appState);
+      showToast("Design e configurações salvos permanentemente.");
+    } catch (e) {
+      showToast("Erro ao salvar configurações no banco.", "error");
+    }
+  };
+
+  // Funções de Usuário com Persistência
   const handleAddUser = async (user: User) => {
     try {
       await db.saveUser(user);
-      const updatedUsers = await db.getAllUsers();
-      setUsers(updatedUsers);
-      showToast("Usuário adicionado!");
-    } catch (e) { showToast("Erro ao adicionar.", "error"); }
+      setUsers(prev => [...prev, user]);
+      showToast("Usuário adicionado com sucesso.");
+    } catch (e) {
+      showToast("Erro ao salvar usuário.", "error");
+    }
   };
 
-  const handleUpdateUser = async (user: User) => {
+  const handleUpdateUser = async (updatedUser: User) => {
     try {
-      await db.saveUser(user);
-      const updatedUsers = await db.getAllUsers();
-      setUsers(updatedUsers);
-      showToast("Dados atualizados!");
-    } catch (e) { showToast("Erro ao atualizar.", "error"); }
+      await db.saveUser(updatedUser);
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+      if (currentUser && currentUser.id === updatedUser.id) {
+          setCurrentUser(updatedUser);
+      }
+      showToast("Dados atualizados com sucesso.");
+    } catch (e) {
+      showToast("Erro ao atualizar usuário.", "error");
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
     try {
       await db.deleteUser(userId);
-      const updatedUsers = await db.getAllUsers();
-      setUsers(updatedUsers);
+      setUsers(prev => prev.filter(u => u.id !== userId));
       showToast("Usuário removido.");
-    } catch (e) { showToast("Erro ao remover.", "error"); }
+    } catch (e) {
+      showToast("Erro ao remover usuário.", "error");
+    }
   };
 
+  // Funções de Assinatura com Persistência
   const handleAddSignature = async (sig: Signature) => {
     try {
       await db.saveSignature(sig);
-      const updatedSigs = await db.getAllSignatures();
-      setSignatures(updatedSigs);
-      showToast("Assinatura adicionada!");
-    } catch (e) { showToast("Erro ao adicionar.", "error"); }
+      setSignatures(prev => [...prev, sig]);
+      showToast("Assinatura adicionada.");
+    } catch (e) {
+      showToast("Erro ao salvar assinatura.", "error");
+    }
   };
 
-  const handleUpdateSignature = async (sig: Signature) => {
+  const handleUpdateSignature = async (updatedSig: Signature) => {
     try {
-      await db.saveSignature(sig);
-      const updatedSigs = await db.getAllSignatures();
-      setSignatures(updatedSigs);
-      showToast("Assinatura atualizada!");
-    } catch (e) { showToast("Erro ao atualizar.", "error"); }
+      await db.saveSignature(updatedSig);
+      setSignatures(prev => prev.map(s => s.id === updatedSig.id ? updatedSig : s));
+      showToast("Assinatura atualizada.");
+    } catch (e) {
+      showToast("Erro ao atualizar assinatura.", "error");
+    }
   };
 
   const handleDeleteSignature = async (id: string) => {
     try {
       await db.deleteSignature(id);
-      const updatedSigs = await db.getAllSignatures();
-      setSignatures(updatedSigs);
+      setSignatures(prev => prev.filter(s => s.id !== id));
       showToast("Assinatura removida.");
-    } catch (e) { showToast("Erro ao remover.", "error"); }
+    } catch (e) {
+      showToast("Erro ao remover assinatura.", "error");
+    }
   };
 
   const handleDownloadPdf = async (customSnapshot?: AppState) => {
-    if (typeof html2pdf === 'undefined') return;
-    
-    setIsDownloading(true);
-    const originalState = JSON.parse(JSON.stringify(appState));
-    if (customSnapshot) setAppState(customSnapshot);
+    if (typeof html2pdf === 'undefined') {
+      showToast("Carregando ferramenta de PDF...", "info");
+      return;
+    }
 
-    await new Promise(resolve => setTimeout(resolve, 600));
+    const originalState = JSON.parse(JSON.stringify(appState));
+    const stateToUse = customSnapshot || appState;
+    setIsDownloading(true);
+
+    if (customSnapshot) {
+        setAppState(customSnapshot);
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
     const element = document.getElementById('document-preview-container');
     const scaler = document.getElementById('preview-scaler');
-    if (!element || !scaler) { setIsDownloading(false); return; }
+
+    if (!element || !scaler) {
+      setIsDownloading(false);
+      return;
+    }
 
     const originalTransform = scaler.style.transform;
     scaler.style.transform = 'scale(1)';
-    
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const safeTitle = stateToUse.content.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `${activeBlock || 'doc'}-${safeTitle || 'documento'}-${Date.now()}.pdf`;
+
     const opt = {
       margin: 0,
-      filename: `doc-${Date.now()}.pdf`,
+      filename: fileName,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 }, 
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] } 
     };
 
     try {
       await html2pdf().set(opt).from(element).save();
+      showToast("Download iniciado!");
     } catch (error) {
       showToast("Erro ao gerar PDF.", "error");
     } finally {
@@ -362,50 +428,85 @@ const App: React.FC = () => {
 
   const getHeaderTitle = () => {
     if (isFinalized) return "Visualização Final";
-    if (currentView === 'editor') return `Editor: ${activeBlock?.toUpperCase() || ''}`;
-    if (currentView === 'tracking') return `Histórico: ${activeBlock?.toUpperCase() || ''}`;
-    if (currentView === 'admin') return "Painel Administrativo";
-    return "Menu Principal";
+    if (currentView === 'editor') return `Editor: ${activeBlock?.toUpperCase() || 'Documento'}`;
+    if (currentView === 'tracking') return `Histórico: ${activeBlock?.toUpperCase() || 'Ofícios'}`;
+    if (currentView === 'admin') {
+      switch (adminTab) {
+        case 'users': return currentUser?.role === 'admin' ? "Gestão de Usuários" : "Meu Perfil";
+        case 'signatures': return "Gestão de Assinaturas";
+        case 'ui': return "Interface";
+        case 'design': return "Design Doc";
+        default: return "Painel Administrativo";
+      }
+    }
+    return "";
   };
+
+  const showFloatingControls = (currentView === 'editor' || isFinalized) && !isDownloading;
 
   if (!currentUser) return <LoginScreen onLogin={handleLogin} uiConfig={globalDefaults.ui} />;
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-full bg-slate-100 font-sans overflow-hidden">
       {toast && createPortal(
         <div className="fixed bottom-8 right-8 z-[10000] animate-slide-up">
-           <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-              <Info className="w-5 h-5" />
+           <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border ${
+             toast.type === 'success' ? 'bg-emerald-600 text-white border-emerald-400' :
+             toast.type === 'error' ? 'bg-red-600 text-white border-red-400' : 'bg-slate-800 text-white border-slate-600'
+           }`}>
+              {toast.type === 'success' ? <Check className="w-5 h-5" /> : toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
               <span className="font-bold text-sm">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-4 opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>
            </div>
-        </div>, document.body
+        </div>,
+        document.body
       )}
 
       {confirmModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden p-8 text-center">
-            <h3 className="text-xl font-black text-slate-900 mb-2">{confirmModal.title}</h3>
-            <p className="text-slate-500 mb-6">{confirmModal.message}</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl">Cancelar</button>
-              <button onClick={confirmModal.onConfirm} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl">Excluir</button>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-md overflow-hidden animate-slide-up border border-white/10">
+            <div className="p-8 text-center">
+              <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center mb-6 ${confirmModal.type === 'danger' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                <AlertTriangle className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">{confirmModal.title}</h3>
+              <p className="text-slate-500 font-medium leading-relaxed">{confirmModal.message}</p>
+            </div>
+            <div className="p-6 bg-slate-50 flex gap-3">
+              <button onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-100 transition-all">Cancelar</button>
+              <button onClick={confirmModal.onConfirm} className={`flex-1 px-6 py-4 text-white font-bold rounded-2xl transition-all shadow-lg ${confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>Confirmar</button>
             </div>
           </div>
-        </div>, document.body
+        </div>,
+        document.body
       )}
 
-      <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40 shadow-sm">
+      <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
         <div className="flex items-center gap-4 truncate">
+           {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
+             <button onClick={() => setIsSidebarOpen(true)} className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-indigo-600 transition-all"><Menu className="w-6 h-6" /></button>
+           )}
+           {currentView === 'home' && (currentUser.permissions.includes('parent_admin') || currentUser.role === 'admin' || currentUser.role === 'collaborator') && (
+             <button onClick={() => handleOpenAdmin(null)} className="p-2.5 -ml-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:text-indigo-600 shadow-sm transition-all"><LayoutDashboard className="w-5 h-5" /></button>
+           )}
            <div className="flex items-center gap-3">
-             {globalDefaults.ui.headerLogoUrl && <img src={globalDefaults.ui.headerLogoUrl} alt="Logo" style={{ height: '32px' }} />}
-             <span className="font-black text-slate-900 tracking-tight">{getHeaderTitle()}</span>
+             {globalDefaults.ui.headerLogoUrl && <img src={globalDefaults.ui.headerLogoUrl} alt="Logo" style={{ height: `${globalDefaults.ui.headerLogoHeight}px` }} className="hidden sm:block w-auto object-contain" />}
+             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg">{getHeaderTitle()}</span>
            </div>
         </div>
+
         <div className="flex items-center gap-4">
            {currentView !== 'home' && (
-             <button onClick={() => { setCurrentView('home'); setActiveBlock(null); setIsSidebarOpen(false); setIsFinalized(false); }} className="px-4 py-2 bg-slate-50 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-100 transition-all">Início</button>
+             <button onClick={() => { setCurrentView('home'); setActiveBlock(null); setIsSidebarOpen(false); setIsFinalized(false); setCurrentOrder(null); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm shadow-sm">
+               <LayoutDashboard className="w-4 h-4" /><span className="hidden sm:inline">Início</span>
+             </button>
            )}
-           <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><LogOut className="w-5 h-5" /></button>
+           <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
+           <div className="text-right hidden md:block">
+              <p className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentUser.role === 'admin' ? 'Administrador' : 'Colaborador'}</p>
+           </div>
+           <button onClick={handleLogout} className="p-2.5 text-slate-400 hover:text-red-500 rounded-xl transition-all" title="Sair"><LogOut className="w-5 h-5" /></button>
         </div>
       </nav>
 
@@ -421,8 +522,9 @@ const App: React.FC = () => {
              isDownloading={isDownloading}
              currentUser={currentUser}
              mode={currentView === 'admin' ? 'admin' : 'editor'}
+             onSaveDefault={handleSaveGlobalDefaults}
              activeTab={currentView === 'admin' ? adminTab : 'content'}
-             onTabChange={setAdminTab}
+             onTabChange={(tab) => setAdminTab(tab)}
              availableSignatures={signatures}
              activeBlock={activeBlock}
            />
@@ -437,6 +539,8 @@ const App: React.FC = () => {
                 onOpenAdmin={handleOpenAdmin}
                 userRole={currentUser.role}
                 userName={currentUser.name}
+                userJobTitle={currentUser.jobTitle}
+                uiConfig={globalDefaults.ui}
                 permissions={currentUser.permissions || []}
                 activeBlock={activeBlock}
                 setActiveBlock={setActiveBlock}
@@ -459,20 +563,34 @@ const App: React.FC = () => {
            )}
 
            {(currentView === 'editor' || currentView === 'admin') && (
-              <div className={`w-full h-full overflow-auto bg-slate-100 transition-all duration-300 ${isSidebarOpen ? 'pl-[600px] lg:pl-[640px]' : ''}`}>
+              <div className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${isSidebarOpen ? 'md:pl-[600px] lg:pl-[640px]' : ''}`}>
                 {currentView === 'admin' && adminTab === 'users' ? <UserManagementScreen users={users} currentUser={currentUser} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
-                : currentView === 'admin' && adminTab === 'signatures' ? <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} currentUser={currentUser} />
+                : currentView === 'admin' && adminTab === 'signatures' ? <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} isReadOnly={currentUser.role !== 'admin'} currentUser={currentUser} />
                 : currentView === 'admin' && adminTab === 'ui' ? <UIPreviewScreen ui={appState.ui} />
                 : (
-                  <div className="p-10">
-                    <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} activeBlock={activeBlock} />
-                    {!isDownloading && (
-                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-4">
-                        <button onClick={() => handleDownloadPdf()} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-xl flex items-center justify-center hover:scale-110 transition-transform"><FileDown /></button>
-                        {!isFinalized && <button onClick={() => setIsSidebarOpen(true)} className="w-14 h-14 bg-white text-slate-900 rounded-2xl shadow-xl flex items-center justify-center hover:scale-110 transition-transform"><Edit3 /></button>}
+                  <>
+                    <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} mode={currentView === 'admin' ? 'admin' : 'editor'} />
+                    {showFloatingControls && (
+                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 animate-fade-in">
+                        <button onClick={() => handleDownloadPdf()} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
+                          <FileDown className="w-6 h-6" />
+                          <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Baixar PDF</span>
+                        </button>
+                        {!isFinalized && (
+                          <button onClick={() => setIsSidebarOpen(true)} className="w-14 h-14 bg-white text-slate-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
+                            <Edit3 className="w-6 h-6" />
+                            <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar</span>
+                          </button>
+                        )}
+                        {isFinalized && (
+                          <button onClick={() => { setCurrentView('home'); setIsFinalized(false); }} className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
+                            <ArrowLeft className="w-6 h-6" />
+                            <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Sair e Finalizar</span>
+                          </button>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
            )}
