@@ -60,6 +60,19 @@ export interface ContentData {
   leftBlockText: string;
   rightBlockText: string;
   subType?: 'diaria' | 'custeio';
+  // Campos específicos para Diárias e Custeio
+  requesterName?: string;
+  requesterRole?: string;
+  requesterSector?: string;
+  destination?: string;
+  departureDateTime?: string;
+  returnDateTime?: string;
+  lodgingCount?: number;
+  authorizedBy?: string;
+  distanceKm?: number;
+  requestedValue?: string;
+  descriptionReason?: string;
+  paymentForecast?: string;
 }
 
 export interface UIConfig {
