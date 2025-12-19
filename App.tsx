@@ -10,8 +10,9 @@ import { SignatureManagementScreen } from './components/SignatureManagementScree
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import { AppState, User, Order, Signature } from './types';
-import { Menu, FileText, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard, ArrowLeft, PlusCircle } from 'lucide-react';
+import { Menu, FileText, FileDown, Edit3, Check, Loader2, LayoutDashboard, ArrowLeft, LogOut, AlertTriangle, X, Info } from 'lucide-react';
 import * as db from './services/dbService';
+import { createPortal } from 'react-dom';
 
 declare var html2pdf: any;
 
@@ -33,11 +34,21 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  
+  // Modal e Toasts
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'warning'
+  });
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // Carregar Configurações, Ordens e Contador
+  // Carregamento Inicial
   useEffect(() => {
     const loadData = async () => {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
@@ -51,7 +62,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Carregar Contador Global do LocalStorage
       const savedCounter = localStorage.getItem(COUNTER_KEY);
       if (savedCounter) {
         setOficioCounter(parseInt(savedCounter, 10));
@@ -67,6 +77,17 @@ const App: React.FC = () => {
     
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+  };
 
   const handleLogin = (username: string, pass: string): boolean => {
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === pass);
@@ -99,7 +120,6 @@ const App: React.FC = () => {
         }
     }
 
-    // Incremento do Contador Sequencial Global Persistente
     const nextNumber = oficioCounter + 1;
     setOficioCounter(nextNumber);
     localStorage.setItem(COUNTER_KEY, nextNumber.toString());
@@ -142,7 +162,7 @@ const App: React.FC = () => {
       setCurrentView('editor');
       setCurrentOrder(order);
     } else {
-      alert("Este registro não possui dados de edição salvos.");
+      showToast("Este registro não possui dados de edição salvos.", "error");
     }
   };
 
@@ -152,7 +172,6 @@ const App: React.FC = () => {
     let orderToSave: Order;
 
     if (currentOrder) {
-      // Atualizar ofício existente
       orderToSave = {
         ...currentOrder,
         title: appState.content.title || 'Documento sem título',
@@ -160,7 +179,6 @@ const App: React.FC = () => {
         documentSnapshot: JSON.parse(JSON.stringify(appState))
       };
     } else {
-      // Extrair protocolo do texto do bloco esquerdo
       const protocolMatch = appState.content.leftBlockText.match(/Ofício nº (\d+\/\d+)/);
       const protocolStr = protocolMatch ? protocolMatch[1] : `${oficioCounter.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
 
@@ -184,10 +202,51 @@ const App: React.FC = () => {
       setIsSidebarOpen(false);
       setIsFinalized(true);
       setCurrentOrder(orderToSave);
+      showToast("Ofício salvo no histórico!");
     } catch (error) {
-      console.error("Erro ao salvar ordem:", error);
-      alert("Erro ao salvar no banco de dados local.");
+      console.error("Erro ao salvar:", error);
+      showToast("Erro ao salvar no banco de dados.", "error");
     }
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Excluir Ofício",
+      message: "Tem certeza que deseja remover este ofício do histórico? Esta ação é definitiva.",
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await db.deleteOrder(id);
+          setOrders(prev => prev.filter(order => order.id !== id));
+          showToast("Registro removido com sucesso.");
+        } catch (error) {
+          showToast("Falha ao excluir registro.", "error");
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  const handleClearHistory = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Limpar Todo o Histórico",
+      message: "Deseja apagar todos os registros de ofícios? O contador global de numeração permanecerá inalterado.",
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await db.clearAllOrders();
+          setOrders([]);
+          showToast("Histórico limpo completamente.");
+        } catch (error) {
+          showToast("Erro ao limpar histórico.", "error");
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const handleOpenAdmin = (tab: string | null = null) => {
@@ -199,38 +258,52 @@ const App: React.FC = () => {
     setCurrentOrder(null);
   };
 
+  // Fix: Added handleSaveGlobalDefaults
   const handleSaveGlobalDefaults = () => {
-    try {
-      setGlobalDefaults(appState);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-    } catch (e) {
-      console.error("Erro localStorage:", e);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    setGlobalDefaults(appState);
+    showToast("Configurações salvas como padrão global.");
   };
 
-  const handleAddUser = (newUser: User) => setUsers([...users, newUser]);
+  // Fix: Added handleAddUser
+  const handleAddUser = (user: User) => {
+    setUsers(prev => [...prev, user]);
+    showToast("Usuário adicionado com sucesso.");
+  };
+
+  // Fix: Added handleUpdateUser
   const handleUpdateUser = (updatedUser: User) => {
-    setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-    if (currentUser && currentUser.id === updatedUser.id) setCurrentUser(updatedUser);
+    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    showToast("Usuário atualizado com sucesso.");
   };
-  const handleDeleteUser = (userId: string) => setUsers(users.filter(u => u.id !== userId));
 
-  const handleAddSignature = (sig: Signature) => setSignatures([...signatures, sig]);
-  const handleUpdateSignature = (updatedSig: Signature) => setSignatures(signatures.map(s => s.id === updatedSig.id ? updatedSig : s));
-  const handleDeleteSignature = (sigId: string) => setSignatures(signatures.filter(s => s.id !== sigId));
-  
-  const handleSaveDraft = () => {
-    if (saveStatus !== 'idle') return;
-    setSaveStatus('loading');
-    setTimeout(() => {
-        setSaveStatus('success');
-        setTimeout(() => setSaveStatus('idle'), 1500);
-    }, 1000);
+  // Fix: Added handleDeleteUser
+  const handleDeleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    showToast("Usuário removido.");
+  };
+
+  // Fix: Added handleAddSignature
+  const handleAddSignature = (sig: Signature) => {
+    setSignatures(prev => [...prev, sig]);
+    showToast("Assinatura adicionada.");
+  };
+
+  // Fix: Added handleUpdateSignature
+  const handleUpdateSignature = (updatedSig: Signature) => {
+    setSignatures(prev => prev.map(s => s.id === updatedSig.id ? updatedSig : s));
+    showToast("Assinatura atualizada.");
+  };
+
+  // Fix: Added handleDeleteSignature
+  const handleDeleteSignature = (id: string) => {
+    setSignatures(prev => prev.filter(s => s.id !== id));
+    showToast("Assinatura removida.");
   };
 
   const handleDownloadPdf = async (customSnapshot?: AppState) => {
     if (typeof html2pdf === 'undefined') {
-      alert("Carregando ferramenta de PDF...");
+      showToast("Carregando ferramenta de PDF...", "info");
       return;
     }
 
@@ -269,19 +342,13 @@ const App: React.FC = () => {
 
     try {
       await html2pdf().set(opt).from(element).save();
+      showToast("Download iniciado!");
     } catch (error) {
-      console.error("Erro PDF", error);
+      showToast("Erro ao gerar PDF.", "error");
     } finally {
       scaler.style.transform = originalTransform; 
       if (customSnapshot) setAppState(originalState);
       setIsDownloading(false);
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (window.confirm("Deseja realmente apagar o histórico visível?")) {
-      await db.clearAllOrders();
-      setOrders([]);
     }
   };
 
@@ -293,64 +360,86 @@ const App: React.FC = () => {
       switch (adminTab) {
         case 'users': return "Gestão de Usuários";
         case 'signatures': return "Gestão de Assinaturas";
-        case 'ui': return "Personalização de Interface";
-        case 'design': return "Identidade do Documento";
+        case 'ui': return "Interface";
+        case 'design': return "Design Doc";
         default: return "Painel Administrativo";
       }
     }
-    return "Início";
+    return "Dashboard";
   };
+
+  // Fix: Defined showFloatingControls
+  const showFloatingControls = (currentView === 'editor' || isFinalized) && !isDownloading;
 
   if (!currentUser) return <LoginScreen onLogin={handleLogin} uiConfig={globalDefaults.ui} />;
 
-  const isAdminMode = currentView === 'admin';
-  const isBlockingTab = isAdminMode && (adminTab === 'users' || adminTab === 'ui' || adminTab === 'signatures');
-  const showFloatingControls = !isSidebarOpen && !isBlockingTab && currentView === 'editor';
-
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 font-sans overflow-hidden">
-      {isDownloading && (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 max-w-xs text-center border border-slate-200">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            <h3 className="text-lg font-bold text-slate-900">Gerando PDF</h3>
-          </div>
-        </div>
+      {/* Portals: Toasts & Modals */}
+      {toast && createPortal(
+        <div className="fixed bottom-8 right-8 z-[10000] animate-slide-up">
+           <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border ${
+             toast.type === 'success' ? 'bg-emerald-600 text-white border-emerald-400' :
+             toast.type === 'error' ? 'bg-red-600 text-white border-red-400' : 'bg-slate-800 text-white border-slate-600'
+           }`}>
+              {toast.type === 'success' ? <Check className="w-5 h-5" /> : toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
+              <span className="font-bold text-sm">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-4 opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>
+           </div>
+        </div>,
+        document.body
       )}
 
+      {confirmModal.isOpen && createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-md overflow-hidden animate-slide-up border border-white/10">
+            <div className="p-8 text-center">
+              <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center mb-6 ${confirmModal.type === 'danger' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                <AlertTriangle className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">{confirmModal.title}</h3>
+              <p className="text-slate-500 font-medium leading-relaxed">{confirmModal.message}</p>
+            </div>
+            <div className="p-6 bg-slate-50 flex gap-3">
+              <button onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-100 transition-all">Cancelar</button>
+              <button onClick={confirmModal.onConfirm} className={`flex-1 px-6 py-4 text-white font-bold rounded-2xl transition-all shadow-lg ${confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>Confirmar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Single Global Header */}
       <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
         <div className="flex items-center gap-4 truncate">
-           <button 
-             onClick={() => !isFinalized && setIsSidebarOpen(true)}
-             disabled={isFinalized}
-             className={`p-2.5 -ml-2 rounded-xl transition-all ${isFinalized ? 'text-slate-300' : 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600'}`}
-           >
-             <Menu className="w-6 h-6" />
-           </button>
-           <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+           {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
+             <button onClick={() => setIsSidebarOpen(true)} className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-indigo-600 transition-all"><Menu className="w-6 h-6" /></button>
+           )}
+           {currentView === 'home' && currentUser.permissions.includes('parent_admin') && (
+             <button onClick={() => handleOpenAdmin(null)} className="p-2.5 -ml-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:text-indigo-600 shadow-sm transition-all"><LayoutDashboard className="w-5 h-5" /></button>
+           )}
            <div className="flex items-center gap-3">
-             <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/20">
-                <FileText className="w-4 h-4 text-white" />
-             </div>
-             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg truncate">
-                {getHeaderTitle()}
-             </span>
+             {globalDefaults.ui.headerLogoUrl && <img src={globalDefaults.ui.headerLogoUrl} alt="Logo" style={{ height: `${globalDefaults.ui.headerLogoHeight}px` }} className="hidden sm:block w-auto object-contain" />}
+             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg">{getHeaderTitle()}</span>
            </div>
         </div>
-        <button 
-          onClick={() => {
-            setCurrentView('home');
-            setIsSidebarOpen(false);
-            setIsFinalized(false);
-            setCurrentOrder(null);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm"
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          <span className="hidden sm:inline">Dashboard</span>
-        </button>
+
+        <div className="flex items-center gap-4">
+           {currentView !== 'home' && (
+             <button onClick={() => { setCurrentView('home'); setIsSidebarOpen(false); setIsFinalized(false); setCurrentOrder(null); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm shadow-sm">
+               <LayoutDashboard className="w-4 h-4" /><span className="hidden sm:inline">Início</span>
+             </button>
+           )}
+           <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
+           <div className="text-right hidden md:block">
+              <p className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentUser.jobTitle || 'Acesso Autorizado'}</p>
+           </div>
+           <button onClick={handleLogout} className="p-2.5 text-slate-400 hover:text-red-500 rounded-xl transition-all" title="Sair"><LogOut className="w-5 h-5" /></button>
+        </div>
       </nav>
 
+      {/* Main Container */}
       <div className="flex flex-1 overflow-hidden relative">
         {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
            <AdminSidebar 
@@ -359,15 +448,12 @@ const App: React.FC = () => {
              onPrint={handleDownloadPdf} 
              onFinish={handleFinishDocument}
              isOpen={isSidebarOpen}
-             onClose={() => {
-                setIsSidebarOpen(false);
-                if (isAdminMode) setCurrentView('home');
-             }}
+             onClose={() => setIsSidebarOpen(false)}
              isDownloading={isDownloading}
              currentUser={currentUser}
-             mode={isAdminMode ? 'admin' : 'editor'}
+             mode={currentView === 'admin' ? 'admin' : 'editor'}
              onSaveDefault={handleSaveGlobalDefaults}
-             activeTab={isAdminMode ? adminTab : 'content'}
+             activeTab={currentView === 'admin' ? adminTab : 'content'}
              onTabChange={(tab) => setAdminTab(tab)}
              availableSignatures={signatures}
            />
@@ -385,11 +471,7 @@ const App: React.FC = () => {
                 userJobTitle={currentUser.jobTitle}
                 uiConfig={globalDefaults.ui}
                 permissions={currentUser.permissions || []}
-                stats={{
-                  totalGenerated: oficioCounter,
-                  historyCount: orders.length,
-                  activeUsers: users.length
-                }}
+                stats={{ totalGenerated: oficioCounter, historyCount: orders.length, activeUsers: users.length }}
               />
            )}
 
@@ -401,68 +483,36 @@ const App: React.FC = () => {
                 onDownloadPdf={handleDownloadPdf} 
                 onClearAll={handleClearHistory}
                 onEditOrder={handleEditOrder}
+                onDeleteOrder={handleDeleteOrder}
                 totalCounter={oficioCounter}
               />
            )}
 
-           {(currentView === 'editor' || currentView === 'admin' || isDownloading) && (
+           {(currentView === 'editor' || currentView === 'admin') && (
               <div className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${isSidebarOpen ? 'md:pl-[600px] lg:pl-[640px]' : ''}`}>
-                {isAdminMode && adminTab === 'users' ? (
-                   <UserManagementScreen users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
-                ) : isAdminMode && adminTab === 'signatures' ? (
-                   <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} />
-                ) : isAdminMode && adminTab === 'ui' ? (
-                   <UIPreviewScreen ui={appState.ui} />
-                ) : (
+                {currentView === 'admin' && adminTab === 'users' ? <UserManagementScreen users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
+                : currentView === 'admin' && adminTab === 'signatures' ? <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} />
+                : currentView === 'admin' && adminTab === 'ui' ? <UIPreviewScreen ui={appState.ui} />
+                : (
                   <>
-                    <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} mode={isAdminMode ? 'admin' : 'editor'} />
+                    <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} mode={currentView === 'admin' ? 'admin' : 'editor'} />
                     {showFloatingControls && (
                       <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 animate-fade-in">
-                        <button 
-                          onClick={() => handleDownloadPdf()} 
-                          className="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
-                          title="Baixar PDF"
-                        >
+                        <button onClick={() => handleDownloadPdf()} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
                           <FileDown className="w-6 h-6" />
                           <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Baixar PDF</span>
                         </button>
-                        
                         {!isFinalized && (
-                          <button 
-                            onClick={() => setIsSidebarOpen(true)} 
-                            className="w-14 h-14 bg-white text-slate-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
-                            title="Editar"
-                          >
+                          <button onClick={() => setIsSidebarOpen(true)} className="w-14 h-14 bg-white text-slate-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
                             <Edit3 className="w-6 h-6" />
                             <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar</span>
                           </button>
                         )}
-                        
                         {isFinalized && (
-                          <>
-                            <button 
-                              onClick={() => {
-                                setIsFinalized(false);
-                                setIsSidebarOpen(true);
-                              }} 
-                              className="w-14 h-14 bg-white text-amber-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative border border-amber-100"
-                              title="Editar Documento"
-                            >
-                              <Edit3 className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar Documento</span>
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setCurrentView('home'); 
-                                setIsFinalized(false);
-                              }} 
-                              className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
-                              title="Voltar ao Início"
-                            >
-                              <ArrowLeft className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Sair e Finalizar</span>
-                            </button>
-                          </>
+                          <button onClick={() => { setCurrentView('home'); setIsFinalized(false); }} className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative">
+                            <ArrowLeft className="w-6 h-6" />
+                            <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Sair e Finalizar</span>
+                          </button>
                         )}
                       </div>
                     )}

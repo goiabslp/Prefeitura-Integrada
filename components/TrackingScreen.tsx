@@ -10,6 +10,7 @@ interface TrackingScreenProps {
   onDownloadPdf: (snapshot?: AppState) => void;
   onClearAll: () => void;
   onEditOrder: (order: Order) => void;
+  onDeleteOrder: (id: string) => void;
   totalCounter: number;
 }
 
@@ -20,6 +21,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   onDownloadPdf, 
   onClearAll, 
   onEditOrder,
+  onDeleteOrder,
   totalCounter
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,15 +36,6 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
 
     return hasPermission && matchesSearch;
   });
-
-  const getStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'completed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'pending': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'canceled': return 'bg-slate-50 text-slate-500 border-slate-100';
-      default: return 'bg-slate-50 text-slate-500';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col items-center p-6 overflow-hidden">
@@ -133,9 +126,10 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                        <Clock className="w-3 h-3 opacity-40" />
                        {new Date(order.createdAt).toLocaleDateString('pt-BR')}
                     </div>
-                    <div className="md:col-span-2 flex items-center justify-end gap-2">
-                       <button onClick={() => onEditOrder(order)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl transition-all" title="Editar"><Edit3 className="w-5 h-5" /></button>
+                    <div className="md:col-span-2 flex items-center justify-end gap-1">
+                       <button onClick={() => onEditOrder(order)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Editar"><Edit3 className="w-5 h-5" /></button>
                        <button onClick={() => onDownloadPdf(order.documentSnapshot)} className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all" title="Download"><FileDown className="w-5 h-5" /></button>
+                       <button onClick={() => onDeleteOrder(order.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   </div>
                 ))}
@@ -145,6 +139,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-slate-400 p-12">
                <PackageX className="w-12 h-12 opacity-30 mb-4" />
                <p className="text-lg font-bold text-slate-500">Histórico Vazio</p>
+               <p className="text-sm text-slate-400 mt-1">Nenhum ofício foi gerado ainda.</p>
             </div>
           )}
         </div>

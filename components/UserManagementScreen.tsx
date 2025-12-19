@@ -120,6 +120,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     { id: 'parent_criar_oficio', label: 'Bloco Pai: Ofícios' },
     { id: 'parent_compras', label: 'Bloco Pai: Compras' },
     { id: 'parent_licitacao', label: 'Bloco Pai: Licitação' },
+    { id: 'parent_diarias', label: 'Bloco Pai: Diárias e Custeio' },
     { id: 'parent_admin', label: 'Bloco Pai: Administração' }
   ];
 
@@ -172,7 +173,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                     <div className="mt-2 flex flex-wrap gap-2">
                       {user.permissions?.map(p => (
                         <span key={p} className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-indigo-600 px-2 py-1 rounded border border-indigo-100">
-                          {p === 'parent_criar_oficio' ? 'OFÍCIO' : p === 'parent_compras' ? 'COMPRAS' : p === 'parent_licitacao' ? 'LICITAÇÃO' : 'ADMIN'}
+                          {p === 'parent_criar_oficio' ? 'OFÍCIO' : p === 'parent_compras' ? 'COMPRAS' : p === 'parent_licitacao' ? 'LICITAÇÃO' : p === 'parent_diarias' ? 'DIÁRIAS' : 'ADMIN'}
                         </span>
                       ))}
                     </div>
