@@ -1,25 +1,23 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Search, PackageX, FileText, Clock, CheckCircle2, AlertCircle, Filter } from 'lucide-react';
-import { User, Order } from '../types';
+import { ArrowLeft, Search, PackageX, FileText, Clock, CheckCircle2, AlertCircle, Filter, FileDown, Calendar, Hash, User as UserIcon } from 'lucide-react';
+import { User, Order, AppState } from '../types';
 
 interface TrackingScreenProps {
   onBack: () => void;
   currentUser: User;
   orders: Order[];
+  onDownloadPdf: (snapshot?: AppState) => void;
 }
 
-export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders }) => {
+export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders, onDownloadPdf }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Lógica de filtragem
   const filteredOrders = orders.filter(order => {
-    // Regra 1: Colaborador vê apenas seus pedidos. Admin e Licitação veem todos.
     const hasPermission = currentUser.role === 'admin' || currentUser.role === 'licitacao' 
         ? true 
         : order.userId === currentUser.id;
     
-    // Regra 2: Busca por texto (Protocolo ou Título)
     const matchesSearch = order.protocol.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           order.title.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -28,108 +26,134 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'canceled': return 'bg-slate-100 text-slate-600 border-slate-200';
-      default: return 'bg-slate-100 text-slate-600';
-    }
-  };
-
-  const getStatusLabel = (status: Order['status']) => {
-    switch (status) {
-      case 'completed': return 'Concluído';
-      case 'pending': return 'Em Análise';
-      case 'canceled': return 'Cancelado';
-      default: return status;
+      case 'completed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'pending': return 'bg-amber-50 text-amber-600 border-amber-100';
+      case 'canceled': return 'bg-slate-50 text-slate-500 border-slate-100';
+      default: return 'bg-slate-50 text-slate-500';
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col items-center p-6">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col h-[85vh]">
-        <div className="p-8 border-b border-slate-100 shrink-0">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors text-sm font-semibold mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao Início
-          </button>
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col h-[85vh]">
+        
+        {/* Header da Central de Pedidos */}
+        <div className="p-8 border-b border-slate-100 shrink-0 bg-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
              <div>
-               <h2 className="text-2xl font-bold text-slate-900 mb-1">Central de Pedidos</h2>
-               <p className="text-slate-500 text-sm">
-                 {currentUser.role === 'collaborator' 
-                   ? 'Histórico dos seus pedidos recentes.' 
-                   : 'Visão geral de todos os pedidos do sistema.'}
+               <button 
+                 onClick={onBack}
+                 className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-xs font-bold uppercase tracking-widest mb-4 group"
+               >
+                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                 Voltar ao Dashboard
+               </button>
+               <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+                 <HistoryIcon /> Histórico de Documentos
+               </h2>
+               <p className="text-slate-500 text-sm mt-1 font-medium">
+                 {currentUser.role === 'admin' ? 'Gerenciamento global de registros.' : 'Seus documentos gerados recentemente.'}
                </p>
              </div>
              
-             <div className="relative w-full md:w-72">
+             <div className="relative w-full md:w-96 group">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Filtrar por protocolo..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  placeholder="Buscar por Título ou Número..."
+                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all group-hover:bg-white"
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
              </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar p-6">
+        {/* Listagem em Formato de Tabela/Linhas */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
           {filteredOrders.length > 0 ? (
-            <div className="space-y-4">
-               {filteredOrders.map(order => (
-                 <div key={order.id} className="bg-white border border-slate-100 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                       <div className={`p-3 rounded-xl mt-1 ${
-                          order.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                          order.status === 'pending' ? 'bg-amber-50 text-amber-600' :
-                          'bg-slate-50 text-slate-400'
-                       }`}>
-                          <FileText className="w-5 h-5" />
+            <div className="min-w-full inline-block align-middle">
+              <div className="border-b border-slate-100 bg-slate-50/50 hidden md:grid md:grid-cols-12 gap-4 px-8 py-4">
+                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3 h-3" /> Nº Ofício</div>
+                <div className="md:col-span-4 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><FileText className="w-3 h-3" /> Título do Documento</div>
+                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Calendar className="w-3 h-3" /> Data de Criação</div>
+                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserIcon className="w-3 h-3" /> Autor</div>
+                <div className="md:col-span-2 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {filteredOrders.map(order => (
+                  <div key={order.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-5 hover:bg-slate-50/80 transition-colors items-center">
+                    
+                    {/* Número do Ofício */}
+                    <div className="md:col-span-2 flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center md:hidden">
+                          <Hash className="w-4 h-4" />
                        </div>
-                       <div>
-                          <div className="flex items-center gap-2 mb-1">
-                             <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{order.protocol}</span>
-                             <span className="text-xs text-slate-400 flex items-center gap-1">
-                               <Clock className="w-3 h-3" /> {new Date(order.createdAt).toLocaleDateString('pt-BR')}
-                             </span>
-                          </div>
-                          <h3 className="text-lg font-bold text-slate-800">{order.title}</h3>
-                          {(currentUser.role === 'admin' || currentUser.role === 'licitacao') && (
-                            <p className="text-xs text-indigo-600 font-medium mt-1">Solicitante: {order.userName}</p>
-                          )}
+                       <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50/50 px-2 py-1 rounded border border-indigo-100/50">
+                          {order.protocol}
+                       </span>
+                    </div>
+
+                    {/* Título */}
+                    <div className="md:col-span-4">
+                       <h3 className="text-sm font-bold text-slate-800 leading-tight">{order.title}</h3>
+                       <div className="md:hidden flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-slate-400 font-medium">Por: {order.userName}</span>
                        </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-slate-50 pt-3 md:pt-0">
-                       <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(order.status)} flex items-center gap-1.5`}>
-                          {order.status === 'completed' && <CheckCircle2 className="w-3 h-3"/>}
-                          {order.status === 'pending' && <AlertCircle className="w-3 h-3"/>}
-                          {getStatusLabel(order.status)}
+                    {/* Data */}
+                    <div className="md:col-span-2 flex items-center gap-2 text-slate-500 text-xs font-medium">
+                       <Clock className="w-3 h-3 opacity-40" />
+                       {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+
+                    {/* Autor */}
+                    <div className="md:col-span-2 hidden md:block">
+                       <p className="text-xs font-bold text-slate-600 truncate">{order.userName}</p>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="md:col-span-2 flex items-center justify-end gap-2 pt-3 md:pt-0">
+                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(order.status)} mr-2`}>
+                          Concluído
                        </span>
-                       <button className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">
-                          Detalhes
+                       <button 
+                         onClick={() => onDownloadPdf(order.documentSnapshot)}
+                         className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm hover:shadow-indigo-500/20"
+                         title="Baixar PDF Original"
+                       >
+                          <FileDown className="w-5 h-5" />
                        </button>
                     </div>
-                 </div>
-               ))}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 animate-fade-in">
-               <div className="p-4 bg-slate-50 rounded-full mb-4">
-                 <Filter className="w-8 h-8 opacity-50" />
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 p-12 animate-fade-in">
+               <div className="p-6 bg-slate-50 rounded-full mb-6 ring-8 ring-slate-50/50">
+                 <PackageX className="w-12 h-12 opacity-30" />
                </div>
-               <p className="font-medium">Nenhum pedido encontrado.</p>
-               <p className="text-sm">Tente ajustar seus filtros de busca.</p>
+               <p className="text-lg font-bold text-slate-500">Histórico Vazio</p>
+               <p className="text-sm text-slate-400 mt-1 max-w-xs text-center">Nenhum documento foi finalizado até o momento. Seus ofícios aparecerão aqui após serem concluídos.</p>
             </div>
           )}
+        </div>
+
+        {/* Footer da Central */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+           <span>Total: {filteredOrders.length} registros</span>
+           <span>BrandDoc Pro • v1.1.0</span>
         </div>
       </div>
     </div>
   );
 };
+
+const HistoryIcon = () => (
+  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
+    <FileText className="w-6 h-6 text-white" />
+  </div>
+);

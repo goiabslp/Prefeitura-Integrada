@@ -14,13 +14,14 @@ import { AppState, User, Signature } from '../types';
 interface AdminSidebarProps {
   state: AppState;
   onUpdate: (newState: AppState) => void;
-  onPrint: () => void;
+  onPrint: (customState?: AppState) => void;
   isOpen: boolean;
   onClose: () => void;
   isDownloading: boolean;
   currentUser: User;
   mode: 'admin' | 'editor';
   onSaveDefault?: () => void;
+  onFinish?: () => void;
   activeTab: string | null;
   onTabChange: (tab: any) => void;
   availableSignatures: Signature[];
@@ -36,6 +37,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   currentUser,
   mode,
   onSaveDefault,
+  onFinish,
   activeTab,
   onTabChange,
   availableSignatures
@@ -180,6 +182,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const handleFinishWithAnimation = async () => {
       setFinishStatus('loading');
       await new Promise(resolve => setTimeout(resolve, 800));
+      if (onFinish) onFinish();
       setFinishStatus('success');
       setTimeout(() => {
           setFinishStatus('idle');
