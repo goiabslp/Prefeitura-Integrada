@@ -10,7 +10,7 @@ import { SignatureManagementScreen } from './components/SignatureManagementScree
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import { AppState, User, Order, Signature } from './types';
-import { Menu, FileText, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard } from 'lucide-react';
+import { Menu, FileText, FileDown, Save, Edit3, Check, Loader2, LayoutDashboard, ArrowLeft, PlusCircle } from 'lucide-react';
 import * as db from './services/dbService';
 
 declare var html2pdf: any;
@@ -30,7 +30,9 @@ const App: React.FC = () => {
   const [adminTab, setAdminTab] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isFinalized, setIsFinalized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const componentRef = useRef<HTMLDivElement>(null);
 
   // Carregar Configurações e Ordens
@@ -71,6 +73,8 @@ const App: React.FC = () => {
     setCurrentUser(null);
     setCurrentView('home');
     setAppState(globalDefaults);
+    setIsFinalized(false);
+    setCurrentOrder(null);
   };
 
   const handleStartNewOrder = () => {
@@ -113,33 +117,64 @@ const App: React.FC = () => {
     setAdminTab('content');
     setCurrentView('editor');
     setIsSidebarOpen(true);
+    setIsFinalized(false);
+    setCurrentOrder(null);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    if (order.documentSnapshot) {
+      setAppState(JSON.parse(JSON.stringify(order.documentSnapshot)));
+      setIsFinalized(false);
+      setIsSidebarOpen(true);
+      setAdminTab('content');
+      setCurrentView('editor');
+      setCurrentOrder(order);
+    } else {
+      alert("Este registro não possui dados de edição salvos.");
+    }
   };
 
   const handleFinishDocument = async () => {
     if (!currentUser) return;
     
-    const currentYear = new Date().getFullYear();
-    const count = orders.filter(o => o.createdAt.includes(currentYear.toString())).length + 1;
-    const protocolNumber = count.toString().padStart(3, '0');
-    const protocolStr = `${protocolNumber}/${currentYear}`;
+    let orderToSave: Order;
 
-    const newOrder: Order = {
-      id: Date.now().toString(),
-      protocol: protocolStr,
-      title: appState.content.title || 'Documento sem título',
-      status: 'completed',
-      createdAt: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      documentSnapshot: JSON.parse(JSON.stringify(appState))
-    };
+    if (currentOrder) {
+      // Atualizar ofício existente
+      orderToSave = {
+        ...currentOrder,
+        title: appState.content.title || 'Documento sem título',
+        createdAt: new Date().toISOString(), // Atualiza a data de modificação/finalização
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+    } else {
+      // Criar novo ofício
+      const currentYear = new Date().getFullYear();
+      const count = orders.filter(o => o.createdAt.includes(currentYear.toString())).length + 1;
+      const protocolNumber = count.toString().padStart(3, '0');
+      const protocolStr = `${protocolNumber}/${currentYear}`;
+
+      orderToSave = {
+        id: Date.now().toString(),
+        protocol: protocolStr,
+        title: appState.content.title || 'Documento sem título',
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+    }
 
     try {
-      await db.saveOrder(newOrder);
+      await db.saveOrder(orderToSave);
       const updatedOrders = await db.getAllOrders();
       setOrders(updatedOrders);
+      
+      // Ocultar sidebar e marcar como finalizado para exibição limpa
       setIsSidebarOpen(false);
-      setCurrentView('home');
+      setIsFinalized(true);
+      setCurrentOrder(orderToSave);
     } catch (error) {
       console.error("Erro ao salvar ordem:", error);
       alert("Erro ao salvar no banco de dados local. Tente limpar o histórico se o problema persistir.");
@@ -151,6 +186,8 @@ const App: React.FC = () => {
     setAdminTab(tab);
     setCurrentView('admin');
     setIsSidebarOpen(true);
+    setIsFinalized(false);
+    setCurrentOrder(null);
   };
 
   const handleSaveGlobalDefaults = () => {
@@ -161,7 +198,6 @@ const App: React.FC = () => {
       console.error("Erro de Quota localStorage:", e);
       alert("Limite de armazenamento do navegador atingido. O sistema tentará otimizar os dados.");
       
-      // Fallback: Tenta salvar sem imagens pesadas
       const leanState = JSON.parse(JSON.stringify(appState));
       if (leanState.branding) leanState.branding.logoUrl = null;
       if (leanState.ui) leanState.ui.loginLogoUrl = null;
@@ -257,6 +293,7 @@ const App: React.FC = () => {
   };
 
   const getHeaderTitle = () => {
+    if (isFinalized) return "Visualização Final";
     if (currentView === 'editor') return "Editor de Documento";
     if (currentView === 'tracking') return "Central de Pedidos";
     if (currentView === 'admin') {
@@ -296,8 +333,9 @@ const App: React.FC = () => {
       <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
         <div className="flex items-center gap-4 truncate">
            <button 
-             onClick={() => setIsSidebarOpen(true)}
-             className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-all hover:text-indigo-600 shrink-0"
+             onClick={() => !isFinalized && setIsSidebarOpen(true)}
+             disabled={isFinalized}
+             className={`p-2.5 -ml-2 rounded-xl transition-all shrink-0 ${isFinalized ? 'text-slate-300 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600'}`}
            >
              <Menu className="w-6 h-6" />
            </button>
@@ -315,6 +353,8 @@ const App: React.FC = () => {
           onClick={() => {
             setCurrentView('home');
             setIsSidebarOpen(false);
+            setIsFinalized(false);
+            setCurrentOrder(null);
           }}
           className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-lg rounded-xl transition-all duration-300 font-bold text-sm shrink-0"
         >
@@ -326,7 +366,7 @@ const App: React.FC = () => {
       </nav>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {(currentView === 'editor' || currentView === 'admin') && (
+        {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
            <AdminSidebar 
              state={appState} 
              onUpdate={setAppState} 
@@ -369,6 +409,7 @@ const App: React.FC = () => {
                 orders={orders} 
                 onDownloadPdf={handleDownloadPdf} 
                 onClearAll={handleClearHistory}
+                onEditOrder={handleEditOrder}
               />
            )}
 
@@ -405,34 +446,79 @@ const App: React.FC = () => {
                     />
                     
                     {showFloatingControls && (
-                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 print:hidden">
+                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 print:hidden animate-fade-in">
                         <button
                           onClick={() => handleDownloadPdf()}
                           disabled={isDownloading}
-                          className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-lg transition-all flex items-center justify-center"
+                          className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-lg transition-all flex items-center justify-center group relative"
                           title="Exportar PDF"
                         >
                            <FileDown className="w-6 h-6" />
+                           <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Baixar PDF</span>
                         </button>
                         
-                        <button
-                          onClick={handleSaveDraft}
-                          disabled={saveStatus === 'loading' || saveStatus === 'success'}
-                          className={`w-14 h-14 rounded-2xl shadow-lg transition-all flex items-center justify-center bg-white ${
-                            saveStatus === 'success' ? 'text-emerald-500' : 'text-slate-600'
-                          }`}
-                          title="Salvar Rascunho"
-                        >
-                          {saveStatus === 'success' ? <Check className="w-6 h-6" /> : <Save className="w-6 h-6" />}
-                        </button>
+                        {!isFinalized && (
+                          <>
+                            <button
+                              onClick={handleSaveDraft}
+                              disabled={saveStatus === 'loading' || saveStatus === 'success'}
+                              className={`w-14 h-14 rounded-2xl shadow-lg transition-all flex items-center justify-center bg-white group relative ${
+                                saveStatus === 'success' ? 'text-emerald-500' : 'text-slate-600 hover:text-emerald-600'
+                              }`}
+                              title="Salvar Rascunho"
+                            >
+                              {saveStatus === 'success' ? <Check className="w-6 h-6" /> : <Save className="w-6 h-6" />}
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Salvar Rascunho</span>
+                            </button>
 
-                        <button
-                          onClick={() => setIsSidebarOpen(true)}
-                          className="w-14 h-14 bg-white text-slate-600 rounded-2xl shadow-lg flex items-center justify-center"
-                          title="Abrir Editor"
-                        >
-                          <Edit3 className="w-6 h-6" />
-                        </button>
+                            <button
+                              onClick={() => setIsSidebarOpen(true)}
+                              className="w-14 h-14 bg-white text-slate-600 hover:text-indigo-600 rounded-2xl shadow-lg flex items-center justify-center group relative"
+                              title="Abrir Editor"
+                            >
+                              <Edit3 className="w-6 h-6" />
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar Campos</span>
+                            </button>
+                          </>
+                        )}
+
+                        {isFinalized && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setIsFinalized(false);
+                                setIsSidebarOpen(true);
+                              }}
+                              className="w-14 h-14 bg-white text-amber-600 hover:bg-amber-50 rounded-2xl shadow-lg flex items-center justify-center group relative"
+                              title="Reabrir Edição"
+                            >
+                              <Edit3 className="w-6 h-6" />
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Continuar Editando</span>
+                            </button>
+                            
+                            <button
+                              onClick={handleStartNewOrder}
+                              className="w-14 h-14 bg-white text-emerald-600 hover:bg-emerald-50 rounded-2xl shadow-lg flex items-center justify-center group relative"
+                              title="Novo Ofício"
+                            >
+                              <PlusCircle className="w-6 h-6" />
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Criar Outro</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setCurrentView('home');
+                                setIsFinalized(false);
+                                setCurrentOrder(null);
+                              }}
+                              className="w-14 h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center group relative"
+                              title="Voltar ao Início"
+                            >
+                              <ArrowLeft className="w-6 h-6" />
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Finalizar e Sair</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </>

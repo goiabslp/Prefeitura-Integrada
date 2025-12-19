@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash } from 'lucide-react';
+import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash, Edit3 } from 'lucide-react';
 import { User, Order, AppState } from '../types';
 
 interface TrackingScreenProps {
@@ -9,9 +9,10 @@ interface TrackingScreenProps {
   orders: Order[];
   onDownloadPdf: (snapshot?: AppState) => void;
   onClearAll: () => void;
+  onEditOrder: (order: Order) => void;
 }
 
-export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders, onDownloadPdf, onClearAll }) => {
+export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentUser, orders, onDownloadPdf, onClearAll, onEditOrder }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredOrders = orders.filter(order => {
@@ -66,7 +67,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
                      placeholder="Buscar por Título ou Número..."
                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all group-hover:bg-white"
                    />
-                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-400 transition-colors" />
                 </div>
                 {currentUser.role === 'admin' && orders.length > 0 && (
                    <button 
@@ -123,13 +124,23 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({ onBack, currentU
                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(order.status)} mr-2`}>
                           Concluído
                        </span>
-                       <button 
-                         onClick={() => onDownloadPdf(order.documentSnapshot)}
-                         className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm hover:shadow-indigo-500/20"
-                         title="Baixar PDF Original"
-                       >
-                          <FileDown className="w-5 h-5" />
-                       </button>
+                       
+                       <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => onEditOrder(order)}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                            title="Continuar Editando"
+                          >
+                             <Edit3 className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => onDownloadPdf(order.documentSnapshot)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm hover:shadow-indigo-500/20"
+                            title="Baixar PDF Original"
+                          >
+                             <FileDown className="w-5 h-5" />
+                          </button>
+                       </div>
                     </div>
                   </div>
                 ))}
