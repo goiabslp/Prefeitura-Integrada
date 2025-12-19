@@ -7,7 +7,7 @@ import {
   AlignCenter, AlignRight, AlignJustify,
   PenTool, ArrowLeft, Heading, Columns,
   Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting, Droplets, Maximize,
-  Monitor, Layout, LogIn, MapPin, ChevronRight, CheckCircle2
+  Monitor, Layout, LogIn, MapPin, ChevronRight, CheckCircle2, User as UserIcon
 } from 'lucide-react';
 import { AppState, User, Signature } from '../types';
 
@@ -57,7 +57,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     currentUser.role === 'admin' || (currentUser.allowedSignatureIds || []).includes(sig.id)
   );
 
-  // Sincroniza o conteúdo inicial do editor
   useEffect(() => {
     if (editorRef.current && mode === 'editor' && activeTab === 'content') {
       if (editorRef.current.innerHTML !== content.body) {
@@ -200,11 +199,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   const adminModules = [
-    { id: 'users', title: 'Usuários', description: 'Gerencie acessos e equipe', icon: <Users className="w-6 h-6 text-indigo-600" />, colorClass: 'bg-indigo-50 border-indigo-100 hover:border-indigo-300 hover:shadow-indigo-500/10' },
-    { id: 'signatures', title: 'Assinaturas', description: 'Cadastre assinantes do sistema', icon: <PenTool className="w-6 h-6 text-emerald-600" />, colorClass: 'bg-emerald-50 border-emerald-100 hover:border-emerald-300 hover:shadow-emerald-500/10' },
-    { id: 'ui', title: 'Interface', description: 'Personalize a tela inicial', icon: <Home className="w-6 h-6 text-blue-600" />, colorClass: 'bg-blue-50 border-blue-100 hover:border-blue-300 hover:shadow-blue-500/10' },
-    { id: 'design', title: 'Design Doc', description: 'Identidade visual do PDF', icon: <Palette className="w-6 h-6 text-purple-600" />, colorClass: 'bg-purple-50 border-purple-100 hover:border-purple-300 hover:shadow-purple-500/10' }
-  ];
+    { id: 'users', title: currentUser.role === 'admin' ? 'Usuários' : 'Meu Perfil', description: currentUser.role === 'admin' ? 'Gerencie acessos e equipe' : 'Configure seus dados de acesso', icon: currentUser.role === 'admin' ? <Users className="w-6 h-6 text-indigo-600" /> : <UserIcon className="w-6 h-6 text-indigo-600" />, colorClass: 'bg-indigo-50 border-indigo-100 hover:border-indigo-300 shadow-sm' },
+    { id: 'signatures', title: 'Assinaturas', description: currentUser.role === 'admin' ? 'Cadastre assinantes do sistema' : 'Visualize assinaturas disponíveis', icon: <PenTool className="w-6 h-6 text-emerald-600" />, colorClass: 'bg-emerald-50 border-emerald-100 hover:border-emerald-300 shadow-sm' },
+    { id: 'ui', title: 'Interface', description: 'Personalize a tela inicial', icon: <Home className="w-6 h-6 text-blue-600" />, colorClass: 'bg-blue-50 border-blue-100 hover:border-blue-300 shadow-sm', adminOnly: true },
+    { id: 'design', title: 'Design Doc', description: 'Identidade visual do PDF', icon: <Palette className="w-6 h-6 text-purple-600" />, colorClass: 'bg-purple-50 border-purple-100 hover:border-purple-300 shadow-sm', adminOnly: true }
+  ].filter(mod => !mod.adminOnly || currentUser.role === 'admin');
 
   const renderSectionHeader = (title: string, subtitle?: string) => (
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
@@ -612,7 +611,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           )}
         </div>
 
-        {mode === 'admin' && activeTab && onSaveDefault && (
+        {mode === 'admin' && activeTab && onSaveDefault && currentUser.role === 'admin' && (
            <div className="p-6 border-t border-gray-200 bg-white z-20">
               <button onClick={handleSaveDefaultWithAnimation} disabled={globalSaveStatus === 'loading' || globalSaveStatus === 'success'} className={`w-full font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${globalSaveStatus === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-slate-900 text-white'}`}>
                 {globalSaveStatus === 'loading' ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Salvando...</span></> : globalSaveStatus === 'success' ? <><Check className="w-4 h-4 animate-bounce" /><span>Configurações Salvas!</span></> : <><Save className="w-4 h-4" /><span>Salvar Padrão Global</span></>}

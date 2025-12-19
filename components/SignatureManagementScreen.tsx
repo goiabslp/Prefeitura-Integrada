@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Signature } from '../types';
@@ -8,13 +9,15 @@ interface SignatureManagementScreenProps {
   onAddSignature: (sig: Signature) => void;
   onUpdateSignature: (sig: Signature) => void;
   onDeleteSignature: (id: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps> = ({
   signatures,
   onAddSignature,
   onUpdateSignature,
-  onDeleteSignature
+  onDeleteSignature,
+  isReadOnly = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,7 +29,6 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
     sector: ''
   });
 
-  // Ordena por nome
   const sortedSignatures = [...signatures].sort((a, b) => a.name.localeCompare(b.name));
 
   const filteredSignatures = sortedSignatures.filter(s => 
@@ -36,6 +38,7 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
   );
 
   const handleOpenModal = (sig?: Signature) => {
+    if (isReadOnly) return;
     if (sig) {
       setEditingSig(sig);
       setFormData({ ...sig });
@@ -47,6 +50,7 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
   };
 
   const handleSave = () => {
+    if (isReadOnly) return;
     if (!formData.name || !formData.role) {
       alert("Nome e Cargo são obrigatórios.");
       return;
@@ -74,22 +78,22 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
     <div className="flex-1 h-full bg-slate-100 p-6 md:p-12 overflow-auto custom-scrollbar">
       <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Assinaturas</h2>
-            <p className="text-slate-500 mt-1">Crie e gerencie as assinaturas disponíveis para uso nos documentos.</p>
+            <p className="text-slate-500 mt-1">{isReadOnly ? 'Visualize as assinaturas cadastradas no sistema.' : 'Crie e gerencie as assinaturas disponíveis para uso nos documentos.'}</p>
           </div>
-          <button 
-            onClick={() => handleOpenModal()}
-            className="px-5 py-3 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Nova Assinatura
-          </button>
+          {!isReadOnly && (
+            <button 
+              onClick={() => handleOpenModal()}
+              className="px-5 py-3 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Nova Assinatura
+            </button>
+          )}
         </div>
 
-        {/* Search */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
           <Search className="w-5 h-5 text-slate-400" />
           <input 
@@ -101,7 +105,6 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
           />
         </div>
 
-        {/* List */}
         <div className="grid gap-4">
            {filteredSignatures.map(sig => (
              <div key={sig.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -118,22 +121,24 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 border-l border-slate-100 pl-3 ml-2">
-                    <button 
-                      onClick={() => handleOpenModal(sig)}
-                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => onDeleteSignature(sig.id)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex items-center gap-1 border-l border-slate-100 pl-3 ml-2">
+                      <button 
+                        onClick={() => handleOpenModal(sig)}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => onDeleteSignature(sig.id)}
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                  </div>
+                )}
              </div>
            ))}
            
@@ -144,8 +149,7 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
            )}
         </div>
 
-        {/* Modal via Portal */}
-        {isModalOpen && createPortal(
+        {!isReadOnly && isModalOpen && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">

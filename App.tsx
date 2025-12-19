@@ -21,9 +21,9 @@ const COUNTER_KEY = 'branddoc_oficio_counter_global';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [signatures, setSignatures] = useState<Signature[]>(MOCK_SIGNATURES);
+  const [signatures, setSignatures] = useState<Signature[]>([]);
   
   const [globalDefaults, setGlobalDefaults] = useState<AppState>(INITIAL_STATE);
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
@@ -36,7 +36,6 @@ const App: React.FC = () => {
   const [isFinalized, setIsFinalized] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   
-  // Modal e Toasts
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' }>({
     isOpen: false,
     title: '',
@@ -48,9 +47,10 @@ const App: React.FC = () => {
 
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // Carregamento Inicial
+  // Carregamento Inicial com Persistência em Banco
   useEffect(() => {
     const loadData = async () => {
+      // 1. Configurações Visuais
       const savedSettings = localStorage.getItem(STORAGE_KEY);
       if (savedSettings) {
         try {
@@ -62,16 +62,36 @@ const App: React.FC = () => {
         }
       }
 
+      // 2. Contador Global
       const savedCounter = localStorage.getItem(COUNTER_KEY);
       if (savedCounter) {
         setOficioCounter(parseInt(savedCounter, 10));
       }
 
+      // 3. Usuários e Assinaturas (Seeding se necessário)
       try {
-        const savedOrders = await db.getAllOrders();
-        setOrders(savedOrders);
+        let dbUsers = await db.getAllUsers();
+        if (dbUsers.length === 0) {
+          for (const u of DEFAULT_USERS) {
+            await db.saveUser(u);
+          }
+          dbUsers = DEFAULT_USERS;
+        }
+        setUsers(dbUsers);
+
+        let dbSigs = await db.getAllSignatures();
+        if (dbSigs.length === 0) {
+          for (const s of MOCK_SIGNATURES) {
+            await db.saveSignature(s);
+          }
+          dbSigs = MOCK_SIGNATURES;
+        }
+        setSignatures(dbSigs);
+
+        const dbOrders = await db.getAllOrders();
+        setOrders(dbOrders);
       } catch (e) {
-        console.error("Erro ao carregar histórico do IndexedDB:", e);
+        console.error("Erro ao carregar dados do banco:", e);
       }
     };
     
@@ -264,34 +284,69 @@ const App: React.FC = () => {
     showToast("Configurações salvas como padrão global.");
   };
 
-  const handleAddUser = (user: User) => {
-    setUsers(prev => [...prev, user]);
-    showToast("Usuário adicionado com sucesso.");
+  // Funções de Usuário com Persistência
+  const handleAddUser = async (user: User) => {
+    try {
+      await db.saveUser(user);
+      setUsers(prev => [...prev, user]);
+      showToast("Usuário adicionado com sucesso.");
+    } catch (e) {
+      showToast("Erro ao salvar usuário.", "error");
+    }
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    showToast("Usuário atualizado com sucesso.");
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      await db.saveUser(updatedUser);
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+      if (currentUser && currentUser.id === updatedUser.id) {
+          setCurrentUser(updatedUser);
+      }
+      showToast("Dados atualizados com sucesso.");
+    } catch (e) {
+      showToast("Erro ao atualizar usuário.", "error");
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    showToast("Usuário removido.");
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await db.deleteUser(userId);
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      showToast("Usuário removido.");
+    } catch (e) {
+      showToast("Erro ao remover usuário.", "error");
+    }
   };
 
-  const handleAddSignature = (sig: Signature) => {
-    setSignatures(prev => [...prev, sig]);
-    showToast("Assinatura adicionada.");
+  // Funções de Assinatura com Persistência
+  const handleAddSignature = async (sig: Signature) => {
+    try {
+      await db.saveSignature(sig);
+      setSignatures(prev => [...prev, sig]);
+      showToast("Assinatura adicionada.");
+    } catch (e) {
+      showToast("Erro ao salvar assinatura.", "error");
+    }
   };
 
-  const handleUpdateSignature = (updatedSig: Signature) => {
-    setSignatures(prev => prev.map(s => s.id === updatedSig.id ? updatedSig : s));
-    showToast("Assinatura atualizada.");
+  const handleUpdateSignature = async (updatedSig: Signature) => {
+    try {
+      await db.saveSignature(updatedSig);
+      setSignatures(prev => prev.map(s => s.id === updatedSig.id ? updatedSig : s));
+      showToast("Assinatura atualizada.");
+    } catch (e) {
+      showToast("Erro ao atualizar assinatura.", "error");
+    }
   };
 
-  const handleDeleteSignature = (id: string) => {
-    setSignatures(prev => prev.filter(s => s.id !== id));
-    showToast("Assinatura removida.");
+  const handleDeleteSignature = async (id: string) => {
+    try {
+      await db.deleteSignature(id);
+      setSignatures(prev => prev.filter(s => s.id !== id));
+      showToast("Assinatura removida.");
+    } catch (e) {
+      showToast("Erro ao remover assinatura.", "error");
+    }
   };
 
   const handleDownloadPdf = async (customSnapshot?: AppState) => {
@@ -351,14 +406,14 @@ const App: React.FC = () => {
     if (currentView === 'tracking') return "Histórico de Ofícios";
     if (currentView === 'admin') {
       switch (adminTab) {
-        case 'users': return "Gestão de Usuários";
+        case 'users': return currentUser?.role === 'admin' ? "Gestão de Usuários" : "Meu Perfil";
         case 'signatures': return "Gestão de Assinaturas";
         case 'ui': return "Interface";
         case 'design': return "Design Doc";
         default: return "Painel Administrativo";
       }
     }
-    return ""; // Anteriormente retornava "Dashboard"
+    return "";
   };
 
   const showFloatingControls = (currentView === 'editor' || isFinalized) && !isDownloading;
@@ -367,7 +422,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 font-sans overflow-hidden">
-      {/* Portals: Toasts & Modals */}
       {toast && createPortal(
         <div className="fixed bottom-8 right-8 z-[10000] animate-slide-up">
            <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border ${
@@ -401,13 +455,12 @@ const App: React.FC = () => {
         document.body
       )}
 
-      {/* Single Global Header */}
       <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40 shadow-sm shrink-0">
         <div className="flex items-center gap-4 truncate">
            {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
              <button onClick={() => setIsSidebarOpen(true)} className="p-2.5 -ml-2 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-indigo-600 transition-all"><Menu className="w-6 h-6" /></button>
            )}
-           {currentView === 'home' && currentUser.permissions.includes('parent_admin') && (
+           {currentView === 'home' && (currentUser.permissions.includes('parent_admin') || currentUser.role === 'admin' || currentUser.role === 'collaborator') && (
              <button onClick={() => handleOpenAdmin(null)} className="p-2.5 -ml-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:text-indigo-600 shadow-sm transition-all"><LayoutDashboard className="w-5 h-5" /></button>
            )}
            <div className="flex items-center gap-3">
@@ -425,13 +478,12 @@ const App: React.FC = () => {
            <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
            <div className="text-right hidden md:block">
               <p className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</p>
-              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentUser.jobTitle || 'Acesso Autorizado'}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentUser.role === 'admin' ? 'Administrador' : 'Colaborador'}</p>
            </div>
            <button onClick={handleLogout} className="p-2.5 text-slate-400 hover:text-red-500 rounded-xl transition-all" title="Sair"><LogOut className="w-5 h-5" /></button>
         </div>
       </nav>
 
-      {/* Main Container */}
       <div className="flex flex-1 overflow-hidden relative">
         {(currentView === 'editor' || currentView === 'admin') && !isFinalized && (
            <AdminSidebar 
@@ -482,8 +534,8 @@ const App: React.FC = () => {
 
            {(currentView === 'editor' || currentView === 'admin') && (
               <div className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${isSidebarOpen ? 'md:pl-[600px] lg:pl-[640px]' : ''}`}>
-                {currentView === 'admin' && adminTab === 'users' ? <UserManagementScreen users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
-                : currentView === 'admin' && adminTab === 'signatures' ? <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} />
+                {currentView === 'admin' && adminTab === 'users' ? <UserManagementScreen users={users} currentUser={currentUser} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
+                : currentView === 'admin' && adminTab === 'signatures' ? <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} isReadOnly={currentUser.role !== 'admin'} />
                 : currentView === 'admin' && adminTab === 'ui' ? <UIPreviewScreen ui={appState.ui} />
                 : (
                   <>

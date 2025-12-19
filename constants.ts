@@ -73,8 +73,8 @@ export const MOCK_SIGNATURES: Signature[] = [
 export const DEFAULT_USERS: User[] = [
   { 
     id: '1', 
-    username: 'a', 
-    password: 'a', 
+    username: 'GAF', 
+    password: 'GAF', 
     name: 'Guilherme Araújo Ferreira dos Santos', 
     role: 'admin', 
     sector: 'Administração Municipal', 
@@ -84,24 +84,24 @@ export const DEFAULT_USERS: User[] = [
   },
   { 
     id: '2', 
-    username: 'juliana.miranda', 
-    password: '123456', 
+    username: 'JMV', 
+    password: 'JMV', 
     name: 'Juliana Miranda Vasconcelos Almeida', 
     role: 'collaborator', 
     sector: 'Administração', 
     jobTitle: 'Tecnico Administrativo', 
-    allowedSignatureIds: ['sig3', 'sig2'],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_admin']
+    allowedSignatureIds: ['sig3'],
+    permissions: ['parent_criar_oficio']
   },
   { 
     id: '3', 
-    username: 'doroteia.lemos', 
-    password: '123456', 
+    username: 'MDL', 
+    password: 'MDL', 
     name: 'Maria Doroteia Dias Lemos', 
     role: 'collaborator', 
     sector: 'Gabinete do Prefeito', 
     jobTitle: 'Chefe De Gabinete', 
-    allowedSignatureIds: ['sig1', 'sig2'],
+    allowedSignatureIds: ['sig1'],
     permissions: ['parent_criar_oficio']
   },
 ];

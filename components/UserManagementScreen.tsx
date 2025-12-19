@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { User, UserRole, Signature, AppPermission } from '../types';
-import { Plus, Search, Edit2, Trash2, Shield, Users, Save, X, Key, Briefcase, IdCard, PenTool, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, PenTool, LayoutGrid, User as UserIcon, CheckCircle2 } from 'lucide-react';
 
 interface UserManagementScreenProps {
   users: User[];
+  currentUser: User;
   onAddUser: (user: User) => void;
   onUpdateUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
@@ -14,6 +15,7 @@ interface UserManagementScreenProps {
 
 export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   users,
+  currentUser,
   onAddUser,
   onUpdateUser,
   onDeleteUser,
@@ -22,6 +24,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const isAdmin = currentUser.role === 'admin';
 
   const [formData, setFormData] = useState<Partial<User>>({
     name: '',
@@ -34,12 +38,14 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     permissions: ['parent_criar_oficio']
   });
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.sector?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = isAdmin 
+    ? users.filter(u => 
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.sector?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : users.filter(u => u.id === currentUser.id);
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -66,6 +72,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   };
 
   const toggleSignaturePermission = (sigId: string) => {
+    if (!isAdmin) return;
     setFormData(prev => {
         const currentIds = prev.allowedSignatureIds || [];
         if (currentIds.includes(sigId)) {
@@ -77,6 +84,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   };
 
   const toggleAppPermission = (perm: AppPermission) => {
+    if (!isAdmin) return;
     setFormData(prev => {
         const currentPerms = prev.permissions || [];
         if (currentPerms.includes(perm)) {
@@ -129,36 +137,40 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Gestão de Usuários</h2>
-            <p className="text-slate-500 mt-1">Configuração de acessos aos blocos pai do sistema.</p>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{isAdmin ? 'Gestão de Usuários' : 'Meu Perfil'}</h2>
+            <p className="text-slate-500 mt-1">{isAdmin ? 'Configuração de acessos e permissões da equipe.' : 'Gerencie seus dados pessoais de acesso ao sistema.'}</p>
           </div>
-          <button 
-            onClick={() => handleOpenModal()}
-            className="px-5 py-3 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Novo Usuário
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => handleOpenModal()}
+              className="px-5 py-3 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Novo Usuário
+            </button>
+          )}
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
-          <Search className="w-5 h-5 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Buscar usuário..." 
-            className="flex-1 bg-transparent outline-none text-slate-700 font-medium placeholder:text-slate-400"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        {isAdmin && (
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+            <Search className="w-5 h-5 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar usuário..." 
+              className="flex-1 bg-transparent outline-none text-slate-700 font-medium placeholder:text-slate-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className="grid gap-4">
            {filteredUsers.map(user => (
              <div key={user.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm ${
-                     user.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 
-                     user.role === 'licitacao' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'
+                     user.role === 'admin' ? 'bg-indigo-600 text-white' : 
+                     'bg-slate-100 text-slate-600'
                   }`}>
                     {user.name.charAt(0)}
                   </div>
@@ -169,13 +181,9 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                       <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs font-semibold text-slate-600">
                          {user.jobTitle || 'Usuário'}
                       </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {user.permissions?.map(p => (
-                        <span key={p} className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-indigo-600 px-2 py-1 rounded border border-indigo-100">
-                          {p === 'parent_criar_oficio' ? 'OFÍCIO' : p === 'parent_compras' ? 'COMPRAS' : p === 'parent_licitacao' ? 'LICITAÇÃO' : p === 'parent_diarias' ? 'DIÁRIAS' : 'ADMIN'}
-                        </span>
-                      ))}
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${user.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                         {user.role === 'admin' ? 'ADMINISTRADOR' : 'COLABORADOR'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -183,7 +191,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                 <div className="flex items-center gap-3">
                    <div className="flex items-center gap-1">
                      <button onClick={() => handleOpenModal(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                     {user.username !== 'admin' && (
+                     {isAdmin && user.username !== 'admin' && user.id !== currentUser.id && (
                        <button onClick={() => onDeleteUser(user.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                      )}
                    </div>
@@ -194,68 +202,128 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
 
         {isModalOpen && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[95vh] border border-white/20">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 className="text-xl font-bold text-slate-800">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
+                <h3 className="text-xl font-bold text-slate-800">{isAdmin ? (editingUser ? 'Editar Usuário' : 'Novo Usuário') : 'Meu Perfil'}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><X className="w-5 h-5" /></button>
               </div>
               
-              <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                 <div className="grid grid-cols-2 gap-4">
+              <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
+                 {/* Seletor Dinâmico de Perfil */}
+                 <div className="space-y-4">
+                    <label className={labelClass}>Tipo de Acesso (Perfil)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       {[
+                         { id: 'admin', label: 'Administrador', desc: 'Acesso total ao sistema, assinaturas e gestão de equipe.', icon: <ShieldCheck className="w-6 h-6" />, color: 'indigo' },
+                         { id: 'collaborator', label: 'Colaborador', desc: 'Gera documentos e acessa apenas o próprio perfil.', icon: <UserIcon className="w-6 h-6" />, color: 'slate' }
+                       ].map((role) => {
+                         const isSelected = formData.role === role.id;
+                         const disabled = !isAdmin && formData.role !== role.id;
+                         
+                         return (
+                           <button
+                             key={role.id}
+                             type="button"
+                             disabled={disabled}
+                             onClick={() => isAdmin && setFormData({...formData, role: role.id as UserRole})}
+                             className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 group ${
+                               isSelected 
+                                 ? `bg-${role.color}-50 border-${role.color}-600 ring-4 ring-${role.color}-600/10` 
+                                 : `bg-white border-slate-100 hover:border-slate-300 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`
+                             }`}
+                           >
+                             <div className="flex items-start justify-between">
+                                <div className={`p-3 rounded-xl transition-colors ${
+                                  isSelected ? `bg-${role.color}-600 text-white` : `bg-slate-100 text-slate-400 group-hover:bg-slate-200`
+                                }`}>
+                                   {role.icon}
+                                </div>
+                                {isSelected && (
+                                   <CheckCircle2 className={`w-5 h-5 text-${role.color}-600 animate-fade-in`} />
+                                )}
+                             </div>
+                             <div className="mt-4">
+                                <h4 className={`font-bold text-lg ${isSelected ? `text-${role.color}-900` : 'text-slate-800'}`}>
+                                  {role.label}
+                                </h4>
+                                <p className={`text-xs mt-1 leading-relaxed ${isSelected ? `text-${role.color}-700` : 'text-slate-500'}`}>
+                                  {role.desc}
+                                </p>
+                             </div>
+                           </button>
+                         );
+                       })}
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                     <div className="col-span-2">
                       <label className={labelClass}>Nome Completo</label>
-                      <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} />
+                      <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} placeholder="Ex: Nome do Colaborador" />
                     </div>
                     <div>
-                      <label className={labelClass}>Usuário</label>
-                      <input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className={inputClass} />
+                      <label className={labelClass}>Usuário de Acesso</label>
+                      <input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className={inputClass} disabled={!isAdmin} placeholder="ex: nome.sobrenome" />
                     </div>
                     <div>
                       <label className={labelClass}>Senha</label>
-                      <input type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className={inputClass} />
+                      <input type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className={inputClass} placeholder="Senha segura" />
                     </div>
+                    {isAdmin && (
+                      <>
+                        <div>
+                          <label className={labelClass}>Cargo / Função</label>
+                          <input value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} className={inputClass} placeholder="Ex: Secretário" />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Setor</label>
+                          <input value={formData.sector} onChange={e => setFormData({...formData, sector: e.target.value})} className={inputClass} placeholder="Ex: Gabinete" />
+                        </div>
+                      </>
+                    )}
                  </div>
 
-                 <div className="border-t border-slate-100 pt-6">
-                    <label className={`${labelClass} mb-3 flex items-center gap-2 text-indigo-600`}><LayoutGrid className="w-4 h-4" /> Atribuição de Blocos Pai</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {permissionsList.map(perm => {
-                            const isChecked = formData.permissions?.includes(perm.id);
-                            return (
-                                <label key={perm.id} className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                                    <input type="checkbox" checked={isChecked} onChange={() => toggleAppPermission(perm.id)} className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-indigo-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-700">{perm.label}</span>
-                                        <span className="text-[10px] text-slate-400 font-medium">Habilita o acesso total a este módulo</span>
-                                    </div>
-                                </label>
-                            );
-                        })}
-                    </div>
-                 </div>
+                 {isAdmin && (
+                   <>
+                     <div className="border-t border-slate-100 pt-8">
+                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><LayoutGrid className="w-4 h-4" /> Módulos Autorizados</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {permissionsList.map(perm => {
+                                const isChecked = formData.permissions?.includes(perm.id);
+                                return (
+                                    <label key={perm.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                        <input type="checkbox" checked={isChecked} onChange={() => toggleAppPermission(perm.id)} className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-indigo-500" />
+                                        <span className="text-xs font-bold text-slate-700">{perm.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                     </div>
 
-                 <div className="border-t border-slate-100 pt-6">
-                    <label className={`${labelClass} mb-3 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Permitidas</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {availableSignatures.map(sig => {
-                            const isChecked = formData.allowedSignatureIds?.includes(sig.id);
-                            return (
-                                <label key={sig.id} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
-                                    <input type="checkbox" checked={isChecked} onChange={() => toggleSignaturePermission(sig.id)} className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
-                                    <div>
-                                        <div className="font-bold text-sm text-slate-800">{sig.name}</div>
-                                        <div className="text-xs text-slate-500">{sig.role}</div>
-                                    </div>
-                                </label>
-                            );
-                        })}
-                    </div>
-                 </div>
+                     <div className="border-t border-slate-100 pt-8">
+                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Disponíveis</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {availableSignatures.map(sig => {
+                                const isChecked = formData.allowedSignatureIds?.includes(sig.id);
+                                return (
+                                    <label key={sig.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                        <input type="checkbox" checked={isChecked} onChange={() => toggleSignaturePermission(sig.id)} className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                                        <div>
+                                            <div className="font-bold text-xs text-slate-800">{sig.name}</div>
+                                            <div className="text-[10px] text-slate-500 uppercase font-medium">{sig.role}</div>
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                     </div>
+                   </>
+                 )}
               </div>
 
-              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                 <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
-                 <button onClick={handleSave} className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-indigo-600 shadow-lg flex items-center gap-2"><Save className="w-4 h-4" /> Salvar Usuário</button>
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                 <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
+                 <button onClick={handleSave} className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-indigo-600 shadow-xl flex items-center gap-2 transition-all"><Save className="w-5 h-5" /> {isAdmin ? 'Salvar Usuário' : 'Salvar Alterações'}</button>
               </div>
             </div>
           </div>,
