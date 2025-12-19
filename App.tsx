@@ -258,44 +258,37 @@ const App: React.FC = () => {
     setCurrentOrder(null);
   };
 
-  // Fix: Added handleSaveGlobalDefaults
   const handleSaveGlobalDefaults = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
     setGlobalDefaults(appState);
     showToast("Configurações salvas como padrão global.");
   };
 
-  // Fix: Added handleAddUser
   const handleAddUser = (user: User) => {
     setUsers(prev => [...prev, user]);
     showToast("Usuário adicionado com sucesso.");
   };
 
-  // Fix: Added handleUpdateUser
   const handleUpdateUser = (updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
     showToast("Usuário atualizado com sucesso.");
   };
 
-  // Fix: Added handleDeleteUser
   const handleDeleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
     showToast("Usuário removido.");
   };
 
-  // Fix: Added handleAddSignature
   const handleAddSignature = (sig: Signature) => {
     setSignatures(prev => [...prev, sig]);
     showToast("Assinatura adicionada.");
   };
 
-  // Fix: Added handleUpdateSignature
   const handleUpdateSignature = (updatedSig: Signature) => {
     setSignatures(prev => prev.map(s => s.id === updatedSig.id ? updatedSig : s));
     showToast("Assinatura atualizada.");
   };
 
-  // Fix: Added handleDeleteSignature
   const handleDeleteSignature = (id: string) => {
     setSignatures(prev => prev.filter(s => s.id !== id));
     showToast("Assinatura removida.");
@@ -365,10 +358,9 @@ const App: React.FC = () => {
         default: return "Painel Administrativo";
       }
     }
-    return "Dashboard";
+    return ""; // Anteriormente retornava "Dashboard"
   };
 
-  // Fix: Defined showFloatingControls
   const showFloatingControls = (currentView === 'editor' || isFinalized) && !isDownloading;
 
   if (!currentUser) return <LoginScreen onLogin={handleLogin} uiConfig={globalDefaults.ui} />;
