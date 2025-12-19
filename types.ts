@@ -51,6 +51,22 @@ export interface DocumentConfig {
   };
 }
 
+export interface DiariaFields {
+  nome: string;
+  cargo: string;
+  setor: string;
+  destino: string;
+  dataSaida: string;
+  horaSaida: string;
+  dataRetorno: string;
+  horaRetorno: string;
+  hospedagem: number;
+  autorizacaoPor: string;
+  distancia: number;
+  valorRequerido: string;
+  motivoViagem: string;
+}
+
 export interface ContentData {
   title: string;
   body: string;
@@ -59,6 +75,8 @@ export interface ContentData {
   signatureSector: string;
   leftBlockText: string;
   rightBlockText: string;
+  subType?: 'diaria' | 'custeio';
+  diariaFields?: DiariaFields;
 }
 
 export interface UIConfig {
@@ -79,6 +97,8 @@ export interface AppState {
 export type UserRole = 'admin' | 'collaborator' | 'licitacao';
 
 export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias';
+
+export type BlockType = 'oficio' | 'compras' | 'licitacao' | 'diarias';
 
 export interface User {
   id: string;
@@ -107,5 +127,6 @@ export interface Order {
   createdAt: string;
   userId: string;
   userName: string;
+  blockType: BlockType;
   documentSnapshot?: AppState;
 }

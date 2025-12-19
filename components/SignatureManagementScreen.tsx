@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Signature } from '../types';
-import { Plus, Search, Edit2, Trash2, PenTool, Save, X } from 'lucide-react';
+import { Signature, User } from '../types';
+import { Plus, Search, Edit2, Trash2, PenTool, Save, X, ShieldAlert } from 'lucide-react';
 
 interface SignatureManagementScreenProps {
   signatures: Signature[];
@@ -10,6 +10,7 @@ interface SignatureManagementScreenProps {
   onUpdateSignature: (sig: Signature) => void;
   onDeleteSignature: (id: string) => void;
   isReadOnly?: boolean;
+  currentUser: User;
 }
 
 export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps> = ({
@@ -17,7 +18,8 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
   onAddSignature,
   onUpdateSignature,
   onDeleteSignature,
-  isReadOnly = false
+  isReadOnly = false,
+  currentUser
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,7 +31,14 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
     sector: ''
   });
 
-  const sortedSignatures = [...signatures].sort((a, b) => a.name.localeCompare(b.name));
+  const isAdmin = currentUser.role === 'admin';
+
+  // Filtra as assinaturas: Admins vêem tudo, colaboradores vêem apenas as permitidas
+  const baseSignatures = isAdmin 
+    ? signatures 
+    : signatures.filter(sig => (currentUser.allowedSignatureIds || []).includes(sig.id));
+
+  const sortedSignatures = [...baseSignatures].sort((a, b) => a.name.localeCompare(b.name));
 
   const filteredSignatures = sortedSignatures.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -81,7 +90,11 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Assinaturas</h2>
-            <p className="text-slate-500 mt-1">{isReadOnly ? 'Visualize as assinaturas cadastradas no sistema.' : 'Crie e gerencie as assinaturas disponíveis para uso nos documentos.'}</p>
+            <p className="text-slate-500 mt-1">
+              {isAdmin 
+                ? 'Crie e gerencie as assinaturas disponíveis para uso nos documentos.' 
+                : 'Visualize as assinaturas que você tem permissão para utilizar.'}
+            </p>
           </div>
           {!isReadOnly && (
             <button 
@@ -143,8 +156,14 @@ export const SignatureManagementScreen: React.FC<SignatureManagementScreenProps>
            ))}
            
            {filteredSignatures.length === 0 && (
-             <div className="text-center py-12 text-slate-400">
-               Nenhuma assinatura encontrada.
+             <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center">
+               <ShieldAlert className="w-12 h-12 text-slate-300 mb-4" />
+               <p className="text-lg font-bold text-slate-500">Nenhuma assinatura disponível</p>
+               <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">
+                 {isAdmin 
+                   ? 'Não há assinaturas cadastradas. Use o botão "Nova Assinatura" para começar.' 
+                   : 'Você ainda não possui permissão para acessar nenhuma assinatura. Contate um administrador.'}
+               </p>
              </div>
            )}
         </div>

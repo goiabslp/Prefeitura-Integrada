@@ -1,12 +1,13 @@
 
-import { Order, User, Signature } from '../types';
+import { Order, User, Signature, AppState } from '../types';
 
 const DB_NAME = 'BrandDocDB_v2';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented version to add settings store
 const STORES = {
   ORDERS: 'orders',
   USERS: 'users',
-  SIGNATURES: 'signatures'
+  SIGNATURES: 'signatures',
+  SETTINGS: 'settings'
 };
 
 export const initDB = (): Promise<IDBDatabase> => {
@@ -26,6 +27,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORES.SIGNATURES)) {
         db.createObjectStore(STORES.SIGNATURES, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
+        db.createObjectStore(STORES.SETTINGS, { keyPath: 'id' });
       }
     };
   });
@@ -87,3 +91,19 @@ export const deleteUser = (id: string) => remove(STORES.USERS, id);
 export const getAllSignatures = () => getAll<Signature>(STORES.SIGNATURES);
 export const saveSignature = (sig: Signature) => save(STORES.SIGNATURES, sig);
 export const deleteSignature = (id: string) => remove(STORES.SIGNATURES, id);
+
+// Settings persistence
+export const getGlobalSettings = async (): Promise<AppState | null> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.SETTINGS, 'readonly');
+    const store = transaction.objectStore(STORES.SETTINGS);
+    const request = store.get('global_config');
+    request.onsuccess = () => resolve(request.result ? (request.result as any).data : null);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const saveGlobalSettings = async (settings: AppState): Promise<void> => {
+  return save(STORES.SETTINGS, { id: 'global_config', data: settings });
+};

@@ -67,7 +67,8 @@ export const FONT_OPTIONS = [
 export const MOCK_SIGNATURES: Signature[] = [
   { id: 'sig1', name: 'Maria Doroteia Dias Lemos', role: 'Chefe De Gabinete', sector: 'Gabinete do Prefeito' },
   { id: 'sig2', name: 'Ailton Geraldo Dos Santos', role: 'Prefeito Municipal', sector: '' },
-  { id: 'sig3', name: 'Guilherme Araújo Ferreira dos Santos', role: 'Secretário Administrativo Municipal', sector: 'Administração Municipal' }
+  { id: 'sig3', name: 'Guilherme Araújo Ferreira dos Santos', role: 'Secretário Administrativo Municipal', sector: 'Administração Municipal' },
+  { id: 'sig4', name: 'Tamires Araújo Rufino', role: 'Assitente Social - CRESS MG 33.870', sector: 'EMulti e Proteção Especial' }
 ];
 
 export const DEFAULT_USERS: User[] = [
@@ -79,7 +80,7 @@ export const DEFAULT_USERS: User[] = [
     role: 'admin', 
     sector: 'Administração Municipal', 
     jobTitle: 'Secretário Administrativo Municipal', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
     permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
   },
   { 
@@ -87,11 +88,11 @@ export const DEFAULT_USERS: User[] = [
     username: 'JMV', 
     password: 'JMV', 
     name: 'Juliana Miranda Vasconcelos Almeida', 
-    role: 'collaborator', 
+    role: 'admin', 
     sector: 'Administração', 
     jobTitle: 'Tecnico Administrativo', 
-    allowedSignatureIds: ['sig3'],
-    permissions: ['parent_criar_oficio']
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
   },
   { 
     id: '3', 
@@ -103,6 +104,17 @@ export const DEFAULT_USERS: User[] = [
     jobTitle: 'Chefe De Gabinete', 
     allowedSignatureIds: ['sig1'],
     permissions: ['parent_criar_oficio']
+  },
+  { 
+    id: '4', 
+    username: 'TAR', 
+    password: 'TAR', 
+    name: 'Tamires Araújo Rufino', 
+    role: 'admin', 
+    sector: 'EMulti e Proteção Especial', 
+    jobTitle: 'Assistente Social', 
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
   },
 ];
 

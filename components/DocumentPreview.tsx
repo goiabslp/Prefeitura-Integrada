@@ -1,218 +1,156 @@
 
 import React, { forwardRef, useMemo } from 'react';
-import { AppState } from '../types';
+import { AppState, BlockType } from '../types';
 
 interface DocumentPreviewProps {
   state: AppState;
   isGenerating?: boolean;
   mode?: 'admin' | 'editor';
+  activeBlock?: BlockType | null;
 }
 
 export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(({ 
   state, 
   isGenerating = false, 
-  mode = 'editor'
+  activeBlock
 }, ref) => {
   const { branding, document: docConfig, content } = state;
   const watermarkImg = branding.watermark.imageUrl || branding.logoUrl;
 
-  const pages = useMemo(() => {
-    /**
-     * Lógica de Paginação Otimizada para Máxima Área Útil
-     * MAX_LINES_PER_PAGE: Aumentado para 32 para permitir que o texto desça até 15mm do rodapé.
-     */
-    const MAX_LINES_PER_PAGE = 32; 
-    const CHARS_PER_LINE = 72; 
-    
-    // Estimativa de linhas do título com base no tamanho da fonte
-    const titleFontSizeFactor = (docConfig.titleStyle?.size || 32) / 12;
-    const titleLines = Math.max(1, Math.ceil((content.title.length * titleFontSizeFactor) / CHARS_PER_LINE)) + 1;
-    
-    // Espaço ocupado pelos blocos laterais no topo da página 1
-    const LATERAL_BLOCKS_COST = (docConfig.showLeftBlock || docConfig.showRightBlock) ? 9 : 0;
-    
-    // Custo da assinatura (Espaço mt-[45px] + Linha + Nome + Cargo + Setor)
-    const SIGNATURE_COST = 7; 
+  const isDiaria = activeBlock === 'diarias' || !!content.subType;
 
-    const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
-    
-    const resultPages: string[] = [];
-    let currentPageContent = '';
-    
-    // Inicialização da contagem na página 1 (Cabeçalho + Blocos Laterais + Título)
-    let currentLinesUsed = titleLines + LATERAL_BLOCKS_COST; 
-
-    for (let i = 0; i < blocks.length; i++) {
-      let blockHTML = blocks[i];
-      if (blockHTML === undefined || blockHTML === null) continue;
-
-      const isBlockTag = /^(<p|<div|<h|<ul|<ol|<li>)/i.test(blockHTML.trim());
-      
-      if (!blockHTML.trim() && !isBlockTag) {
-         blockHTML = '<div style="min-height: 1.2em;">&nbsp;</div>';
-      } else if (!isBlockTag) {
-         blockHTML = `<div>${blockHTML}</div>`;
-      }
-
-      const plainText = blockHTML.replace(/<[^>]+>/g, '') || ' '; 
-      const contentLength = plainText.length;
-      
-      const linesInBlock = Math.max(1, Math.ceil(contentLength / CHARS_PER_LINE));
-      const blockCost = linesInBlock;
-
-      // Verifica se o bloco cabe na página atual
-      if ((currentLinesUsed + blockCost) > MAX_LINES_PER_PAGE) {
-        resultPages.push(currentPageContent);
-        currentPageContent = blockHTML;
-        currentLinesUsed = blockCost; // Páginas seguintes não têm o custo do título inicial
-      } else {
-        currentPageContent += blockHTML;
-        currentLinesUsed += blockCost;
-      }
-    }
-    
-    // Verificação final para posicionamento da assinatura
-    if (currentPageContent) {
-      if (docConfig.showSignature && (currentLinesUsed + SIGNATURE_COST) > MAX_LINES_PER_PAGE) {
-         // Se a assinatura não couber no limite máximo (15mm antes do rodapé), move para nova página
-         resultPages.push(currentPageContent);
-         resultPages.push(''); 
-      } else {
-         // Assinatura cabe na mesma página, próxima ao texto
-         resultPages.push(currentPageContent);
-      }
-    } else if (docConfig.showSignature && resultPages.length > 0) {
-       resultPages.push(''); 
-    }
-
-    return resultPages.length > 0 ? resultPages : [''];
-  }, [content.body, content.title, docConfig.showSignature, docConfig.showLeftBlock, docConfig.showRightBlock, docConfig.titleStyle?.size]);
-
-  const getBlockStyle = (styleConfig: { size: number, color: string }, isLeft: boolean) => ({
-    fontSize: `${styleConfig.size}pt`,
-    color: styleConfig.color,
-    textAlign: isLeft ? 'left' as const : 'right' as const,
-    lineHeight: '1.2',
-    maxHeight: `calc(${styleConfig.size}pt * 1.2 * 6)`, 
-    overflow: 'hidden',
-    display: '-webkit-box',
-    WebkitLineClamp: 6,
-    WebkitBoxOrient: 'vertical' as const,
-    wordBreak: 'break-word' as const,
-    whiteSpace: 'pre-wrap' as const,
-  });
+  const tdLabelClass = "border border-slate-300 p-2 text-[8.5pt] font-black uppercase text-slate-500 bg-slate-50/50 w-[20%]";
+  const tdValueClass = "border border-slate-300 p-2 text-[9.5pt] font-medium text-slate-800";
 
   return (
-    <div className={`flex justify-center items-start overflow-auto w-full h-full ${isGenerating ? 'bg-white p-0 m-0' : 'bg-slate-100 pt-8 pb-20'}`}>
-      <div id="preview-scaler" ref={ref} className={`origin-top transition-transform duration-300 ${isGenerating ? 'scale-100 transform-none' : 'scale-[0.55] md:scale-[0.65] xl:scale-[0.75]'}`}>
-        <div id="document-preview-container" className={isGenerating ? 'block w-[210mm] mx-auto p-0 bg-white' : 'flex flex-col items-center'}>
-          {pages.map((pageContent, pageIndex) => {
-            const isFirstPage = pageIndex === 0;
-            const isLastPage = pageIndex === pages.length - 1;
+    <div className={`flex justify-center items-start w-full h-full ${isGenerating ? 'bg-white' : 'bg-slate-100 pt-8 pb-20'}`}>
+      <div id="preview-scaler" ref={ref} className={`origin-top transition-transform ${isGenerating ? 'scale-100' : 'scale-[0.55] md:scale-[0.65] xl:scale-[0.75]'}`}>
+        <div id="document-preview-container" className="bg-white w-[210mm] min-h-[297mm] shadow-2xl relative flex flex-col p-[20mm] pt-[55mm] pb-[15mm] font-sans">
+          
+          {branding.watermark.enabled && watermarkImg && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <img src={watermarkImg} alt="" style={{ width: `${branding.watermark.size}%`, opacity: branding.watermark.opacity / 100, filter: branding.watermark.grayscale ? 'grayscale(100%)' : 'none' }} />
+            </div>
+          )}
 
-            return (
-              <div
-                key={pageIndex}
-                className={`bg-white mx-auto flex flex-col relative ${branding.fontFamily} ${isGenerating ? 'mb-0' : 'mb-8 shadow-2xl ring-1 ring-black/5'}`}
-                style={{
-                  width: '210mm', height: isGenerating ? '296.5mm' : '297mm',
-                  // paddingBottom: 15mm para maximizar área útil até o limite do rodapé
-                  padding: '20mm', paddingTop: '55mm', paddingBottom: '15mm',
-                  position: 'relative', overflow: 'hidden' 
-                }}
-              >
-                {branding.watermark.enabled && watermarkImg && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                    <img src={watermarkImg} alt="" style={{ width: `${branding.watermark.size}%`, opacity: branding.watermark.opacity / 100, objectFit: 'contain', filter: branding.watermark.grayscale ? 'grayscale(100%)' : 'none' }} />
-                  </div>
-                )}
-                <div className="absolute top-0 left-0 w-full h-3 z-10" style={{ backgroundColor: branding.primaryColor }} />
+          <div className="absolute top-0 left-0 w-full h-3 z-10" style={{ backgroundColor: branding.primaryColor }} />
 
-                {/* Cabeçalho */}
-                <div className="absolute top-8 left-[20mm] right-[20mm] h-32 z-20">
-                  <div className="absolute top-0 flex" style={{ left: branding.logoAlignment === 'left' ? 0 : branding.logoAlignment === 'center' ? '50%' : 'auto', right: branding.logoAlignment === 'right' ? 0 : 'auto', transform: branding.logoAlignment === 'center' ? 'translateX(-50%)' : 'none' }}>
-                    {branding.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="object-contain" style={{ width: `${branding.logoWidth}mm`, maxHeight: '32mm' }} /> : <div className="bg-slate-50 border rounded flex items-center justify-center text-[10px]" style={{ width: `${branding.logoWidth}mm`, height: '20mm' }}>Logo</div>}
-                  </div>
-                  
-                  {/* Cabeçalho Cascata: Setor -> Cidade -> Data */}
-                  <div className="absolute top-0 right-0 text-right flex flex-col items-end">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">
-                      {content.signatureSector || 'Departamento Administrativo'}
-                    </span>
-                    <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>
-                      {docConfig.city}
-                    </h2>
-                    <p className="text-[10px] text-gray-400 font-mono">
-                      {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
+          <div className="absolute top-8 left-[20mm] right-[20mm] h-32 z-20 flex justify-between items-start">
+            <div className="flex-1">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt="Logo" style={{ width: `${branding.logoWidth}mm`, maxHeight: '28mm' }} className="object-contain" />
+              ) : (
+                <div className="w-20 h-10 bg-slate-100 rounded" />
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Prefeitura de</span>
+              <h2 className="text-sm font-black text-slate-900 uppercase">{docConfig.city}</h2>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          <div className="absolute top-[42mm] left-[20mm] right-[20mm] border-b-2 border-slate-800" />
+
+          <main className="relative z-10 mt-6 flex-1">
+            <h1 className="text-2xl font-black mb-8 tracking-tight" style={{ color: branding.primaryColor }}>
+              {content.title}
+            </h1>
+
+            {isDiaria && content.diariaFields ? (
+              <div className="space-y-6 animate-fade-in">
+                {/* Tabela Proponente */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-indigo-600">1. Identificação do Proponente</div>
+                  <table className="w-full border-collapse border border-slate-300">
+                    <tbody>
+                      <tr>
+                        <td className={tdLabelClass}>Nome:</td>
+                        <td colSpan={3} className={tdValueClass}>{content.diariaFields.nome}</td>
+                      </tr>
+                      <tr>
+                        <td className={tdLabelClass}>Cargo:</td>
+                        <td className={tdValueClass}>{content.diariaFields.cargo}</td>
+                        <td className={tdLabelClass}>Setor:</td>
+                        <td className={tdValueClass}>{content.diariaFields.setor}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tabela Viagem */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-indigo-600">2. Dados da Viagem / Percurso</div>
+                  <table className="w-full border-collapse border border-slate-300">
+                    <tbody>
+                      <tr>
+                        <td className={tdLabelClass}>Destino:</td>
+                        <td colSpan={3} className={tdValueClass}>{content.diariaFields.destino}</td>
+                      </tr>
+                      <tr>
+                        <td className={tdLabelClass}>Saída:</td>
+                        <td className={tdValueClass}>
+                          {content.diariaFields.dataSaida ? new Date(content.diariaFields.dataSaida + 'T00:00:00').toLocaleDateString('pt-BR') : '-'} às {content.diariaFields.horaSaida || '-'}
+                        </td>
+                        <td className={tdLabelClass}>Retorno:</td>
+                        <td className={tdValueClass}>
+                          {content.diariaFields.dataRetorno ? new Date(content.diariaFields.dataRetorno + 'T00:00:00').toLocaleDateString('pt-BR') : '-'} às {content.diariaFields.horaRetorno || '-'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className={tdLabelClass}>Hospedagem:</td>
+                        <td className={tdValueClass}>{content.diariaFields.hospedagem} noites</td>
+                        <td className={tdLabelClass}>Distância:</td>
+                        <td className={tdValueClass}>{content.diariaFields.distancia} KM (Total)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Justificativa */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-indigo-600">3. Justificativa / Motivo da Solicitação</div>
+                  <div className="border border-slate-300 p-4 min-h-[120px] text-[10pt] text-slate-800 text-justify leading-relaxed whitespace-pre-wrap">
+                    {content.diariaFields.motivoViagem || 'Descrição do motivo...'}
                   </div>
                 </div>
 
-                <div className="absolute top-[42mm] left-[20mm] right-[20mm] border-b-2 border-gray-800 z-20" />
-
-                <main className={`flex-1 mt-2 relative z-10 flex flex-col overflow-hidden`}>
-                  {isFirstPage && (
-                    <>
-                      {/* Blocos Laterais */}
-                      {(docConfig.showLeftBlock || docConfig.showRightBlock) && (
-                        <div className="flex justify-between items-start mb-8 min-h-[30mm] w-full gap-8 shrink-0">
-                           {docConfig.showRightBlock && (
-                             <div className="w-1/2" style={getBlockStyle(docConfig.rightBlockStyle, true)}>
-                               {content.rightBlockText}
-                             </div>
-                           )}
-                           {docConfig.showLeftBlock && (
-                             <div className="w-1/2 ml-auto" style={getBlockStyle(docConfig.leftBlockStyle, false)}>
-                               {content.leftBlockText}
-                             </div>
-                           )}
-                        </div>
-                      )}
-
-                      {/* Título Principal */}
-                      <h1 
-                        className="font-bold mb-8 leading-tight tracking-tight break-words w-full overflow-hidden shrink-0" 
-                        style={{ 
-                          color: docConfig.titleStyle?.color || branding.primaryColor, 
-                          fontSize: `${docConfig.titleStyle?.size || 32}pt`, 
-                          textAlign: docConfig.titleStyle?.alignment || 'left',
-                          wordBreak: 'break-word',
-                          maxWidth: '100%'
-                        }}
-                      >
-                        {content.title}
-                      </h1>
-                    </>
-                  )}
-                  
-                  {/* Conteúdo Dinâmico */}
-                  <div className="max-w-none text-gray-700 leading-loose text-justify text-[11pt] break-words w-full rich-content" dangerouslySetInnerHTML={{ __html: pageContent }} />
-
-                  {/* Assinatura colada ao texto */}
-                  {isLastPage && docConfig.showSignature && (
-                    <div className="mt-[45px] mb-4 flex flex-col items-center justify-center pointer-events-none shrink-0">
-                      <div className="w-80 border-t border-black pt-4 text-center">
-                          <p className="text-gray-900 font-bold text-sm leading-tight uppercase">{content.signatureName}</p>
-                          <p className="text-gray-600 text-sm mt-1">{content.signatureRole}</p>
-                          {content.signatureSector && <p className="text-gray-500 text-xs mt-0.5">{content.signatureSector}</p>}
-                      </div>
-                    </div>
-                  )}
-                </main>
-
-                {/* Rodapé Fixo */}
-                <div className="absolute bottom-8 left-[20mm] right-[20mm] pt-4 border-t-2 border-gray-800 flex justify-between items-end text-sm z-20 bg-white">
-                  <div className="flex flex-col gap-1 max-w-[75%]">
-                      <span className="font-bold text-gray-900">Prefeitura de São José do Goiabal - MG</span>
-                      <span className="text-gray-500 font-light whitespace-pre-wrap text-[10px] leading-tight">{docConfig.footerText}</span>
-                  </div>
-                  {docConfig.showPageNumbers && (
-                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold">Página {pageIndex + 1} de {pages.length}</span>
-                  )}
+                {/* Financeiro */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-indigo-600">4. Autorização Financeira</div>
+                  <table className="w-full border-collapse border border-slate-300">
+                    <tbody>
+                      <tr>
+                        <td className={tdLabelClass}>Valor Requerido:</td>
+                        <td className={`${tdValueClass} font-black text-indigo-700`}>{content.diariaFields.valorRequerido}</td>
+                        <td className={tdLabelClass}>Autorizado por:</td>
+                        <td className={tdValueClass}>{content.diariaFields.autorizacaoPor}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            );
-          })}
+            ) : (
+              <div className="text-slate-700 text-[11pt] leading-loose text-justify whitespace-pre-wrap rich-content" dangerouslySetInnerHTML={{ __html: content.body }} />
+            )}
+
+            <div className="mt-20 flex flex-col items-center">
+               <div className="w-[300px] border-t border-slate-900 pt-3 text-center">
+                  <p className="text-xs font-black uppercase tracking-tight text-slate-900">{content.signatureName}</p>
+                  <p className="text-[10px] font-medium text-slate-500">{content.signatureRole}</p>
+                  {content.signatureSector && <p className="text-[9px] text-slate-400 italic">Setor: {content.signatureSector}</p>}
+               </div>
+            </div>
+          </main>
+
+          <div className="absolute bottom-8 left-[20mm] right-[20mm] border-t border-slate-200 pt-4 flex justify-between items-end">
+            <div className="max-w-[70%]">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Prefeitura Municipal de São José do Goiabal</p>
+              <p className="text-[8px] text-slate-400 mt-1 whitespace-pre-wrap leading-tight">{docConfig.footerText}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

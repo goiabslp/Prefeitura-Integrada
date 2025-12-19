@@ -88,7 +88,6 @@ export const UIPreviewScreen: React.FC<UIPreviewScreenProps> = ({ ui }) => {
                     <LogIn className="w-8 h-8 text-white/50" />
                   </div>
                 )}
-                {!ui.loginLogoUrl && <h1 className="text-2xl font-black text-white mt-4">BrandDoc Pro</h1>}
               </div>
 
               <div className="w-full space-y-4">

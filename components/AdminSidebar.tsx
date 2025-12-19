@@ -7,9 +7,10 @@ import {
   AlignCenter, AlignRight, AlignJustify,
   PenTool, ArrowLeft, Heading, Columns,
   Bold, Italic, Underline, Highlighter, Quote, RemoveFormatting, Droplets, Maximize,
-  Monitor, Layout, LogIn, MapPin, ChevronRight, CheckCircle2, User as UserIcon
+  Monitor, Layout, LogIn, MapPin, ChevronRight, CheckCircle2, User as UserIcon,
+  Wallet, Banknote, ClipboardList, Calendar, Clock, Map, UserCheck, DollarSign
 } from 'lucide-react';
-import { AppState, User, Signature } from '../types';
+import { AppState, User, Signature, BlockType, DiariaFields } from '../types';
 
 interface AdminSidebarProps {
   state: AppState;
@@ -25,6 +26,7 @@ interface AdminSidebarProps {
   activeTab: string | null;
   onTabChange: (tab: any) => void;
   availableSignatures: Signature[];
+  activeBlock: BlockType | null;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -40,7 +42,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onFinish,
   activeTab,
   onTabChange,
-  availableSignatures
+  availableSignatures,
+  activeBlock
 }) => {
   const [globalSaveStatus, setGlobalSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [finishStatus, setFinishStatus] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -58,12 +61,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   );
 
   useEffect(() => {
-    if (editorRef.current && mode === 'editor' && activeTab === 'content') {
+    if (editorRef.current && mode === 'editor' && activeTab === 'content' && activeBlock !== 'diarias') {
       if (editorRef.current.innerHTML !== content.body) {
         editorRef.current.innerHTML = content.body;
       }
     }
-  }, [activeTab, mode, content.body]);
+  }, [activeTab, mode, content.body, activeBlock]);
 
   const handleUpdate = (section: keyof AppState, key: string, value: any) => {
     onUpdate({
@@ -178,7 +181,66 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     }
   };
 
+  const formatCurrency = (value: string) => {
+    const cleanValue = value.replace(/\D/g, "");
+    if (!cleanValue) return "R$ 0,00";
+    const numericValue = parseInt(cleanValue, 10) / 100;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numericValue);
+  };
+
+  const handleDiariaSubTypeChange = (type: 'diaria' | 'custeio') => {
+    const newTitle = type === 'diaria' ? 'Requisição de Diária' : 'Requisição de Custeio';
+    onUpdate({
+      ...state,
+      content: {
+        ...state.content,
+        subType: type,
+        title: newTitle,
+        diariaFields: state.content.diariaFields || {
+          nome: currentUser.name,
+          cargo: currentUser.jobTitle || '',
+          setor: currentUser.sector || '',
+          destino: '',
+          dataSaida: '',
+          horaSaida: '',
+          dataRetorno: '',
+          horaRetorno: '',
+          hospedagem: 0,
+          autorizacaoPor: '',
+          distancia: 0,
+          valorRequerido: 'R$ 0,00',
+          motivoViagem: ''
+        }
+      }
+    });
+  };
+
+  const handleDiariaFieldUpdate = (field: keyof DiariaFields, value: any) => {
+    if (!content.diariaFields) return;
+    onUpdate({
+      ...state,
+      content: {
+        ...state.content,
+        diariaFields: {
+          ...content.diariaFields,
+          [field]: value
+        }
+      }
+    });
+  };
+
   const handleFinishWithAnimation = async () => {
+      if (activeBlock === 'diarias') {
+          if (!content.subType) {
+              alert("Por favor, selecione se a requisição é do tipo Diária ou Custeio.");
+              return;
+          }
+          const f = content.diariaFields;
+          if (!f?.nome || !f?.destino || !f?.motivoViagem) {
+              alert("Por favor, preencha os campos obrigatórios (Nome, Destino e Motivo).");
+              return;
+          }
+      }
       setFinishStatus('loading');
       await new Promise(resolve => setTimeout(resolve, 800));
       if (onFinish) onFinish();
@@ -198,13 +260,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       setTimeout(() => setGlobalSaveStatus('idle'), 2000);
   };
 
-  const adminModules = [
-    { id: 'users', title: currentUser.role === 'admin' ? 'Usuários' : 'Meu Perfil', description: currentUser.role === 'admin' ? 'Gerencie acessos e equipe' : 'Configure seus dados de acesso', icon: currentUser.role === 'admin' ? <Users className="w-6 h-6 text-indigo-600" /> : <UserIcon className="w-6 h-6 text-indigo-600" />, colorClass: 'bg-indigo-50 border-indigo-100 hover:border-indigo-300 shadow-sm' },
-    { id: 'signatures', title: 'Assinaturas', description: currentUser.role === 'admin' ? 'Cadastre assinantes do sistema' : 'Visualize assinaturas disponíveis', icon: <PenTool className="w-6 h-6 text-emerald-600" />, colorClass: 'bg-emerald-50 border-emerald-100 hover:border-emerald-300 shadow-sm' },
-    { id: 'ui', title: 'Interface', description: 'Personalize a tela inicial', icon: <Home className="w-6 h-6 text-blue-600" />, colorClass: 'bg-blue-50 border-blue-100 hover:border-blue-300 shadow-sm', adminOnly: true },
-    { id: 'design', title: 'Design Doc', description: 'Identidade visual do PDF', icon: <Palette className="w-6 h-6 text-purple-600" />, colorClass: 'bg-purple-50 border-purple-100 hover:border-purple-300 shadow-sm', adminOnly: true }
-  ].filter(mod => !mod.adminOnly || currentUser.role === 'admin');
-
   const renderSectionHeader = (title: string, subtitle?: string) => (
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
          {mode === 'admin' && (
@@ -219,412 +274,181 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       </div>
   );
 
+  const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none";
+  const labelClass = "block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1";
+
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity md:hidden" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity md:hidden" onClick={onClose} />}
       <div className={`fixed inset-y-0 left-0 w-full md:w-[600px] lg:w-[640px] bg-white shadow-2xl transform transition-transform duration-300 ease-out z-50 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white z-10 shrink-0">
-          <div><h2 className="text-lg font-bold text-slate-900">{mode === 'admin' ? 'Painel Administrativo' : 'Editor de Documento'}</h2></div>
+          <div><h2 className="text-lg font-black text-slate-900 tracking-tight">{activeBlock === 'diarias' ? 'Requisição de Diárias' : mode === 'admin' ? 'Painel Administrativo' : 'Editor de Documento'}</h2></div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X className="w-6 h-6" /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-slate-50/50">
-          {mode === 'admin' && !activeTab && (
-             <div className="space-y-6 animate-fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   {adminModules.map((mod) => (
-                      <button key={mod.id} onClick={() => onTabChange(mod.id)} className={`p-6 rounded-2xl border text-left transition-all duration-300 hover:scale-[1.02] flex flex-col gap-4 ${mod.colorClass}`}>
-                         <div className="p-3 bg-white rounded-xl w-fit shadow-sm">{mod.icon}</div>
-                         <div><h3 className="font-bold text-slate-900 text-lg">{mod.title}</h3><p className="text-sm text-slate-500 mt-1 font-medium opacity-80">{mod.description}</p></div>
-                      </button>
-                   ))}
-                </div>
-             </div>
-          )}
-
-          {activeTab === 'design' && (
-            <div className="space-y-6 animate-slide-up">
-               {renderSectionHeader('Design & Identidade', 'Configure cores, logos e fontes do documento')}
-               
-               <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Logotipo do Documento</h3>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-3">Imagem do Logo (PDF)</label>
-                        <div className="flex items-center gap-4">
-                           <div className="w-24 h-24 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
-                              {branding.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <span className="text-xs text-slate-400 font-medium text-center px-2">Clique para carregar</span>}
-                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                 <button onClick={() => handleUpdate('branding', 'logoUrl', null)} className="text-white text-xs hover:underline">Remover</button>
-                              </div>
-                           </div>
-                           <div className="flex-1">
-                              <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
-                              <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-indigo-600 transition-colors flex items-center gap-2"><Upload className="w-4 h-4" />Alterar Imagem</button>
-                              <p className="text-[10px] text-slate-400 mt-2 font-medium">Recomendado: PNG ou JPG com fundo transparente.</p>
-                           </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <label className="block text-xs font-semibold text-slate-500 mb-2">Largura no PDF (mm)</label>
-                           <input type="range" min="20" max="100" value={branding.logoWidth} onChange={(e) => handleUpdate('branding', 'logoWidth', Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                           <div className="text-right text-xs text-slate-400 mt-1 font-bold">{branding.logoWidth}mm</div>
-                        </div>
-                        <div>
-                           <label className="block text-xs font-semibold text-slate-500 mb-2">Alinhamento</label>
-                           <div className="flex bg-slate-100 p-1 rounded-lg">
-                              {(['left', 'center', 'right'] as const).map((align) => (
-                                <button key={align} onClick={() => handleUpdate('branding', 'logoAlignment', align)} className={`flex-1 p-1.5 rounded flex items-center justify-center transition-all ${branding.logoAlignment === align ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}>
-                                  {align === 'left' && <AlignLeft className="w-4 h-4" />}
-                                  {align === 'center' && <AlignCenter className="w-4 h-4" />}
-                                  {align === 'right' && <AlignRight className="w-4 h-4" />}
-                                </button>
-                              ))}
-                           </div>
-                        </div>
-                      </div>
-                  </div>
-               </div>
-
-               <div className="space-y-4 border-t border-slate-200 pt-6">
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-4 h-4" /> Informações Locais</h3>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <label className="block text-xs font-semibold text-slate-500 mb-2">Cidade do Documento (Valor Padrão)</label>
-                    <input 
-                      type="text" 
-                      value={docConfig.city} 
-                      onChange={(e) => handleUpdate('document', 'city', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      placeholder="Ex: São José do Goiabal - MG"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-2 italic">* Este valor aparece automaticamente no cabeçalho em cascata.</p>
-                  </div>
-               </div>
-
-               <div className="space-y-4 border-t border-slate-200 pt-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Droplets className="w-4 h-4" /> Marca d'Água</h3>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={branding.watermark.enabled} onChange={(e) => handleDeepUpdate('branding', 'watermark', 'enabled', e.target.checked)} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
-                  
-                  {branding.watermark.enabled && (
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4 animate-fade-in">
-                       <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-3">Imagem da Marca d'Água</label>
-                          <div className="flex items-center gap-4">
-                             <div className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden relative group">
-                                {branding.watermark.imageUrl ? (
-                                  <img 
-                                    src={branding.watermark.imageUrl} 
-                                    alt="Watermark" 
-                                    className="w-full h-full object-contain p-1" 
-                                    style={{ filter: branding.watermark.grayscale ? 'grayscale(100%)' : 'none' }}
-                                  />
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 font-medium">Nenhuma</span>
-                                )}
-                             </div>
-                             <div className="flex-1">
-                                <input type="file" ref={watermarkInputRef} onChange={handleWatermarkUpload} accept="image/*" className="hidden" />
-                                <button onClick={() => watermarkInputRef.current?.click()} className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
-                                  <Upload className="w-3 h-3" /> Carregar Imagem
-                                </button>
-                             </div>
-                          </div>
-                       </div>
-                       
-                       <div className="grid grid-cols-2 gap-4">
-                          <div>
-                             <label className="block text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Maximize className="w-3 h-3" /> Tamanho (%)</label>
-                             <input 
-                               type="range" min="10" max="100" 
-                               value={branding.watermark.size} 
-                               onChange={(e) => handleDeepUpdate('branding', 'watermark', 'size', Number(e.target.value))} 
-                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
-                             />
-                             <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{branding.watermark.size}%</div>
-                          </div>
-                          <div>
-                             <label className="block text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Droplets className="w-3 h-3" /> Opacidade (%)</label>
-                             <input 
-                               type="range" min="5" max="100" 
-                               value={branding.watermark.opacity} 
-                               onChange={(e) => handleDeepUpdate('branding', 'watermark', 'opacity', Number(e.target.value))} 
-                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
-                             />
-                             <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{branding.watermark.opacity}%</div>
-                          </div>
-                       </div>
-
-                       <div className="pt-2">
-                          <label className="flex items-center gap-3 cursor-pointer group">
-                             <input 
-                                type="checkbox" 
-                                checked={branding.watermark.grayscale} 
-                                onChange={(e) => handleDeepUpdate('branding', 'watermark', 'grayscale', e.target.checked)}
-                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                             />
-                             <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">Converter para Monocromático (Escala de Cinza)</span>
-                          </label>
-                       </div>
-                    </div>
-                  )}
-               </div>
-
-               <div className="space-y-4 border-t border-slate-200 pt-6">
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Heading className="w-4 h-4" /> Estilo do Título</h3>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-2">Tamanho (pt)</label>
-                            <input type="range" min="10" max="72" value={docConfig.titleStyle?.size || 32} onChange={(e) => handleDeepUpdate('document', 'titleStyle', 'size', Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                            <div className="text-right text-xs text-slate-400 mt-1 font-bold">{docConfig.titleStyle?.size || 32}pt</div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-2">Cor do Título</label>
-                            <div className="flex items-center gap-2"><input type="color" value={docConfig.titleStyle?.color || branding.primaryColor} onChange={(e) => handleDeepUpdate('document', 'titleStyle', 'color', e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0" /><span className="text-xs font-mono text-slate-500">{docConfig.titleStyle?.color}</span></div>
-                        </div>
-                      </div>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {activeTab === 'ui' && (
-            <div className="space-y-8 animate-slide-up">
-              {renderSectionHeader('Interface do App', 'Personalize as imagens que os usuários veem ao navegar no sistema')}
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Layout className="w-4 h-4" /> Header (Topo) do Sistema</h3>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-3">Imagem da Logo (Header)</label>
-                      <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden relative group shrink-0">
-                              {ui.headerLogoUrl ? <img src={ui.headerLogoUrl} alt="Logo Header" className="w-full h-full object-contain p-1.5" /> : <span className="text-[10px] text-slate-400 font-medium text-center">Nenhuma</span>}
-                              {ui.headerLogoUrl && (
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button onClick={() => handleUpdate('ui', 'headerLogoUrl', null)} className="text-white text-[10px] hover:underline">Limpar</button>
-                                </div>
-                              )}
-                          </div>
-                          <div className="flex-1">
-                              <input type="file" ref={headerLogoInputRef} onChange={handleHeaderLogoUpload} accept="image/*" className="hidden" />
-                              <button onClick={() => headerLogoInputRef.current?.click()} className="w-full px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"><Upload className="w-3 h-3" />{ui.headerLogoUrl ? 'Alterar' : 'Carregar'} Logo</button>
-                          </div>
-                      </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-2">Altura da Logo no Topo (px)</label>
-                        <input type="range" min="20" max="100" value={ui.headerLogoHeight} onChange={(e) => handleUpdate('ui', 'headerLogoHeight', Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                        <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{ui.headerLogoHeight}px</div>
-                    </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><LogIn className="w-4 h-4" /> Tela de Login</h3>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-3">Imagem da Logo (Login)</label>
-                      <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden relative group shrink-0">
-                              {ui.loginLogoUrl ? <img src={ui.loginLogoUrl} alt="Logo Login" className="w-full h-full object-contain p-1.5" /> : <span className="text-[10px] text-slate-500 font-medium text-center">Nenhuma</span>}
-                              {ui.loginLogoUrl && (
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button onClick={() => handleUpdate('ui', 'loginLogoUrl', null)} className="text-white text-[10px] hover:underline">Limpar</button>
-                                </div>
-                              )}
-                          </div>
-                          <div className="flex-1">
-                              <input type="file" ref={loginLogoInputRef} onChange={handleLoginLogoUpload} accept="image/*" className="hidden" />
-                              <button onClick={() => loginLogoInputRef.current?.click()} className="w-full px-4 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2"><Upload className="w-3 h-3" />{ui.loginLogoUrl ? 'Alterar' : 'Carregar'} Logo</button>
-                          </div>
-                      </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-2">Altura da Logo no Login (px)</label>
-                        <input type="range" min="30" max="200" value={ui.loginLogoHeight} onChange={(e) => handleUpdate('ui', 'loginLogoHeight', Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                        <div className="text-right text-[10px] text-slate-400 mt-1 font-bold">{ui.loginLogoHeight}px</div>
-                    </div>
-                </div>
-              </div>
-
-            </div>
-          )}
-
           {mode !== 'admin' && activeTab === 'content' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="space-y-4">
-                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Columns className="w-4 h-4" /> Blocos de Texto Laterais</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                       <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 uppercase">Bloco Direito (Endereçamento)</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={docConfig.showRightBlock} onChange={(e) => handleUpdate('document', 'showRightBlock', e.target.checked)} className="sr-only peer" />
-                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                          </label>
-                       </div>
-                       {docConfig.showRightBlock && (
-                          <textarea 
-                            value={content.rightBlockText} 
-                            onChange={(e) => handleUpdate('content', 'rightBlockText', e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all"
-                            placeholder="Ex: Ao Excelentíssimo Senhor..."
-                          />
-                       )}
+              {activeBlock === 'diarias' ? (
+                <div className="space-y-8">
+                  {/* Seletor de Tipo */}
+                  <div className="space-y-4">
+                    <label className={labelClass}>Selecione o Tipo de Requisição</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => handleDiariaSubTypeChange('diaria')}
+                        className={`p-6 rounded-2xl border-2 text-left transition-all ${content.subType === 'diaria' ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/10' : 'bg-white border-slate-200 hover:border-indigo-200'}`}
+                      >
+                        <Wallet className={`w-8 h-8 mb-3 ${content.subType === 'diaria' ? 'text-indigo-600' : 'text-slate-300'}`} />
+                        <h4 className="font-bold text-slate-900">Diária</h4>
+                        <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase">Viagem / Hospedagem</p>
+                      </button>
+                      <button 
+                        onClick={() => handleDiariaSubTypeChange('custeio')}
+                        className={`p-6 rounded-2xl border-2 text-left transition-all ${content.subType === 'custeio' ? 'bg-indigo-50 border-indigo-600 ring-4 ring-indigo-500/10' : 'bg-white border-slate-200 hover:border-indigo-200'}`}
+                      >
+                        <Banknote className={`w-8 h-8 mb-3 ${content.subType === 'custeio' ? 'text-indigo-600' : 'text-slate-300'}`} />
+                        <h4 className="font-bold text-slate-900">Custeio</h4>
+                        <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase">Despesas Diversas</p>
+                      </button>
                     </div>
+                  </div>
 
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                       <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 uppercase">Bloco Esquerdo (Numeração Ofício)</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={docConfig.showLeftBlock} onChange={(e) => handleUpdate('document', 'showLeftBlock', e.target.checked)} className="sr-only peer" />
-                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                          </label>
-                       </div>
-                       {docConfig.showLeftBlock && (
-                          <textarea 
-                            value={content.leftBlockText} 
-                            onChange={(e) => handleUpdate('content', 'leftBlockText', e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all"
-                            placeholder="Ex: Ofício nº 001/2024..."
-                          />
-                       )}
-                    </div>
-                 </div>
-              </div>
-
-              <div className="space-y-4 border-t border-slate-200 pt-6">
-                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><FileText className="w-4 h-4" /> Conteúdo Principal</h3>
-                 <div className="space-y-4">
-                   <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-2">Título do Documento</label>
-                      <input value={content.title} onChange={(e) => handleUpdate('content', 'title', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-800" placeholder="Ex: Solicitação de Material para o Setor X" />
-                   </div>
-                   
-                   <div className="space-y-2">
-                      <label className="block text-xs font-semibold text-slate-500 mb-2">Corpo do Texto</label>
-                      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-                        <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-1 sticky top-0 z-10">
-                          <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Negrito"><Bold className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Itálico"><Italic className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Sublinhado"><Underline className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('hiliteColor', 'yellow')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Grifar"><Highlighter className="w-4 h-4" /></button>
-                          
-                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
-                          
-                          <select 
-                            onChange={(e) => applyFontSize(e.target.value)} 
-                            className="bg-white border border-slate-200 rounded text-[10px] px-1 h-7 focus:outline-none" 
-                            title="Tamanho da Fonte (pt)"
-                            defaultValue="11pt"
-                          >
-                            <option value="10pt">10pt</option>
-                            <option value="11pt">11pt</option>
-                            <option value="12pt">12pt</option>
-                            <option value="14pt">14pt</option>
-                            <option value="16pt">16pt</option>
-                          </select>
-                          
-                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
-                          
-                          <button onClick={() => execCommand('justifyLeft')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Esquerda"><AlignLeft className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('justifyCenter')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Centro"><AlignCenter className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('justifyRight')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Direita"><AlignRight className="w-4 h-4" /></button>
-                          <button onClick={() => execCommand('justifyFull')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600" title="Justificado"><AlignJustify className="w-4 h-4" /></button>
-                          
-                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
-                          
-                          <button onClick={applyCitation} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-indigo-600" title="Inserir Citação"><Quote className="w-4 h-4" /></button>
-                          
-                          <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
-                          
-                          <button onClick={() => execCommand('removeFormat')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-red-500" title="Limpar Tudo"><RemoveFormatting className="w-4 h-4" /></button>
-                        </div>
-                        
-                        <div 
-                          ref={editorRef}
-                          contentEditable
-                          onInput={(e) => handleUpdate('content', 'body', (e.target as HTMLDivElement).innerHTML)}
-                          className="w-full bg-white p-6 text-sm leading-relaxed min-h-[400px] outline-none prose prose-slate max-w-none"
-                        />
-                      </div>
-                   </div>
-                 </div>
-              </div>
-
-              <div className="space-y-4 border-t border-slate-200 pt-6">
-                 <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Seleção de Assinatura</h3>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={docConfig.showSignature} onChange={(e) => handleUpdate('document', 'showSignature', e.target.checked)} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                 </div>
-                 
-                 {docConfig.showSignature && (
-                    <div className="grid grid-cols-1 gap-3 animate-fade-in">
-                        {allowedSignatures.length > 0 ? (
-                          allowedSignatures.map((sig) => {
-                             const isSelected = content.signatureName === sig.name;
-                             return (
-                                <button 
-                                  key={sig.id} 
-                                  onClick={() => onUpdate({ ...state, content: { ...state.content, signatureName: sig.name, signatureRole: sig.role, signatureSector: sig.sector }})} 
-                                  className={`text-left relative p-4 rounded-2xl border transition-all duration-300 group ${isSelected ? 'bg-indigo-50 border-indigo-500 shadow-md ring-1 ring-indigo-500/50' : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'}`}
-                                >
-                                   <div className="flex items-center justify-between gap-4">
-                                      <div className="flex items-center gap-3">
-                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600'}`}>
-                                            <PenTool className="w-5 h-5" />
-                                         </div>
-                                         <div className="flex flex-col">
-                                            <p className={`text-sm font-bold leading-tight transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>{sig.name}</p>
-                                            <p className={`text-[10px] mt-0.5 font-medium uppercase tracking-wider transition-colors ${isSelected ? 'text-indigo-700' : 'text-slate-500'}`}>{sig.role}</p>
-                                            {sig.sector && <p className="text-[10px] text-slate-400 italic">Setor: {sig.sector}</p>}
-                                         </div>
-                                      </div>
-                                      <div className={`shrink-0 transition-transform duration-300 ${isSelected ? 'scale-110' : 'opacity-0 group-hover:opacity-100'}`}>
-                                         {isSelected ? <CheckCircle2 className="w-5 h-5 text-indigo-600" /> : <ChevronRight className="w-5 h-5 text-slate-300" />}
-                                      </div>
-                                   </div>
-                                </button>
-                             );
-                          })
-                        ) : (
-                          <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-                             <Users className="w-8 h-8 mb-2 opacity-30" />
-                             <p className="text-xs font-bold uppercase tracking-widest">Nenhuma assinatura permitida</p>
-                             <p className="text-[10px] mt-1">Contate o administrador para obter permissão.</p>
+                  {content.subType && content.diariaFields && (
+                    <div className="space-y-8 animate-slide-up pb-10">
+                      {/* Dados Pessoais */}
+                      <div className="space-y-4">
+                        <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-100 pb-2 flex items-center gap-2"><UserIcon className="w-3 h-3" /> 1. Dados do Proponente</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className={labelClass}>Nome Completo</label>
+                            <input type="text" value={content.diariaFields.nome} onChange={e => handleDiariaFieldUpdate('nome', e.target.value)} className={inputClass} />
                           </div>
-                        )}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className={labelClass}>Cargo</label>
+                              <input type="text" value={content.diariaFields.cargo} onChange={e => handleDiariaFieldUpdate('cargo', e.target.value)} className={inputClass} />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Setor</label>
+                              <input type="text" value={content.diariaFields.setor} onChange={e => handleDiariaFieldUpdate('setor', e.target.value)} className={inputClass} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dados Viagem */}
+                      <div className="space-y-4">
+                        <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-100 pb-2 flex items-center gap-2"><Map className="w-3 h-3" /> 2. Detalhes da Viagem</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className={labelClass}>Cidade de Destino / Órgão</label>
+                            <input type="text" value={content.diariaFields.destino} onChange={e => handleDiariaFieldUpdate('destino', e.target.value)} className={inputClass} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className={labelClass}>Data Saída</label>
+                              <input type="date" value={content.diariaFields.dataSaida} onChange={e => handleDiariaFieldUpdate('dataSaida', e.target.value)} className={inputClass} />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Hora Saída</label>
+                              <input type="time" value={content.diariaFields.horaSaida} onChange={e => handleDiariaFieldUpdate('horaSaida', e.target.value)} className={inputClass} />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Data Retorno</label>
+                              <input type="date" value={content.diariaFields.dataRetorno} onChange={e => handleDiariaFieldUpdate('dataRetorno', e.target.value)} className={inputClass} />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Hora Retorno</label>
+                              <input type="time" value={content.diariaFields.horaRetorno} onChange={e => handleDiariaFieldUpdate('horaRetorno', e.target.value)} className={inputClass} />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className={labelClass}>Hospedagem (Noites)</label>
+                              <input type="number" min="0" value={content.diariaFields.hospedagem} onChange={e => handleDiariaFieldUpdate('hospedagem', parseInt(e.target.value) || 0)} className={inputClass} />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Distância (KM)</label>
+                              <input type="number" min="0" value={content.diariaFields.distancia} onChange={e => handleDiariaFieldUpdate('distancia', parseInt(e.target.value) || 0)} className={inputClass} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Motivo e Financeiro */}
+                      <div className="space-y-4">
+                        <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-100 pb-2 flex items-center gap-2"><DollarSign className="w-3 h-3" /> 3. Motivo e Financeiro</h3>
+                        <div>
+                          <label className={labelClass}>Descrição / Motivo da Viagem</label>
+                          <textarea rows={4} value={content.diariaFields.motivoViagem} onChange={e => handleDiariaFieldUpdate('motivoViagem', e.target.value)} className={`${inputClass} resize-none`} placeholder="Descreva o motivo detalhadamente..." />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className={labelClass}>Valor Requerido</label>
+                            <div className="relative">
+                              < DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input type="text" value={content.diariaFields.valorRequerido} onChange={e => handleDiariaFieldUpdate('valorRequerido', formatCurrency(e.target.value))} className={`${inputClass} pl-10`} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className={labelClass}>Autorização Por</label>
+                            <input type="text" value={content.diariaFields.autorizacaoPor} onChange={e => handleDiariaFieldUpdate('autorizacaoPor', e.target.value)} className={inputClass} placeholder="Nome do Gestor" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Seleção de Assinatura */}
+                      <div className="pt-6 border-t border-slate-200">
+                        <label className={labelClass}>Responsável pela Assinatura</label>
+                        <div className="grid gap-2 mt-3">
+                          {allowedSignatures.map(sig => (
+                            <button 
+                              key={sig.id} 
+                              onClick={() => onUpdate({...state, content: {...content, signatureName: sig.name, signatureRole: sig.role, signatureSector: sig.sector}})}
+                              className={`p-4 rounded-xl border text-left flex items-center gap-3 transition-all ${content.signatureName === sig.name ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/10' : 'bg-white border-slate-200'}`}
+                            >
+                              <div className={`p-2 rounded-lg ${content.signatureName === sig.name ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}><PenTool className="w-4 h-4" /></div>
+                              <div><p className="text-xs font-bold">{sig.name}</p><p className="text-[10px] uppercase font-medium opacity-60">{sig.role}</p></div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                 )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200">
+                    <label className={labelClass}>Título do Documento</label>
+                    <input 
+                      value={content.title} 
+                      onChange={(e) => handleUpdate('content', 'title', e.target.value)} 
+                      className={inputClass} 
+                      placeholder="Ex: Ofício nº 001/2024" 
+                    />
+                  </div>
+                  {/* Outros campos de Ofício padrão... */}
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div ref={editorRef} contentEditable onInput={e => handleUpdate('content', 'body', (e.target as HTMLDivElement).innerHTML)} className="p-6 min-h-[400px] outline-none text-sm leading-relaxed" />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {mode === 'admin' && activeTab && onSaveDefault && currentUser.role === 'admin' && (
-           <div className="p-6 border-t border-gray-200 bg-white z-20">
-              <button onClick={handleSaveDefaultWithAnimation} disabled={globalSaveStatus === 'loading' || globalSaveStatus === 'success'} className={`w-full font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${globalSaveStatus === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-slate-900 text-white'}`}>
-                {globalSaveStatus === 'loading' ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Salvando...</span></> : globalSaveStatus === 'success' ? <><Check className="w-4 h-4 animate-bounce" /><span>Configurações Salvas!</span></> : <><Save className="w-4 h-4" /><span>Salvar Padrão Global</span></>}
-              </button>
-           </div>
-        )}
-
-        {mode !== 'admin' && activeTab === 'content' && (
-           <div className="p-6 border-t border-gray-200 bg-white/80 backdrop-blur-xl sticky bottom-0 z-20">
-              <button onClick={handleFinishWithAnimation} disabled={finishStatus === 'loading' || finishStatus === 'success'} className={`w-full font-bold py-3.5 px-6 rounded-xl shadow-xl transform transition-all duration-300 flex items-center justify-center gap-3 ${finishStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
-                  {finishStatus === 'loading' ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Processando...</span></> : finishStatus === 'success' ? <><Check className="w-4 h-4" /><span>Concluído!</span></> : <><Check className="w-4 h-4" /><span>Finalizar Edição</span></>}
-              </button>
-           </div>
+        {activeTab === 'content' && (
+          <div className="p-6 border-t border-slate-100 bg-white">
+            <button 
+              onClick={handleFinishWithAnimation} 
+              disabled={finishStatus === 'loading'}
+              className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${finishStatus === 'success' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-indigo-600 shadow-xl'}`}
+            >
+              {finishStatus === 'loading' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              {finishStatus === 'loading' ? 'Salvando...' : finishStatus === 'success' ? 'Salvo!' : 'Finalizar e Salvar'}
+            </button>
+          </div>
         )}
       </div>
     </>
