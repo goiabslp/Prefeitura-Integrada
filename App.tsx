@@ -16,6 +16,7 @@ import * as db from './services/dbService';
 declare var html2pdf: any;
 
 const STORAGE_KEY = 'branddoc_settings_v2';
+const COUNTER_KEY = 'branddoc_oficio_counter_global';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   
   const [globalDefaults, setGlobalDefaults] = useState<AppState>(INITIAL_STATE);
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
+  const [oficioCounter, setOficioCounter] = useState<number>(0);
   
   const [currentView, setCurrentView] = useState<'home' | 'editor' | 'tracking' | 'admin'>('home');
   const [adminTab, setAdminTab] = useState<string | null>(null);
@@ -35,7 +37,7 @@ const App: React.FC = () => {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // Carregar Configurações e Ordens
+  // Carregar Configurações, Ordens e Contador
   useEffect(() => {
     const loadData = async () => {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
@@ -47,6 +49,12 @@ const App: React.FC = () => {
         } catch (e) {
           console.error("Erro ao carregar configurações salvas:", e);
         }
+      }
+
+      // Carregar Contador Global do LocalStorage
+      const savedCounter = localStorage.getItem(COUNTER_KEY);
+      if (savedCounter) {
+        setOficioCounter(parseInt(savedCounter, 10));
       }
 
       try {
@@ -91,9 +99,13 @@ const App: React.FC = () => {
         }
     }
 
+    // Incremento do Contador Sequencial Global Persistente
+    const nextNumber = oficioCounter + 1;
+    setOficioCounter(nextNumber);
+    localStorage.setItem(COUNTER_KEY, nextNumber.toString());
+
     const currentYear = new Date().getFullYear();
-    const count = orders.filter(o => o.createdAt.includes(currentYear.toString())).length + 1;
-    const protocolNumber = count.toString().padStart(3, '0');
+    const protocolNumber = nextNumber.toString().padStart(3, '0');
     const protocolStr = `${protocolNumber}/${currentYear}`;
 
     setAppState({
@@ -144,15 +156,13 @@ const App: React.FC = () => {
       orderToSave = {
         ...currentOrder,
         title: appState.content.title || 'Documento sem título',
-        createdAt: new Date().toISOString(), // Atualiza a data de modificação/finalização
+        createdAt: new Date().toISOString(),
         documentSnapshot: JSON.parse(JSON.stringify(appState))
       };
     } else {
-      // Criar novo ofício
-      const currentYear = new Date().getFullYear();
-      const count = orders.filter(o => o.createdAt.includes(currentYear.toString())).length + 1;
-      const protocolNumber = count.toString().padStart(3, '0');
-      const protocolStr = `${protocolNumber}/${currentYear}`;
+      // Extrair protocolo do texto do bloco esquerdo
+      const protocolMatch = appState.content.leftBlockText.match(/Ofício nº (\d+\/\d+)/);
+      const protocolStr = protocolMatch ? protocolMatch[1] : `${oficioCounter.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
 
       orderToSave = {
         id: Date.now().toString(),
@@ -171,13 +181,12 @@ const App: React.FC = () => {
       const updatedOrders = await db.getAllOrders();
       setOrders(updatedOrders);
       
-      // Ocultar sidebar e marcar como finalizado para exibição limpa
       setIsSidebarOpen(false);
       setIsFinalized(true);
       setCurrentOrder(orderToSave);
     } catch (error) {
       console.error("Erro ao salvar ordem:", error);
-      alert("Erro ao salvar no banco de dados local. Tente limpar o histórico se o problema persistir.");
+      alert("Erro ao salvar no banco de dados local.");
     }
   };
 
@@ -195,19 +204,7 @@ const App: React.FC = () => {
       setGlobalDefaults(appState);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
     } catch (e) {
-      console.error("Erro de Quota localStorage:", e);
-      alert("Limite de armazenamento do navegador atingido. O sistema tentará otimizar os dados.");
-      
-      const leanState = JSON.parse(JSON.stringify(appState));
-      if (leanState.branding) leanState.branding.logoUrl = null;
-      if (leanState.ui) leanState.ui.loginLogoUrl = null;
-      if (leanState.ui) leanState.ui.headerLogoUrl = null;
-      
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(leanState));
-      } catch (innerError) {
-        localStorage.clear();
-      }
+      console.error("Erro localStorage:", e);
     }
   };
 
@@ -233,13 +230,12 @@ const App: React.FC = () => {
 
   const handleDownloadPdf = async (customSnapshot?: AppState) => {
     if (typeof html2pdf === 'undefined') {
-      alert("A ferramenta de geração de PDF está carregando. Tente novamente.");
+      alert("Carregando ferramenta de PDF...");
       return;
     }
 
     const originalState = JSON.parse(JSON.stringify(appState));
     const stateToUse = customSnapshot || appState;
-
     setIsDownloading(true);
 
     if (customSnapshot) {
@@ -251,7 +247,6 @@ const App: React.FC = () => {
     const scaler = document.getElementById('preview-scaler');
 
     if (!element || !scaler) {
-      console.error("Preview container not found in DOM");
       setIsDownloading(false);
       return;
     }
@@ -278,15 +273,13 @@ const App: React.FC = () => {
       console.error("Erro PDF", error);
     } finally {
       scaler.style.transform = originalTransform; 
-      if (customSnapshot) {
-        setAppState(originalState);
-      }
+      if (customSnapshot) setAppState(originalState);
       setIsDownloading(false);
     }
   };
 
   const handleClearHistory = async () => {
-    if (window.confirm("Tem certeza que deseja apagar TODO o histórico? Esta ação não pode ser desfeita.")) {
+    if (window.confirm("Deseja realmente apagar o histórico visível?")) {
       await db.clearAllOrders();
       setOrders([]);
     }
@@ -295,7 +288,7 @@ const App: React.FC = () => {
   const getHeaderTitle = () => {
     if (isFinalized) return "Visualização Final";
     if (currentView === 'editor') return "Editor de Documento";
-    if (currentView === 'tracking') return "Central de Pedidos";
+    if (currentView === 'tracking') return "Histórico de Ofícios";
     if (currentView === 'admin') {
       switch (adminTab) {
         case 'users': return "Gestão de Usuários";
@@ -319,13 +312,8 @@ const App: React.FC = () => {
       {isDownloading && (
         <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 max-w-xs text-center border border-slate-200">
-            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Gerando PDF</h3>
-              <p className="text-sm text-slate-500 mt-1">Isso pode levar alguns segundos. Por favor, aguarde.</p>
-            </div>
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            <h3 className="text-lg font-bold text-slate-900">Gerando PDF</h3>
           </div>
         </div>
       )}
@@ -335,16 +323,16 @@ const App: React.FC = () => {
            <button 
              onClick={() => !isFinalized && setIsSidebarOpen(true)}
              disabled={isFinalized}
-             className={`p-2.5 -ml-2 rounded-xl transition-all shrink-0 ${isFinalized ? 'text-slate-300 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600'}`}
+             className={`p-2.5 -ml-2 rounded-xl transition-all ${isFinalized ? 'text-slate-300' : 'hover:bg-slate-100 text-slate-700 hover:text-indigo-600'}`}
            >
              <Menu className="w-6 h-6" />
            </button>
-           <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block shrink-0"></div>
-           <div className="flex items-center gap-3 truncate">
-             <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/20 shrink-0">
+           <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/20">
                 <FileText className="w-4 h-4 text-white" />
              </div>
-             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg transition-all duration-300 truncate">
+             <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg truncate">
                 {getHeaderTitle()}
              </span>
            </div>
@@ -356,11 +344,9 @@ const App: React.FC = () => {
             setIsFinalized(false);
             setCurrentOrder(null);
           }}
-          className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-lg rounded-xl transition-all duration-300 font-bold text-sm shrink-0"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm"
         >
-          <div className="w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-white flex items-center justify-center transition-all group-hover:rotate-12">
-            <LayoutDashboard className="w-4 h-4" />
-          </div>
+          <LayoutDashboard className="w-4 h-4" />
           <span className="hidden sm:inline">Dashboard</span>
         </button>
       </nav>
@@ -399,6 +385,11 @@ const App: React.FC = () => {
                 userJobTitle={currentUser.jobTitle}
                 uiConfig={globalDefaults.ui}
                 permissions={currentUser.permissions || []}
+                stats={{
+                  totalGenerated: oficioCounter,
+                  historyCount: orders.length,
+                  activeUsers: users.length
+                }}
               />
            )}
 
@@ -410,112 +401,66 @@ const App: React.FC = () => {
                 onDownloadPdf={handleDownloadPdf} 
                 onClearAll={handleClearHistory}
                 onEditOrder={handleEditOrder}
+                totalCounter={oficioCounter}
               />
            )}
 
            {(currentView === 'editor' || currentView === 'admin' || isDownloading) && (
-              <div 
-                className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${
-                   isSidebarOpen ? 'md:pl-[600px] lg:pl-[640px]' : ''
-                } ${isDownloading && currentView === 'tracking' ? 'invisible pointer-events-none fixed top-0 left-0 z-[-1]' : ''}`}
-              >
+              <div className={`w-full h-full overflow-auto bg-slate-200/50 backdrop-blur-sm transition-all duration-300 ${isSidebarOpen ? 'md:pl-[600px] lg:pl-[640px]' : ''}`}>
                 {isAdminMode && adminTab === 'users' ? (
-                   <UserManagementScreen 
-                     users={users}
-                     onAddUser={handleAddUser}
-                     onUpdateUser={handleUpdateUser}
-                     onDeleteUser={handleDeleteUser}
-                     availableSignatures={signatures}
-                   />
+                   <UserManagementScreen users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} availableSignatures={signatures} />
                 ) : isAdminMode && adminTab === 'signatures' ? (
-                   <SignatureManagementScreen
-                      signatures={signatures}
-                      onAddSignature={handleAddSignature}
-                      onUpdateSignature={handleUpdateSignature}
-                      onDeleteSignature={handleDeleteSignature}
-                   />
+                   <SignatureManagementScreen signatures={signatures} onAddSignature={handleAddSignature} onUpdateSignature={handleUpdateSignature} onDeleteSignature={handleDeleteSignature} />
                 ) : isAdminMode && adminTab === 'ui' ? (
                    <UIPreviewScreen ui={appState.ui} />
                 ) : (
                   <>
-                    <DocumentPreview 
-                      ref={componentRef} 
-                      state={appState} 
-                      isGenerating={isDownloading}
-                      mode={isAdminMode ? 'admin' : 'editor'}
-                    />
-                    
+                    <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} mode={isAdminMode ? 'admin' : 'editor'} />
                     {showFloatingControls && (
-                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 print:hidden animate-fade-in">
-                        <button
-                          onClick={() => handleDownloadPdf()}
-                          disabled={isDownloading}
-                          className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-lg transition-all flex items-center justify-center group relative"
-                          title="Exportar PDF"
+                      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-5 animate-fade-in">
+                        <button 
+                          onClick={() => handleDownloadPdf()} 
+                          className="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
+                          title="Baixar PDF"
                         >
-                           <FileDown className="w-6 h-6" />
-                           <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Baixar PDF</span>
+                          <FileDown className="w-6 h-6" />
+                          <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Baixar PDF</span>
                         </button>
                         
                         {!isFinalized && (
-                          <>
-                            <button
-                              onClick={handleSaveDraft}
-                              disabled={saveStatus === 'loading' || saveStatus === 'success'}
-                              className={`w-14 h-14 rounded-2xl shadow-lg transition-all flex items-center justify-center bg-white group relative ${
-                                saveStatus === 'success' ? 'text-emerald-500' : 'text-slate-600 hover:text-emerald-600'
-                              }`}
-                              title="Salvar Rascunho"
-                            >
-                              {saveStatus === 'success' ? <Check className="w-6 h-6" /> : <Save className="w-6 h-6" />}
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Salvar Rascunho</span>
-                            </button>
-
-                            <button
-                              onClick={() => setIsSidebarOpen(true)}
-                              className="w-14 h-14 bg-white text-slate-600 hover:text-indigo-600 rounded-2xl shadow-lg flex items-center justify-center group relative"
-                              title="Abrir Editor"
-                            >
-                              <Edit3 className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar Campos</span>
-                            </button>
-                          </>
+                          <button 
+                            onClick={() => setIsSidebarOpen(true)} 
+                            className="w-14 h-14 bg-white text-slate-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
+                            title="Editar"
+                          >
+                            <Edit3 className="w-6 h-6" />
+                            <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar</span>
+                          </button>
                         )}
-
+                        
                         {isFinalized && (
                           <>
-                            <button
+                            <button 
                               onClick={() => {
                                 setIsFinalized(false);
                                 setIsSidebarOpen(true);
-                              }}
-                              className="w-14 h-14 bg-white text-amber-600 hover:bg-amber-50 rounded-2xl shadow-lg flex items-center justify-center group relative"
-                              title="Reabrir Edição"
+                              }} 
+                              className="w-14 h-14 bg-white text-amber-600 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative border border-amber-100"
+                              title="Editar Documento"
                             >
                               <Edit3 className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Continuar Editando</span>
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Editar Documento</span>
                             </button>
-                            
-                            <button
-                              onClick={handleStartNewOrder}
-                              className="w-14 h-14 bg-white text-emerald-600 hover:bg-emerald-50 rounded-2xl shadow-lg flex items-center justify-center group relative"
-                              title="Novo Ofício"
-                            >
-                              <PlusCircle className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Criar Outro</span>
-                            </button>
-
-                            <button
+                            <button 
                               onClick={() => {
-                                setCurrentView('home');
+                                setCurrentView('home'); 
                                 setIsFinalized(false);
-                                setCurrentOrder(null);
-                              }}
-                              className="w-14 h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center group relative"
+                              }} 
+                              className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 group relative"
                               title="Voltar ao Início"
                             >
                               <ArrowLeft className="w-6 h-6" />
-                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Finalizar e Sair</span>
+                              <span className="absolute left-16 bg-slate-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Sair e Finalizar</span>
                             </button>
                           </>
                         )}
