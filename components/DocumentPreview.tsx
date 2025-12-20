@@ -24,23 +24,29 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
     if (isDiaria) {
       const result: { type: 'diaria-fom' | 'extra-flow' | 'evidences'; content: any }[] = [{ type: 'diaria-fom', content: '' }];
       
-      // Bloco 05: Anexo de Texto
+      // Bloco 05: Anexo de Texto (Informações Adicionais)
+      // Ajustado para quebrar ~5 linhas antes do rodapé
       if (content.showExtraField && content.extraFieldText) {
         const text = content.extraFieldText;
-        const MAX_CHARS_PER_PAGE = 2500; 
-        const paragraphs = text.split('\n');
         
+        // Estimativa para 10.5pt com leading-relaxed (aprox 32 linhas úteis para deixar margem de 5)
+        const MAX_LINES_EXTRA = 30; 
+        const CHARS_PER_LINE = 85; 
+        
+        const paragraphs = text.split('\n');
         let currentPageText = '';
-        let currentChars = 0;
+        let currentLinesUsed = 0;
 
         paragraphs.forEach((p) => {
-          if ((currentChars + p.length) > MAX_CHARS_PER_PAGE && currentPageText) {
+          const linesInP = Math.max(1, Math.ceil(p.length / CHARS_PER_LINE));
+          
+          if ((currentLinesUsed + linesInP) > MAX_LINES_EXTRA && currentPageText) {
             result.push({ type: 'extra-flow', content: currentPageText });
             currentPageText = p + '\n';
-            currentChars = p.length;
+            currentLinesUsed = linesInP;
           } else {
             currentPageText += p + '\n';
-            currentChars += p.length;
+            currentLinesUsed += linesInP;
           }
         });
 
