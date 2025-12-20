@@ -295,6 +295,9 @@ const App: React.FC = () => {
                 onTabChange={setAdminTab}
                 availableSignatures={signatures}
                 activeBlock={activeBlock}
+                persons={persons}
+                sectors={sectors}
+                jobs={jobs}
               />
             )}
             

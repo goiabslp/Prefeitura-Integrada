@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { 
   X, ArrowLeft, Loader2, Check, Save 
 } from 'lucide-react';
-import { AppState, User, Signature, BlockType } from '../types';
+import { AppState, User, Signature, BlockType, Person, Sector, Job } from '../types';
 import { AdminMenu } from './forms/AdminMenu';
 import { DesignForm } from './forms/DesignForm';
 import { UIForm } from './forms/UIForm';
@@ -27,6 +27,9 @@ interface AdminSidebarProps {
   onTabChange: (tab: any) => void;
   availableSignatures: Signature[];
   activeBlock: BlockType | null;
+  persons: Person[];
+  sectors: Sector[];
+  jobs: Job[];
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -43,7 +46,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   activeTab,
   onTabChange,
   availableSignatures,
-  activeBlock
+  activeBlock,
+  persons,
+  sectors,
+  jobs
 }) => {
   const [globalSaveStatus, setGlobalSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [finishStatus, setFinishStatus] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -129,6 +135,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   <DiariaForm 
                     state={state} content={content} 
                     allowedSignatures={allowedSignatures} handleUpdate={handleUpdate} onUpdate={onUpdate} 
+                    persons={persons} sectors={sectors} jobs={jobs}
                   />
               );
           case 'compras':

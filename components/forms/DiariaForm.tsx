@@ -1,12 +1,13 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
   User, Briefcase, MapPin, Calendar, Clock, Bed, ShieldCheck, Route, 
   DollarSign, MessageSquare, CreditCard, Eye, EyeOff, PlusCircle, Columns,
-  Plus, Trash2, Camera, Image as ImageIcon
+  Plus, Trash2, Camera, Image as ImageIcon, Search, ChevronDown, Loader2, X, Check,
+  UserCheck
 } from 'lucide-react';
-import { AppState, ContentData, Signature, EvidenceItem } from '../../types';
+import { AppState, ContentData, Signature, EvidenceItem, Person, Sector, Job } from '../../types';
 
 interface DiariaFormProps {
   state: AppState;
@@ -14,6 +15,20 @@ interface DiariaFormProps {
   allowedSignatures: Signature[];
   handleUpdate: (section: keyof AppState, key: string, value: any) => void;
   onUpdate: (newState: AppState) => void;
+  persons: Person[];
+  sectors: Sector[];
+  jobs: Job[];
+}
+
+interface IBGECity {
+  nome: string;
+  microrregiao?: {
+    mesorregiao?: {
+      UF?: {
+        sigla?: string;
+      }
+    }
+  }
 }
 
 export const DiariaForm: React.FC<DiariaFormProps> = ({ 
@@ -21,8 +36,88 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   content, 
   allowedSignatures, 
   handleUpdate,
-  onUpdate
+  onUpdate,
+  persons,
+  sectors,
+  jobs
 }) => {
+  const [cities, setCities] = useState<string[]>([]);
+  const [isCityLoading, setIsCityLoading] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  
+  const [isAuthorizerOpen, setIsAuthorizerOpen] = useState(false);
+  const [authorizerSearch, setAuthorizerSearch] = useState('');
+
+  const [isRequesterOpen, setIsRequesterOpen] = useState(false);
+  const [requesterSearch, setRequesterSearch] = useState('');
+
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+  const authorizerDropdownRef = useRef<HTMLDivElement>(null);
+  const requesterDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Carregar cidades do IBGE
+  useEffect(() => {
+    const fetchCities = async () => {
+      setIsCityLoading(true);
+      try {
+        const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome');
+        if (!response.ok) throw new Error("Erro na resposta da API");
+        
+        const data: IBGECity[] = await response.json();
+        
+        const formattedCities = data
+          .map(city => {
+            const uf = city.microrregiao?.mesorregiao?.UF?.sigla;
+            if (city.nome && uf) {
+              return `${city.nome} - ${uf}`;
+            }
+            return null;
+          })
+          .filter((city): city is string => city !== null);
+          
+        setCities(formattedCities);
+      } catch (error) {
+        console.error("Erro ao carregar cidades:", error);
+      } finally {
+        setIsCityLoading(false);
+      }
+    };
+    fetchCities();
+  }, []);
+
+  // Fechar dropdowns ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityOpen(false);
+      }
+      if (authorizerDropdownRef.current && !authorizerDropdownRef.current.contains(event.target as Node)) {
+        setIsAuthorizerOpen(false);
+      }
+      if (requesterDropdownRef.current && !requesterDropdownRef.current.contains(event.target as Node)) {
+        setIsRequesterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCities = useMemo(() => {
+    if (!citySearch) return cities;
+    const term = citySearch.toLowerCase();
+    return cities.filter(city => city.toLowerCase().includes(term));
+  }, [cities, citySearch]);
+
+  const filteredAuthors = useMemo(() => {
+    const term = authorizerSearch.toLowerCase();
+    return persons.filter(p => p.name.toLowerCase().includes(term));
+  }, [persons, authorizerSearch]);
+
+  const filteredRequesters = useMemo(() => {
+    const term = requesterSearch.toLowerCase();
+    return persons.filter(p => p.name.toLowerCase().includes(term));
+  }, [persons, requesterSearch]);
   
   const calculatePaymentForecast = () => {
     const now = new Date();
@@ -47,7 +142,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
         handleUpdate('content', 'showDiariaSignatures', true);
       }
       if (content.showExtraField === undefined) {
-        handleUpdate('content', 'showExtraField', false);
+        handleUpdate('content', 'showExtraField', true);
       }
       if (content.evidenceItems === undefined) {
         handleUpdate('content', 'evidenceItems', []);
@@ -79,15 +174,46 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             title: newTitle,
             paymentForecast: calculatePaymentForecast(),
             showDiariaSignatures: true,
-            showExtraField: false,
+            showExtraField: true,
             evidenceItems: [],
             body: '' 
         },
         document: {
           ...state.document,
-          showSignature: false 
+          showSignature: false,
+          showLeftBlock: true
         }
     });
+  };
+
+  const handlePersonSelect = (personId: string) => {
+    const person = persons.find(p => p.id === personId);
+    if (person) {
+      const job = jobs.find(j => j.id === person.jobId)?.name || '';
+      const sector = sectors.find(s => s.id === person.sectorId)?.name || '';
+      
+      onUpdate({
+        ...state,
+        content: {
+          ...state.content,
+          requesterName: person.name,
+          requesterRole: job,
+          requesterSector: sector
+        }
+      });
+    } else {
+      onUpdate({
+        ...state,
+        content: {
+          ...state.content,
+          requesterName: '',
+          requesterRole: '',
+          requesterSector: ''
+        }
+      });
+    }
+    setIsRequesterOpen(false);
+    setRequesterSearch('');
   };
 
   const addEvidence = () => {
@@ -122,6 +248,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   const inputGroupClass = "bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4";
   const labelClass = "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5";
   const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all";
+  const selectClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all appearance-none cursor-pointer";
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
@@ -202,29 +329,81 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
               </h3>
               <div className={inputGroupClass}>
                 <div className="grid grid-cols-1 gap-4">
-                   <div>
-                      <label className={labelClass}><User className="w-3 h-3" /> Nome Completo</label>
-                      <input 
-                        type="text" value={content.requesterName || ''} 
-                        onChange={(e) => handleUpdate('content', 'requesterName', e.target.value)} 
-                        className={inputClass} placeholder="Digite o nome do servidor" 
-                      />
+                   <div className="relative" ref={requesterDropdownRef}>
+                      <label className={labelClass}><User className="w-3 h-3" /> Nome Completo (Beneficiário)</label>
+                      <div 
+                        onClick={() => setIsRequesterOpen(!isRequesterOpen)}
+                        className={`${inputClass} flex items-center justify-between cursor-pointer ${isRequesterOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
+                      >
+                        <span className={content.requesterName ? 'text-slate-900' : 'text-slate-400'}>
+                          {content.requesterName || 'Selecione o Beneficiário...'}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isRequesterOpen ? 'rotate-180' : ''}`} />
+                      </div>
+
+                      {isRequesterOpen && (
+                        <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+                          <div className="p-3 border-b border-slate-100 bg-slate-50">
+                            <div className="relative">
+                              <input 
+                                type="text"
+                                value={requesterSearch}
+                                onChange={(e) => setRequesterSearch(e.target.value)}
+                                placeholder="Pesquisar pessoa..."
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all"
+                              />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            </div>
+                          </div>
+                          <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                            {filteredRequesters.length > 0 ? (
+                              filteredRequesters.map((person, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePersonSelect(person.id);
+                                  }}
+                                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-indigo-50 text-left text-sm font-medium text-slate-700 transition-colors group"
+                                >
+                                  <div className="flex flex-col">
+                                     <span className="group-hover:text-indigo-700">{person.name}</span>
+                                     <span className="text-[10px] text-slate-400 font-normal">
+                                       {jobs.find(j => j.id === person.jobId)?.name || 'N/A'} • {sectors.find(s => s.id === person.sectorId)?.name || 'N/A'}
+                                     </span>
+                                  </div>
+                                  {content.requesterName === person.name && <Check className="w-4 h-4 text-indigo-600" />}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="p-8 text-center">
+                                <User className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                <p className="text-xs text-slate-400 font-medium">Nenhuma pessoa encontrada.</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                    </div>
                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className={labelClass}><Briefcase className="w-3 h-3" /> Cargo</label>
                         <input 
                           type="text" value={content.requesterRole || ''} 
-                          onChange={(e) => handleUpdate('content', 'requesterRole', e.target.value)} 
-                          className={inputClass} placeholder="Ex: Analista" 
+                          readOnly
+                          className={`${inputClass} bg-slate-100/50 cursor-not-allowed text-slate-500`} 
+                          placeholder="Cargo automático" 
                         />
                       </div>
                       <div>
                         <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Setor</label>
                         <input 
                           type="text" value={content.requesterSector || ''} 
-                          onChange={(e) => handleUpdate('content', 'requesterSector', e.target.value)} 
-                          className={inputClass} placeholder="Ex: Financeiro" 
+                          readOnly
+                          className={`${inputClass} bg-slate-100/50 cursor-not-allowed text-slate-500`} 
+                          placeholder="Setor automático" 
                         />
                       </div>
                    </div>
@@ -237,13 +416,72 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                 <MapPin className="w-4 h-4 text-indigo-600" /> 02. Logística e Período
               </h3>
               <div className={inputGroupClass}>
-                 <div>
-                    <label className={labelClass}><MapPin className="w-3 h-3" /> Cidade / UF</label>
-                    <input 
-                      type="text" value={content.destination || ''} 
-                      onChange={(e) => handleUpdate('content', 'destination', e.target.value)} 
-                      className={inputClass} placeholder="Ex: Belo Horizonte - MG" 
-                    />
+                 <div className="relative" ref={cityDropdownRef}>
+                    <label className={labelClass}><MapPin className="w-3 h-3" /> Cidade / UF (Destino)</label>
+                    <div 
+                      onClick={() => setIsCityOpen(!isCityOpen)}
+                      className={`${inputClass} flex items-center justify-between cursor-pointer ${isCityOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
+                    >
+                      <span className={content.destination ? 'text-slate-900' : 'text-slate-400'}>
+                        {content.destination || 'Selecione a cidade de destino...'}
+                      </span>
+                      {isCityLoading ? (
+                        <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+                      ) : (
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isCityOpen ? 'rotate-180' : ''}`} />
+                      )}
+                    </div>
+
+                    {isCityOpen && (
+                      <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+                        <div className="p-3 border-b border-slate-100 bg-slate-50">
+                          <div className="relative">
+                            <input 
+                              type="text"
+                              value={citySearch}
+                              onChange={(e) => setCitySearch(e.target.value)}
+                              placeholder="Pesquisar cidade..."
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all"
+                            />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            {citySearch && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setCitySearch(''); }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                          {filteredCities.length > 0 ? (
+                            filteredCities.map((city, idx) => (
+                              <button
+                                key={idx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdate('content', 'destination', city);
+                                  setIsCityOpen(false);
+                                  setCitySearch('');
+                                }}
+                                className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-indigo-50 text-left text-sm font-medium text-slate-700 transition-colors group"
+                              >
+                                <span className="group-hover:text-indigo-700">{city}</span>
+                                {content.destination === city && <Check className="w-4 h-4 text-indigo-600" />}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="p-8 text-center">
+                              <MapPin className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                              <p className="text-xs text-slate-400 font-medium">Nenhuma cidade encontrada.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -307,13 +545,65 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                       />
                     </div>
                  </div>
-                 <div>
-                    <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Autorizado Por</label>
-                    <input 
-                      type="text" value={content.authorizedBy || ''} 
-                      onChange={(e) => handleUpdate('content', 'authorizedBy', e.target.value)} 
-                      className={inputClass} placeholder="Nome do autorizador" 
-                    />
+                 
+                 {/* CAMPO AUTORIZADO POR - AGORA DINÂMICO */}
+                 <div className="relative" ref={authorizerDropdownRef}>
+                    <label className={labelClass}><UserCheck className="w-3 h-3" /> Autorizado Por</label>
+                    <div 
+                      onClick={() => setIsAuthorizerOpen(!isAuthorizerOpen)}
+                      className={`${inputClass} flex items-center justify-between cursor-pointer ${isAuthorizerOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
+                    >
+                      <span className={content.authorizedBy ? 'text-slate-900' : 'text-slate-400'}>
+                        {content.authorizedBy || 'Selecione o autorizador...'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isAuthorizerOpen ? 'rotate-180' : ''}`} />
+                    </div>
+
+                    {isAuthorizerOpen && (
+                      <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+                        <div className="p-3 border-b border-slate-100 bg-slate-50">
+                          <div className="relative">
+                            <input 
+                              type="text"
+                              value={authorizerSearch}
+                              onChange={(e) => setAuthorizerSearch(e.target.value)}
+                              placeholder="Pesquisar pessoa..."
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all"
+                            />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          </div>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                          {filteredAuthors.length > 0 ? (
+                            filteredAuthors.map((person, idx) => (
+                              <button
+                                key={idx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdate('content', 'authorizedBy', person.name);
+                                  setIsAuthorizerOpen(false);
+                                  setAuthorizerSearch('');
+                                }}
+                                className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-indigo-50 text-left text-sm font-medium text-slate-700 transition-colors group"
+                              >
+                                <div className="flex flex-col">
+                                   <span className="group-hover:text-indigo-700">{person.name}</span>
+                                   <span className="text-[10px] text-slate-400 font-normal">{jobs.find(j => j.id === person.jobId)?.name || 'N/A'}</span>
+                                </div>
+                                {content.authorizedBy === person.name && <Check className="w-4 h-4 text-indigo-600" />}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="p-8 text-center">
+                              <User className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                              <p className="text-xs text-slate-400 font-medium">Pessoa não cadastrada.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                  </div>
               </div>
             </div>
@@ -370,7 +660,6 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
               )}
             </div>
 
-            {/* BLOCO 06: EVIDÊNCIAS */}
             <div className="space-y-4">
                <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
