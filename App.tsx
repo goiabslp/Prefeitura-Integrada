@@ -151,14 +151,11 @@ const App: React.FC = () => {
         }
     }
 
-    const nextNumber = oficioCounter + 1;
-    setOficioCounter(nextNumber);
-    localStorage.setItem(COUNTER_KEY, nextNumber.toString());
-
+    // Calcula o próximo número apenas para exibição no preview inicial, sem incrementar o estado global ainda
+    const previewNumber = oficioCounter + 1;
     const currentYear = new Date().getFullYear();
-    const protocolNumber = nextNumber.toString().padStart(3, '0');
+    const protocolNumber = previewNumber.toString().padStart(3, '0');
     
-    // Prefixo baseado no bloco (opcional, mantendo padrão solicitado)
     const blockPrefix = activeBlock.toUpperCase();
     const protocolStr = `${blockPrefix}-${protocolNumber}/${currentYear}`;
 
@@ -220,8 +217,16 @@ const App: React.FC = () => {
         documentSnapshot: JSON.parse(JSON.stringify(appState))
       };
     } else {
+      // É um novo documento: Incrementar o contador global agora
+      const nextNumber = oficioCounter + 1;
+      setOficioCounter(nextNumber);
+      localStorage.setItem(COUNTER_KEY, nextNumber.toString());
+
+      // Tenta extrair o protocolo que foi gerado no handleStartNewOrder
       const protocolMatch = appState.content.leftBlockText.match(/nº ([A-Z0-9-/]+)/);
-      const protocolStr = protocolMatch ? protocolMatch[1] : `${oficioCounter.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
+      const protocolStr = protocolMatch 
+        ? protocolMatch[1] 
+        : `${activeBlock.toUpperCase()}-${nextNumber.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
 
       orderToSave = {
         id: Date.now().toString(),
@@ -280,9 +285,6 @@ const App: React.FC = () => {
       type: 'danger',
       onConfirm: async () => {
         try {
-          // Apenas limpa localmente filtrando o bloco ativo para o bulk delete (se o db suportasse)
-          // Como dbService.clearAllOrders limpa TUDO, aqui vamos remover apenas os do bloco ativo individualmente se necessário
-          // Por simplicidade na persistência local, vamos filtrar os que NÃO são do bloco ativo e salvar
           const otherOrders = orders.filter(o => o.blockType !== activeBlock);
           await db.clearAllOrders();
           for(const o of otherOrders) {
