@@ -1,22 +1,21 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
   User, Briefcase, MapPin, Calendar, Clock, Bed, ShieldCheck, Route, 
-  DollarSign, MessageSquare, CreditCard
+  DollarSign, MessageSquare, CreditCard, Eye, EyeOff, PlusCircle, Columns
 } from 'lucide-react';
-import { AppState, ContentData, DocumentConfig, Signature } from '../../types';
+import { AppState, ContentData, Signature } from '../../types';
 
-interface OficioFormProps {
+interface DiariaFormProps {
   state: AppState;
   content: ContentData;
-  docConfig: DocumentConfig;
   allowedSignatures: Signature[];
   handleUpdate: (section: keyof AppState, key: string, value: any) => void;
   onUpdate: (newState: AppState) => void;
 }
 
-export const DiariaForm: React.FC<OficioFormProps> = ({ 
+export const DiariaForm: React.FC<DiariaFormProps> = ({ 
   state, 
   content, 
   allowedSignatures, 
@@ -24,21 +23,17 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
   onUpdate
 }) => {
   
-  // Função para calcular previsão de pagamento (dia 10 do próximo mês)
   const calculatePaymentForecast = () => {
     const now = new Date();
     let year = now.getFullYear();
     let month = now.getMonth() + 2; 
-    
     if (month > 12) {
       month = 1;
       year++;
     }
-    
     return `10/${month.toString().padStart(2, '0')}/${year}`;
   };
 
-  // Atualiza a previsão e garante que showSignature do documento esteja desativado para Diárias
   useEffect(() => {
     if (content.subType) {
       if (!content.paymentForecast) {
@@ -47,8 +42,14 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
       if (state.document.showSignature) {
         handleUpdate('document', 'showSignature', false);
       }
+      if (content.showDiariaSignatures === undefined) {
+        handleUpdate('content', 'showDiariaSignatures', true);
+      }
+      if (content.showExtraField === undefined) {
+        handleUpdate('content', 'showExtraField', false);
+      }
     }
-  }, [content.subType, handleUpdate, state.document.showSignature]);
+  }, [content.subType, handleUpdate, state.document.showSignature, content.showDiariaSignatures, content.showExtraField]);
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -64,142 +65,6 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
     handleUpdate('content', 'requestedValue', formatted);
   };
 
-  // Efeito para sincronizar os campos estruturados + Assinaturas Triplas no "body"
-  useEffect(() => {
-    if (content.subType) {
-      // Usando medidas em PT/MM para maior precisão no motor de renderização do PDF
-      const htmlBody = `
-        <div style="display: flex; flex-direction: column; width: 100%; height: 232mm; font-family: inherit; line-height: 1.1; color: #1e293b; font-size: 9pt; box-sizing: border-box;">
-          
-          <div style="flex: 0 0 auto;">
-            <!-- CARD 01: Dados do Beneficiário -->
-            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
-              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
-                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">01. Dados do Beneficiário</span>
-              </div>
-              <div style="padding: 8px 10px;">
-                <div style="margin-bottom: 4px;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Nome do Servidor</span>
-                  <span style="color: #0f172a; font-weight: 700; font-size: 9.5pt;">${content.requesterName || '---'}</span>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                  <div style="flex: 1;">
-                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cargo</span>
-                    <span style="color: #334155; font-weight: 600;">${content.requesterRole || '---'}</span>
-                  </div>
-                  <div style="flex: 1;">
-                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Setor</span>
-                    <span style="color: #334155; font-weight: 600;">${content.requesterSector || '---'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CARD 02: Logística -->
-            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
-              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
-                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">02. Logística e Itinerário</span>
-              </div>
-              <div style="padding: 8px 10px;">
-                <div style="margin-bottom: 6px;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cidade / UF</span>
-                  <span style="color: #0f172a; font-weight: 700;">${content.destination || '---'}</span>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
-                  <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Saída</span>
-                    <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.departureDateTime ? new Date(content.departureDateTime).toLocaleString('pt-BR') : '---'}</span>
-                  </div>
-                  <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Retorno</span>
-                    <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.returnDateTime ? new Date(content.returnDateTime).toLocaleString('pt-BR') : '---'}</span>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 15px;">
-                  <div><span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Pernoites:</span> <span style="font-weight: 700; color: #1e293b;">${content.lodgingCount || 0}</span></div>
-                  <div><span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Distância:</span> <span style="font-weight: 700; color: #1e293b;">${content.distanceKm || 0} KM</span></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- CARD 03: Financeiro -->
-            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
-              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
-                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">03. Resumo Financeiro</span>
-              </div>
-              <div style="padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                <div style="flex: 1;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Valor Solicitado</span>
-                  <span style="font-size: 12pt; font-weight: 900; color: #4f46e5;">${content.requestedValue || 'R$ 0,00'}</span>
-                </div>
-                <div style="flex: 1; padding: 6px 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; text-align: center;">
-                  <span style="font-size: 6pt; font-weight: 900; color: #92400e; text-transform: uppercase; display: block;">Previsão Pgto</span>
-                  <span style="font-size: 10pt; font-weight: 900; color: #b45309;">${content.paymentForecast || '---'}</span>
-                </div>
-                <div style="flex: 1.5; text-align: right;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Autorizado Por</span>
-                  <span style="font-size: 8.5pt; font-weight: 700; color: #334155;">${content.authorizedBy || '---'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- CARD 04: Justificativa -->
-          <div style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="background: #0f172a; padding: 4px 10px; border-radius: 8px 8px 0 0;">
-                <span style="font-weight: 800; font-size: 7.5pt; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em;">04. Justificativa Resumida</span>
-            </div>
-            <div style="padding: 10px 14px; border: 1px solid #0f172a; border-top: none; border-radius: 0 0 8px 8px; flex: 1 1 auto; max-height: 75mm; min-height: 25mm; text-align: justify; background: #ffffff; font-size: 9.5pt; line-height: 1.4; overflow: hidden; box-sizing: border-box; color: #0f172a;">
-              ${content.descriptionReason || 'A justificativa será exibida aqui após o preenchimento.'}
-            </div>
-          </div>
-
-          <!-- BLOCO DE ASSINATURAS REORGANIZADO -->
-          <div style="flex: 0 0 auto; width: 100%; text-align: center; margin-top: auto;">
-             
-             <!-- 1. Assinatura do Requerente (Cascata Superior) -->
-             <div style="width: 260px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px; margin-top: 5.5em;">
-                <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 9pt; color: #0f172a;">${content.requesterName || 'NOME DO SERVIDOR SOLICITANTE'}</p>
-                <p style="margin: 1px 0 0 0; font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase;">Servidor Requerente</p>
-             </div>
-
-             <!-- 2. Assinaturas de Controle e Autorização (Cascata Inferior) -->
-             <table style="width: 100%; border-collapse: collapse; border: none; margin: 5.5em 0 0 0; padding: 0;">
-                <tr>
-                   <!-- Lado Esquerdo: Contabilidade -->
-                   <td style="width: 50%; vertical-align: top; text-align: center; padding: 0 10px;">
-                      <div style="width: 220px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px;">
-                         <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 8.5pt; color: #0f172a;">Visto Contabilidade</p>
-                         <p style="margin: 1px 0 0 0; font-size: 7pt; color: #64748b; font-weight: 700; text-transform: uppercase;">Tesouraria / Fazenda</p>
-                      </div>
-                   </td>
-
-                   <!-- Lado Direito: Responsável Autorizador -->
-                   <td style="width: 50%; vertical-align: top; text-align: center; padding: 0 10px;">
-                      <div style="width: 220px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px;">
-                         <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 8.5pt; color: #0f172a;">${content.signatureName || 'ORDENADOR DE DESPESA'}</p>
-                         <p style="margin: 1px 0 0 0; font-size: 7pt; color: #64748b; font-weight: 700; text-transform: uppercase; line-height: 1.2;">${content.signatureRole || 'Responsável'}</p>
-                      </div>
-                   </td>
-                </tr>
-             </table>
-          </div>
-        </div>
-      `;
-      
-      if (state.content.body !== htmlBody) {
-        handleUpdate('content', 'body', htmlBody);
-      }
-    }
-  }, [
-    content.requesterName, content.requesterRole, content.requesterSector,
-    content.destination, content.departureDateTime, content.returnDateTime,
-    content.lodgingCount, content.authorizedBy, content.distanceKm,
-    content.requestedValue, content.descriptionReason, content.subType, content.paymentForecast,
-    content.signatureName, content.signatureRole, content.signatureSector,
-    state.content.body, handleUpdate
-  ]);
-
   const handleDiariaSubTypeChange = (type: 'diaria' | 'custeio') => {
     const newTitle = type === 'diaria' ? 'Requisição de Diária' : 'Requisição de Custeio';
     onUpdate({
@@ -208,7 +73,10 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
             ...state.content,
             subType: type,
             title: newTitle,
-            paymentForecast: calculatePaymentForecast()
+            paymentForecast: calculatePaymentForecast(),
+            showDiariaSignatures: true,
+            showExtraField: false,
+            body: '' 
         },
         document: {
           ...state.document,
@@ -264,6 +132,36 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
 
        {content.subType ? (
          <>
+            {/* NOVO: Bloco de Protocolo / Endereçamento */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Columns className="w-4 h-4 text-indigo-600" /> Bloco de Endereçamento (Protocolo)
+                </h3>
+                <button 
+                  onClick={() => handleUpdate('document', 'showLeftBlock', !state.document.showLeftBlock)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                    state.document.showLeftBlock 
+                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
+                      : 'bg-slate-100 text-slate-400 border border-slate-200'
+                  }`}
+                >
+                  {state.document.showLeftBlock ? <><Eye className="w-3 h-3" /> Visível</> : <><EyeOff className="w-3 h-3" /> Oculto</>}
+                </button>
+              </div>
+              {state.document.showLeftBlock && (
+                <div className={inputGroupClass}>
+                  <label className={labelClass}><Hash className="w-3 h-3" /> Texto do Protocolo / Ofício</label>
+                  <textarea 
+                    value={content.leftBlockText || ''} 
+                    onChange={(e) => handleUpdate('content', 'leftBlockText', e.target.value)} 
+                    className={`${inputClass} min-h-[80px] font-mono text-xs`}
+                    placeholder="Ex: Protocolo nº DIARIAS-001/2024..."
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <User className="w-4 h-4 text-indigo-600" /> Dados do Requerente
@@ -372,7 +270,6 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                         type="text" value={content.paymentForecast || ''} 
                         readOnly
                         className={`${inputClass} bg-amber-50 border-amber-200 text-amber-700 cursor-not-allowed`}
-                        title="Calculado automaticamente para o dia 10 do próximo mês"
                       />
                     </div>
                  </div>
@@ -392,18 +289,62 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                 <MessageSquare className="w-4 h-4 text-indigo-600" /> Justificativa da Viagem
               </h3>
               <div className={inputGroupClass}>
-                <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida</label>
+                <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida (Página 1)</label>
                 <textarea 
                   value={content.descriptionReason || ''} 
                   onChange={(e) => handleUpdate('content', 'descriptionReason', e.target.value)} 
                   className={`${inputClass} min-h-[120px] resize-none leading-relaxed`}
-                  placeholder="Descreva detalhadamente o objetivo da viagem..."
+                  placeholder="Descreva o objetivo da viagem..."
                 />
               </div>
             </div>
 
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4 text-slate-600" /> Informações Adicionais (Anexo)
+                </h3>
+                <button 
+                  onClick={() => handleUpdate('content', 'showExtraField', !content.showExtraField)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                    content.showExtraField === true 
+                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
+                      : 'bg-slate-100 text-slate-400 border border-slate-200'
+                  }`}
+                >
+                  {content.showExtraField === true ? <><Eye className="w-3 h-3" /> Ativado</> : <><EyeOff className="w-3 h-3" /> Desativado</>}
+                </button>
+              </div>
+
+              {content.showExtraField && (
+                <div className={`${inputGroupClass} animate-fade-in`}>
+                  <label className={labelClass}><FileText className="w-3 h-3" /> Texto do Anexo (Páginas 2+)</label>
+                  <textarea 
+                    value={content.extraFieldText || ''} 
+                    onChange={(e) => handleUpdate('content', 'extraFieldText', e.target.value)} 
+                    className={`${inputClass} min-h-[200px] resize-none leading-relaxed bg-indigo-50/10`}
+                    placeholder="Este conteúdo fluirá automaticamente para as páginas seguintes se for muito extenso..."
+                  />
+                  <p className="text-[9px] text-slate-400 font-medium italic">O conteúdo acima será paginado automaticamente a partir da Página 2.</p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4 border-t border-slate-200 pt-6">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Autorização Final (Responsável)</h3>
+              <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Autorização Final</h3>
+                  <button 
+                    onClick={() => handleUpdate('content', 'showDiariaSignatures', !content.showDiariaSignatures)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                      content.showDiariaSignatures !== false 
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                        : 'bg-slate-100 text-slate-400 border border-slate-200'
+                    }`}
+                  >
+                    {content.showDiariaSignatures !== false ? <><Eye className="w-3 h-3" /> Assinaturas Visíveis</> : <><EyeOff className="w-3 h-3" /> Assinaturas Ocultas</>}
+                  </button>
+              </div>
+
               <div className="grid grid-cols-1 gap-3">
                   {allowedSignatures.map((sig) => {
                     const isSelected = content.signatureName === sig.name;
@@ -411,7 +352,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                         <button 
                           key={sig.id} 
                           onClick={() => onUpdate({ ...state, content: { ...state.content, signatureName: sig.name, signatureRole: sig.role, signatureSector: sig.sector }})} 
-                          className={`text-left p-4 rounded-2xl border transition-all duration-300 ${isSelected ? 'bg-indigo-50 border-indigo-500 shadow-md ring-2 ring-indigo-500/10' : 'bg-white border-slate-200 hover:border-indigo-300'}`}
+                          className={`text-left p-4 rounded-2xl border transition-all duration-300 ${isSelected ? 'bg-indigo-50 border-indigo-500 shadow-md' : 'bg-white border-slate-200 hover:border-indigo-300'}`}
                         >
                           <div className="flex items-center justify-between">
                               <div>
@@ -428,15 +369,14 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
          </>
        ) : (
          <div className="p-12 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center text-center space-y-4 bg-white/50">
-            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300">
-               <ClipboardList className="w-8 h-8" />
-            </div>
-            <div>
-               <p className="font-bold text-slate-600">Aguardando Seleção</p>
-               <p className="text-xs text-slate-400 max-w-[200px] mt-1">Escolha entre Diária ou Custeio no topo para liberar o formulário.</p>
-            </div>
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300"><ClipboardList className="w-8 h-8" /></div>
+            <p className="font-bold text-slate-600">Selecione o tipo acima para começar.</p>
          </div>
        )}
     </div>
   );
 };
+
+const Hash = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+);

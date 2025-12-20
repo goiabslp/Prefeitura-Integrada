@@ -60,6 +60,9 @@ export interface ContentData {
   leftBlockText: string;
   rightBlockText: string;
   subType?: 'diaria' | 'custeio';
+  showDiariaSignatures?: boolean;
+  showExtraField?: boolean;
+  extraFieldText?: string;
   // Campos específicos para Diárias e Custeio
   requesterName?: string;
   requesterRole?: string;

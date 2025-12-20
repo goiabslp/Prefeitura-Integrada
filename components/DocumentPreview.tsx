@@ -15,101 +15,202 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
 }, ref) => {
   const { branding, document: docConfig, content } = state;
   const watermarkImg = branding.watermark.imageUrl || branding.logoUrl;
+  const isDiaria = content.subType !== undefined;
 
+  /**
+   * Lógica de Paginação
+   */
   const pages = useMemo(() => {
-    /**
-     * Lógica de Paginação Otimizada
-     */
-    const isDiaria = content.subType !== undefined;
-    // Para diárias, permitimos mais densidade e tentamos manter tudo em uma página
-    const MAX_LINES_PER_PAGE = isDiaria ? 40 : 34; 
-    const CHARS_PER_LINE = 75; 
-    
-    const titleFontSizeFactor = isDiaria ? 1.5 : (docConfig.titleStyle?.size || 32) / 12;
-    const titleLines = Math.max(1, Math.ceil((content.title.length * titleFontSizeFactor) / CHARS_PER_LINE)) + 1;
-    
-    const LATERAL_BLOCKS_COST = (docConfig.showLeftBlock || docConfig.showRightBlock) ? 8 : 0;
-    const SIGNATURE_COST = isDiaria ? 0 : 6; // Para diárias, a assinatura é parte do body estruturado em flexbox
-
-    const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
-    
-    const resultPages: string[] = [];
-    let currentPageContent = '';
-    let currentLinesUsed = titleLines + LATERAL_BLOCKS_COST; 
-
-    for (let i = 0; i < blocks.length; i++) {
-      let blockHTML = blocks[i];
-      if (blockHTML === undefined || blockHTML === null) continue;
-
-      const isBlockTag = /^(<p|<div|<h|<ul|<ol|<li>|<table)/i.test(blockHTML.trim());
+    if (isDiaria) {
+      const result: { type: 'diaria-fom' | 'extra-flow'; content: string }[] = [{ type: 'diaria-fom', content: '' }];
       
-      if (!blockHTML.trim() && !isBlockTag) {
-         blockHTML = '<div style="min-height: 1.1em;">&nbsp;</div>';
-      } else if (!isBlockTag) {
-         blockHTML = `<div>${blockHTML}</div>`;
+      if (content.showExtraField && content.extraFieldText) {
+        const text = content.extraFieldText;
+        const MAX_CHARS_PER_PAGE = 2500; 
+        const paragraphs = text.split('\n');
+        
+        let currentPageText = '';
+        let currentChars = 0;
+
+        paragraphs.forEach((p) => {
+          if ((currentChars + p.length) > MAX_CHARS_PER_PAGE && currentPageText) {
+            result.push({ type: 'extra-flow', content: currentPageText });
+            currentPageText = p + '\n';
+            currentChars = p.length;
+          } else {
+            currentPageText += p + '\n';
+            currentChars += p.length;
+          }
+        });
+
+        if (currentPageText) {
+          result.push({ type: 'extra-flow', content: currentPageText });
+        }
       }
+      return result;
+    }
 
-      const plainText = blockHTML.replace(/<[^>]+>/g, '') || ' '; 
+    const MAX_LINES_PER_PAGE = 34; 
+    const CHARS_PER_LINE = 75; 
+    const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
+    const resultPages: { type: 'standard'; content: string }[] = [];
+    let currentPageContent = '';
+    let currentLinesUsed = 0;
+
+    blocks.forEach((blockHTML) => {
+      if (!blockHTML?.trim()) return;
+      const plainText = blockHTML.replace(/<[^>]+>/g, '') || ' ';
+      const linesInBlock = Math.max(1, Math.ceil(plainText.length / CHARS_PER_LINE));
       
-      // Tabelas têm custo fixo de altura em linhas estimado
-      const isTable = /<table/i.test(blockHTML);
-      const linesInBlock = isTable ? 10 : Math.max(1, Math.ceil(plainText.length / CHARS_PER_LINE));
-      const blockCost = linesInBlock;
-
-      if ((currentLinesUsed + blockCost) > MAX_LINES_PER_PAGE && !isDiaria) {
-        resultPages.push(currentPageContent);
+      if ((currentLinesUsed + linesInBlock) > MAX_LINES_PER_PAGE) {
+        resultPages.push({ type: 'standard', content: currentPageContent });
         currentPageContent = blockHTML;
-        currentLinesUsed = blockCost;
+        currentLinesUsed = linesInBlock;
       } else {
         currentPageContent += blockHTML;
-        currentLinesUsed += blockCost;
+        currentLinesUsed += linesInBlock;
       }
-    }
+    });
     
-    if (currentPageContent) {
-      if (docConfig.showSignature && !isDiaria && (currentLinesUsed + SIGNATURE_COST) > MAX_LINES_PER_PAGE) {
-         resultPages.push(currentPageContent);
-         resultPages.push(''); 
-      } else {
-         resultPages.push(currentPageContent);
-      }
-    } else if (docConfig.showSignature && !isDiaria && resultPages.length > 0) {
-       resultPages.push(''); 
-    }
+    if (currentPageContent) resultPages.push({ type: 'standard', content: currentPageContent });
+    return resultPages;
+  }, [content.body, content.extraFieldText, content.showExtraField, isDiaria]);
 
-    return resultPages.length > 0 ? resultPages : [''];
-  }, [content.body, content.title, docConfig.showSignature, docConfig.showLeftBlock, docConfig.showRightBlock, docConfig.titleStyle?.size, content.subType]);
+  const renderDiariaPage1 = () => {
+    const showSigs = content.showDiariaSignatures !== false;
+    return (
+      <div className="w-full flex flex-col gap-2 text-[9.5pt] leading-tight text-slate-800">
+        {/* Bloco de Endereçamento Esquerdo (Protocolo/Ofício) */}
+        {docConfig.showLeftBlock && content.leftBlockText && (
+          <div className="mb-2 text-left">
+            <div 
+              className="whitespace-pre-wrap font-bold"
+              style={{ 
+                fontSize: `${docConfig.leftBlockStyle?.size || 9}pt`, 
+                color: docConfig.leftBlockStyle?.color || '#475569' 
+              }}
+            >
+              {content.leftBlockText}
+            </div>
+          </div>
+        )}
 
-  const getBlockStyle = (styleConfig: { size: number, color: string }, isLeft: boolean) => ({
-    fontSize: `${styleConfig.size}pt`,
-    color: styleConfig.color,
-    textAlign: isLeft ? 'left' as const : 'right' as const,
-    lineHeight: '1.2',
-    maxHeight: `calc(${styleConfig.size}pt * 1.2 * 6)`, 
-    overflow: 'hidden',
-    display: '-webkit-box',
-    WebkitLineClamp: 6,
-    WebkitBoxOrient: 'vertical' as const,
-    wordBreak: 'break-word' as const,
-    whiteSpace: 'pre-wrap' as const,
-  });
+        {/* CARD 01: Beneficiário */}
+        <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+          <div className="bg-slate-100 px-3 py-1 border-b border-slate-300">
+            <span className="font-black text-[7pt] text-slate-500 uppercase">01. Dados do Beneficiário</span>
+          </div>
+          <div className="p-2 space-y-1">
+            <div>
+              <span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Nome do Servidor</span>
+              <span className="font-bold text-[10pt] text-slate-900">{content.requesterName || '---'}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Cargo</span>
+                <span className="font-semibold">{content.requesterRole || '---'}</span>
+              </div>
+              <div>
+                <span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Setor</span>
+                <span className="font-semibold">{content.requesterSector || '---'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 02: Logística */}
+        <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+          <div className="bg-slate-100 px-3 py-1 border-b border-slate-300">
+            <span className="font-black text-[7pt] text-slate-500 uppercase">02. Logística e Itinerário</span>
+          </div>
+          <div className="p-2">
+            <div className="mb-1">
+              <span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Destino / UF</span>
+              <span className="font-bold">{content.destination || '---'}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-1">
+              <div className="bg-slate-50 p-1.5 border border-slate-200 rounded">
+                <span className="text-[5.5pt] font-black text-slate-500 uppercase block">Saída</span>
+                <span className="font-bold text-[8.5pt]">{content.departureDateTime ? new Date(content.departureDateTime).toLocaleString('pt-BR') : '---'}</span>
+              </div>
+              <div className="bg-slate-50 p-1.5 border border-slate-200 rounded">
+                <span className="text-[5.5pt] font-black text-slate-500 uppercase block">Retorno</span>
+                <span className="font-bold text-[8.5pt]">{content.returnDateTime ? new Date(content.returnDateTime).toLocaleString('pt-BR') : '---'}</span>
+              </div>
+            </div>
+            <div className="flex gap-4 text-[8pt]">
+              <span><b className="text-slate-400 uppercase text-[6pt]">Pernoites:</b> {content.lodgingCount || 0}</span>
+              <span><b className="text-slate-400 uppercase text-[6pt]">Distância:</b> {content.distanceKm || 0} KM</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 03: Financeiro */}
+        <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+          <div className="bg-slate-100 px-3 py-1 border-b border-slate-300">
+            <span className="font-black text-[7pt] text-slate-500 uppercase">03. Resumo Financeiro</span>
+          </div>
+          <div className="p-2 flex items-center justify-between">
+            <div>
+              <span className="text-[6pt] font-black text-slate-400 uppercase block">Valor Solicitado</span>
+              <span className="text-[13pt] font-black text-indigo-600">{content.requestedValue || 'R$ 0,00'}</span>
+            </div>
+            <div className="text-center bg-amber-50 border border-amber-200 px-3 py-1 rounded">
+              <span className="text-[5.5pt] font-black text-amber-600 uppercase block">Previsão Pagamento</span>
+              <span className="text-[9pt] font-black text-amber-800">{content.paymentForecast || '---'}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[6pt] font-black text-slate-400 uppercase block">Autorizado por</span>
+              <span className="font-bold text-[9pt]">{content.authorizedBy || '---'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 04: Justificativa */}
+        <div className="flex-1 flex flex-col border border-slate-900 rounded-lg overflow-hidden min-h-[40mm]">
+          <div className="bg-slate-900 px-3 py-1">
+            <span className="font-black text-[7pt] text-white uppercase tracking-widest">04. Justificativa Resumida</span>
+          </div>
+          <div className="p-4 text-justify leading-relaxed whitespace-pre-wrap flex-1 bg-white italic text-[10pt]">
+            {content.descriptionReason || 'Nenhuma justificativa informada.'}
+          </div>
+        </div>
+
+        {/* Assinaturas Fixas na Base da Página 1 */}
+        {showSigs && (
+          <div className="mt-auto pt-24 flex flex-col items-center gap-20 w-full">
+            <div className="w-64 border-t border-slate-900 pt-1 text-center">
+              <p className="font-black uppercase text-[8.5pt]">{content.requesterName || 'SERVIDOR SOLICITANTE'}</p>
+              <p className="text-[7pt] text-slate-500 font-bold uppercase">Requerente</p>
+            </div>
+            <div className="grid grid-cols-2 w-full gap-8">
+              <div className="border-t border-slate-900 pt-1 text-center">
+                <p className="font-black uppercase text-[8pt]">Visto Contabilidade</p>
+                <p className="text-[6.5pt] text-slate-500 font-bold uppercase">Tesouraria</p>
+              </div>
+              <div className="border-t border-slate-900 pt-1 text-center">
+                <p className="font-black uppercase text-[8pt]">{content.signatureName || 'AUTORIZADOR'}</p>
+                <p className="text-[6.5pt] text-slate-500 font-bold uppercase leading-none">{content.signatureRole || 'Responsável'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={`flex justify-center items-start overflow-auto w-full h-full ${isGenerating ? 'bg-white p-0 m-0' : 'bg-slate-100 pt-8 pb-20'}`}>
       <div id="preview-scaler" ref={ref} className={`origin-top transition-transform duration-300 ${isGenerating ? 'scale-100 transform-none' : 'scale-[0.55] md:scale-[0.65] xl:scale-[0.75]'}`}>
         <div id="document-preview-container" className={isGenerating ? 'block w-[210mm] mx-auto p-0 bg-white' : 'flex flex-col items-center'}>
-          {pages.map((pageContent, pageIndex) => {
-            const isFirstPage = pageIndex === 0;
-            const isLastPage = pageIndex === pages.length - 1;
-            const isDiaria = content.subType !== undefined;
-
+          {pages.map((page, pageIndex) => {
             return (
               <div
                 key={pageIndex}
                 className={`bg-white mx-auto flex flex-col relative ${branding.fontFamily} ${isGenerating ? 'mb-0' : 'mb-8 shadow-2xl ring-1 ring-black/5'}`}
                 style={{
                   width: '210mm', height: isGenerating ? '296.5mm' : '297mm',
-                  padding: '20mm', paddingTop: '52mm', paddingBottom: '12mm',
+                  padding: '20mm', paddingTop: '52mm', paddingBottom: '20mm',
                   position: 'relative', overflow: 'hidden' 
                 }}
               >
@@ -118,6 +219,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                     <img src={watermarkImg} alt="" style={{ width: `${branding.watermark.size}%`, opacity: branding.watermark.opacity / 100, objectFit: 'contain', filter: branding.watermark.grayscale ? 'grayscale(100%)' : 'none' }} />
                   </div>
                 )}
+                
                 <div className="absolute top-0 left-0 w-full h-3 z-10" style={{ backgroundColor: branding.primaryColor }} />
 
                 <div className="absolute top-8 left-[20mm] right-[20mm] h-32 z-20">
@@ -126,63 +228,40 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   </div>
                   
                   <div className="absolute top-0 right-0 text-right flex flex-col items-end">
-                    <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">
-                      {content.signatureSector || 'Prefeitura Municipal'}
-                    </span>
-                    <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>
-                      {docConfig.city}
-                    </h2>
-                    <p className="text-[10px] text-gray-400 font-mono">
-                      {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
+                    <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">{content.signatureSector || 'Prefeitura Municipal'}</span>
+                    <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>{docConfig.city}</h2>
+                    <p className="text-[10px] text-gray-400 font-mono">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   </div>
                 </div>
 
                 <div className="absolute top-[40mm] left-[20mm] right-[20mm] border-b border-gray-400 z-20" />
 
-                <main className={`flex-1 mt-1 relative z-10 flex flex-col overflow-hidden h-full`}>
-                  {isFirstPage && (
+                <main className="flex-1 mt-1 relative z-10 flex flex-col overflow-hidden h-full">
+                  {page.type === 'diaria-fom' ? (
                     <>
-                      {(docConfig.showLeftBlock || docConfig.showRightBlock) && (
-                        <div className="flex justify-between items-start mb-4 min-h-[22mm] w-full gap-8 shrink-0">
-                           {docConfig.showRightBlock && (
-                             <div className="w-1/2" style={getBlockStyle(docConfig.rightBlockStyle, true)}>
-                               {content.rightBlockText}
-                             </div>
-                           )}
-                           {docConfig.showLeftBlock && (
-                             <div className="w-1/2 ml-auto" style={getBlockStyle(docConfig.leftBlockStyle, false)}>
-                               {content.leftBlockText}
-                             </div>
-                           )}
-                        </div>
-                      )}
-
-                      <h1 
-                        className="font-bold mb-4 leading-tight tracking-tight break-words w-full overflow-hidden shrink-0" 
-                        style={{ 
-                          color: docConfig.titleStyle?.color || branding.primaryColor, 
-                          fontSize: isDiaria ? '18pt' : `${docConfig.titleStyle?.size || 32}pt`, 
-                          textAlign: docConfig.titleStyle?.alignment || 'left',
-                          wordBreak: 'break-word',
-                          maxWidth: '100%'
-                        }}
-                      >
+                      <h1 className="font-black mb-4 leading-tight tracking-tighter text-indigo-900 uppercase text-[18pt] text-center border-b-2 border-indigo-100 pb-2">
                         {content.title}
                       </h1>
+                      {renderDiariaPage1()}
                     </>
-                  )}
-                  
-                  <div className={`max-w-none text-gray-700 leading-relaxed text-justify break-words w-full rich-content flex-1 flex flex-col ${isDiaria ? 'text-[9.5pt]' : 'text-[11pt]'}`} dangerouslySetInnerHTML={{ __html: pageContent }} />
-
-                  {isLastPage && docConfig.showSignature && !isDiaria && (
-                    <div className={`${isDiaria ? 'mt-4' : 'mt-10'} mb-10 flex flex-col items-center justify-center pointer-events-none shrink-0`}>
-                      <div className="w-80 border-t border-black pt-2 text-center">
-                          <p className="text-gray-900 font-bold text-sm leading-tight uppercase">{content.signatureName}</p>
-                          <p className="text-gray-600 text-xs mt-0.5">{content.signatureRole}</p>
-                          {content.signatureSector && <p className="text-gray-400 text-[10px] mt-0.5 uppercase tracking-tighter">{content.signatureSector}</p>}
-                      </div>
+                  ) : page.type === 'extra-flow' ? (
+                    <div className="flex flex-col h-full">
+                       <div className="bg-slate-600 px-3 py-1 rounded-t-lg">
+                          <span className="font-black text-[7.5pt] text-white uppercase tracking-widest">Informações Adicionais / Anexo - Cont.</span>
+                       </div>
+                       <div className="flex-1 p-6 border border-slate-300 border-t-0 rounded-b-lg bg-slate-50/30 text-[10.5pt] leading-relaxed text-justify whitespace-pre-wrap">
+                          {page.content}
+                       </div>
                     </div>
+                  ) : (
+                    <>
+                      {pageIndex === 0 && (
+                        <h1 className="font-bold mb-4 leading-tight tracking-tight text-[28pt]" style={{ color: docConfig.titleStyle?.color || branding.primaryColor, textAlign: docConfig.titleStyle?.alignment || 'left' }}>
+                          {content.title}
+                        </h1>
+                      )}
+                      <div className="max-w-none text-gray-700 leading-relaxed text-justify text-[11pt] whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: page.content }} />
+                    </>
                   )}
                 </main>
 

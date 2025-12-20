@@ -159,6 +159,11 @@ const App: React.FC = () => {
     const blockPrefix = activeBlock.toUpperCase();
     const protocolStr = `${blockPrefix}-${protocolNumber}/${currentYear}`;
 
+    // No módulo de diárias, remove o texto "Assunto:" do bloco de endereçamento
+    const leftBlockInitialValue = activeBlock === 'diarias' 
+      ? `Protocolo nº ${protocolStr}` 
+      : `Protocolo nº ${protocolStr}\nAssunto: `;
+
     setAppState({
       ...globalDefaults,
       content: {
@@ -168,7 +173,7 @@ const App: React.FC = () => {
         signatureSector: initialSigSector,
         title: activeBlock === 'diarias' ? '' : '', 
         body: globalDefaults.content.body,
-        leftBlockText: `Protocolo nº ${protocolStr}\nAssunto: `,
+        leftBlockText: leftBlockInitialValue,
         subType: undefined 
       },
       document: {
