@@ -127,6 +127,14 @@ const App: React.FC = () => {
     setCurrentOrder(null);
   };
 
+  const handleGoHome = () => {
+    setCurrentView('home');
+    setActiveBlock(null);
+    setIsSidebarOpen(false);
+    setIsFinalized(false);
+    setCurrentOrder(null);
+  };
+
   const handleStartNewOrder = () => {
     if (!activeBlock) return;
 
@@ -490,14 +498,22 @@ const App: React.FC = () => {
              <button onClick={() => handleOpenAdmin(null)} className="p-2.5 -ml-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:text-indigo-600 shadow-sm transition-all"><LayoutDashboard className="w-5 h-5" /></button>
            )}
            <div className="flex items-center gap-3">
-             {globalDefaults.ui.headerLogoUrl && <img src={globalDefaults.ui.headerLogoUrl} alt="Logo" style={{ height: `${globalDefaults.ui.headerLogoHeight}px` }} className="hidden sm:block w-auto object-contain" />}
+             {globalDefaults.ui.headerLogoUrl && (
+               <button 
+                onClick={handleGoHome}
+                className="hover:opacity-80 transition-opacity focus:outline-none"
+                title="Ir para o Início"
+               >
+                 <img src={globalDefaults.ui.headerLogoUrl} alt="Logo" style={{ height: `${globalDefaults.ui.headerLogoHeight}px` }} className="hidden sm:block w-auto object-contain" />
+               </button>
+             )}
              <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-lg">{getHeaderTitle()}</span>
            </div>
         </div>
 
         <div className="flex items-center gap-4">
            {currentView !== 'home' && (
-             <button onClick={() => { setCurrentView('home'); setActiveBlock(null); setIsSidebarOpen(false); setIsFinalized(false); setCurrentOrder(null); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm shadow-sm">
+             <button onClick={handleGoHome} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-indigo-700 rounded-xl transition-all font-bold text-sm shadow-sm">
                <LayoutDashboard className="w-4 h-4" /><span className="hidden sm:inline">Início</span>
              </button>
            )}
