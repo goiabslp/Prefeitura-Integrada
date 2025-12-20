@@ -51,16 +51,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <div className="flex-1 bg-slate-50 font-sans flex flex-col overflow-hidden">
-      <main className="flex-1 flex flex-col items-center pt-12 px-6 overflow-y-auto bg-gradient-to-b from-white to-slate-50 pb-12 custom-scrollbar">
+      <main className="flex-1 flex flex-col items-center pt-8 px-6 overflow-y-auto bg-gradient-to-b from-white to-slate-50 pb-12 custom-scrollbar">
         
         {!activeBlock && (
           <div className="w-full max-w-6xl animate-fade-in space-y-10">
             <div className="text-center">
               <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tighter mb-2">
-                Olá, <span className="text-indigo-600">{firstName}</span>!
+                Bem-vindo, <span className="text-indigo-600">{firstName}</span>
               </h1>
               <p className="text-slate-500 text-base font-medium">
-                {hasAnyPermission ? 'Selecione um módulo para começar:' : 'Você não possui permissões de acesso.'}
+                {hasAnyPermission ? 'Selecione um módulo operacional para trabalhar:' : 'Aguarde a liberação de permissões pelo administrador.'}
               </p>
             </div>
 
