@@ -3,7 +3,7 @@ import { AppState, FontFamily, User, Order, Signature } from './types';
 
 export const INITIAL_STATE: AppState = {
   branding: {
-    logoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
+    logoUrl: null,
     primaryColor: '#4f46e5',
     secondaryColor: '#0f172a',
     fontFamily: FontFamily.SANS,
@@ -42,7 +42,13 @@ export const INITIAL_STATE: AppState = {
   },
   content: {
     title: 'Ofício nº 001/2024',
-    body: `Descreva aqui os detalhes do seu documento.`,
+    body: `Cumprimentando-o cordialmente, vimos por meio deste solicitar a Vossa Senhoria o que segue:
+
+Escreva aqui o detalhamento da sua solicitação ou comunicado de forma clara e objetiva.
+
+Certos de contarmos com vossa costumeira atenção, antecipamos nossos agradecimentos.
+
+Atenciosamente,`,
     signatureName: '',
     signatureRole: '',
     signatureSector: '',
@@ -50,9 +56,9 @@ export const INITIAL_STATE: AppState = {
     rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade'
   },
   ui: {
-    loginLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
+    loginLogoUrl: null,
     loginLogoHeight: 80,
-    headerLogoUrl: 'https://saojosedogoiabal.mg.gov.br/wp-content/uploads/2021/01/logo.png',
+    headerLogoUrl: null,
     headerLogoHeight: 40,
     homeLogoPosition: 'left'
   }

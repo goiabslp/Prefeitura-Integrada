@@ -29,7 +29,6 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredOrders = orders.filter(order => {
-    // Filtra obrigatoriamente pelo bloco ativo
     const matchesBlock = order.blockType === activeBlock;
     if (!matchesBlock) return false;
 
@@ -44,10 +43,9 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans flex flex-col items-center p-6 overflow-hidden">
-      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-slide-up flex flex-col h-[85vh]">
+    <div className="min-h-screen w-full bg-slate-100/50 backdrop-blur-sm font-sans flex items-center justify-center p-4 md:p-8 overflow-hidden animate-fade-in">
+      <div className="w-full max-w-6xl bg-white rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.15)] border border-slate-200 overflow-hidden animate-slide-up flex flex-col h-full max-h-[90vh]">
         
-        {/* Header da Central de Pedidos */}
         <div className="p-8 border-b border-slate-100 shrink-0 bg-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
              <div>
@@ -69,13 +67,12 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                </p>
              </div>
              
-             {/* Contador Sequencial Global */}
              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[200px]">
                 <div className="p-2.5 bg-white rounded-xl text-indigo-600 shadow-sm">
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <div>
-                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-tight mb-1">Total Geral (Todos Blocos)</p>
+                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-tight mb-1">Contador Histórico (Base)</p>
                    <p className="text-3xl font-black text-indigo-900 leading-none">
                      {totalCounter.toString().padStart(3, '0')}
                    </p>
@@ -106,7 +103,6 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
           </div>
         </div>
 
-        {/* Listagem */}
         <div className="flex-1 overflow-auto custom-scrollbar">
           {filteredOrders.length > 0 ? (
             <div className="min-w-full">

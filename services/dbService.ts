@@ -2,7 +2,7 @@
 import { Order, User, Signature, AppState, Person, Sector, Job } from '../types';
 
 const DB_NAME = 'BrandDocDB_v2';
-const DB_VERSION = 3; // Incrementado para adicionar novas stores
+const DB_VERSION = 3; 
 const STORES = {
   ORDERS: 'orders',
   USERS: 'users',
@@ -47,7 +47,6 @@ export const initDB = (): Promise<IDBDatabase> => {
   });
 };
 
-// Generic CRUD operations
 const getAll = async <T>(storeName: string): Promise<T[]> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
@@ -81,7 +80,6 @@ const remove = async (storeName: string, id: string): Promise<void> => {
   });
 };
 
-// Specific functions
 export const getAllOrders = () => getAll<Order>(STORES.ORDERS);
 export const saveOrder = (order: Order) => save(STORES.ORDERS, order);
 export const deleteOrder = (id: string) => remove(STORES.ORDERS, id);
@@ -104,7 +102,6 @@ export const getAllSignatures = () => getAll<Signature>(STORES.SIGNATURES);
 export const saveSignature = (sig: Signature) => save(STORES.SIGNATURES, sig);
 export const deleteSignature = (id: string) => remove(STORES.SIGNATURES, id);
 
-// Pessoas, Setores e Cargos
 export const getAllPersons = () => getAll<Person>(STORES.PERSONS);
 export const savePerson = (person: Person) => save(STORES.PERSONS, person);
 export const deletePerson = (id: string) => remove(STORES.PERSONS, id);
@@ -117,7 +114,6 @@ export const getAllJobs = () => getAll<Job>(STORES.JOBS);
 export const saveJob = (job: Job) => save(STORES.JOBS, job);
 export const deleteJob = (id: string) => remove(STORES.JOBS, id);
 
-// Settings persistence
 export const getGlobalSettings = async (): Promise<AppState | null> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
@@ -131,4 +127,23 @@ export const getGlobalSettings = async (): Promise<AppState | null> => {
 
 export const saveGlobalSettings = async (settings: AppState): Promise<void> => {
   return save(STORES.SETTINGS, { id: 'global_config', data: settings });
+};
+
+// Funções para Contador Global Persistente
+export const getGlobalCounter = async (): Promise<number> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.SETTINGS, 'readonly');
+    const store = transaction.objectStore(STORES.SETTINGS);
+    const request = store.get('global_counter');
+    request.onsuccess = () => resolve(request.result ? (request.result as any).value : 0);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const incrementGlobalCounter = async (): Promise<number> => {
+  const current = await getGlobalCounter();
+  const next = current + 1;
+  await save(STORES.SETTINGS, { id: 'global_counter', value: next });
+  return next;
 };

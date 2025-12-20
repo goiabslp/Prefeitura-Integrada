@@ -3,7 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { 
   FileText, Columns, Bold, Italic, Underline, Highlighter, Quote, 
   RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  PenTool, CheckCircle2, ChevronRight
+  PenTool, CheckCircle2, ChevronRight, Eye, EyeOff
 } from 'lucide-react';
 import { AppState, ContentData, DocumentConfig, Signature } from '../../types';
 
@@ -125,14 +125,35 @@ export const OficioForm: React.FC<OficioFormProps> = ({
       </div>
 
       <div className="space-y-4 border-t border-slate-200 pt-6">
-         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Assinatura</h3>
+         <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Assinatura</h3>
+            <button 
+              onClick={() => handleUpdate('document', 'showSignature', !docConfig.showSignature)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                docConfig.showSignature 
+                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                  : 'bg-slate-100 text-slate-400 border border-slate-200'
+              }`}
+            >
+              {docConfig.showSignature ? <><Eye className="w-3 h-3" /> Visível</> : <><EyeOff className="w-3 h-3" /> Oculta</>}
+            </button>
+         </div>
          <div className="grid grid-cols-1 gap-3">
             {allowedSignatures.map((sig) => {
                const isSelected = content.signatureName === sig.name;
                return (
                   <button 
                     key={sig.id} 
-                    onClick={() => onUpdate({ ...state, content: { ...state.content, signatureName: sig.name, signatureRole: sig.role, signatureSector: sig.sector }})} 
+                    onClick={() => onUpdate({ 
+                      ...state, 
+                      document: { ...state.document, showSignature: true },
+                      content: { 
+                        ...state.content, 
+                        signatureName: sig.name, 
+                        signatureRole: sig.role, 
+                        signatureSector: sig.sector 
+                      }
+                    })} 
                     className={`text-left p-4 rounded-2xl border transition-all ${isSelected ? 'bg-indigo-50 border-indigo-500 shadow-md' : 'bg-white border-slate-200 hover:border-indigo-300'}`}
                   >
                      <div className="flex items-center justify-between">

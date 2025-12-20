@@ -20,7 +20,6 @@ import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
 import { FinalizedActionBar } from './components/FinalizedActionBar';
 
-// Main App Component implementing document generation logic
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -29,8 +28,9 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
   const [signatures, setSignatures] = useState<Signature[]>(MOCK_SIGNATURES);
+  const [globalCounter, setGlobalCounter] = useState(0);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   
-  // Novos Estados Organizacionais
   const [persons, setPersons] = useState<Person[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -38,13 +38,10 @@ const App: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<string | null>(null);
-  
-  // Novo estado para controlar a visualização final do documento (sem sidebar)
   const [isFinalizedView, setIsFinalizedView] = useState(false);
 
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // Sync data from IndexedDB on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -57,13 +54,15 @@ const App: React.FC = () => {
         const savedSettings = await db.getGlobalSettings();
         if (savedSettings) setAppState(savedSettings);
         
-        // Carregar Pessoas, Setores e Cargos
         const savedPersons = await db.getAllPersons();
         setPersons(savedPersons);
         const savedSectors = await db.getAllSectors();
         setSectors(savedSectors);
         const savedJobs = await db.getAllJobs();
         setJobs(savedJobs);
+
+        const counterValue = await db.getGlobalCounter();
+        setGlobalCounter(counterValue);
 
       } catch (err) {
         console.error("Failed to load local database", err);
@@ -72,7 +71,6 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Handle user authentication
   const handleLogin = (u: string, p: string) => {
     const user = users.find(user => user.username === u && user.password === p);
     if (user) {
@@ -83,32 +81,48 @@ const App: React.FC = () => {
     return false;
   };
 
-  // Handle document finalization and saving
   const handleFinish = async () => {
     if (!currentUser || !activeBlock) return;
-    const newOrder: Order = {
-      id: Date.now().toString(),
-      protocol: `${activeBlock.toUpperCase()}-${Math.floor(Math.random() * 999).toString().padStart(3, '0')}/${new Date().getFullYear()}`,
-      title: appState.content.title,
-      status: 'completed',
-      createdAt: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      blockType: activeBlock,
-      documentSnapshot: JSON.parse(JSON.stringify(appState))
-    };
-    await db.saveOrder(newOrder);
-    setOrders(prev => [...prev, newOrder]);
     
-    // Em vez de voltar para home, entramos no modo de visualização final
+    let finalOrder: Order;
+
+    if (editingOrder) {
+      // APENAS ATUALIZA O REGISTRO EXISTENTE
+      finalOrder = {
+        ...editingOrder,
+        title: appState.content.title,
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+      await db.saveOrder(finalOrder);
+      setOrders(prev => prev.map(o => o.id === finalOrder.id ? finalOrder : o));
+    } else {
+      // CRIA UM NOVO REGISTRO E INCREMENTA O CONTADOR
+      const nextVal = await db.incrementGlobalCounter();
+      setGlobalCounter(nextVal);
+
+      finalOrder = {
+        id: Date.now().toString(),
+        protocol: `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`,
+        title: appState.content.title,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        blockType: activeBlock,
+        documentSnapshot: JSON.parse(JSON.stringify(appState))
+      };
+      await db.saveOrder(finalOrder);
+      setOrders(prev => [...prev, finalOrder]);
+    }
+    
     setIsFinalizedView(true);
     setIsAdminSidebarOpen(false);
   };
 
-  // Logic to reopen a document for editing
   const handleEditOrder = (order: Order) => {
     if (order.documentSnapshot) setAppState(order.documentSnapshot);
     setActiveBlock(order.blockType);
+    setEditingOrder(order);
     setCurrentView('editor');
     setAdminTab('content');
     setIsAdminSidebarOpen(true);
@@ -119,7 +133,6 @@ const App: React.FC = () => {
     if (!componentRef.current) return;
     setIsDownloading(true);
     
-    // Captura o elemento do preview scaler
     const element = document.getElementById('preview-scaler');
     if (!element) {
         setIsDownloading(false);
@@ -141,7 +154,6 @@ const App: React.FC = () => {
       pagebreak: { mode: 'css' }
     };
 
-    // Usando html2pdf importado no index.html
     // @ts-ignore
     window.html2pdf().from(element).set(opt).save().then(() => {
       setIsDownloading(false);
@@ -152,7 +164,7 @@ const App: React.FC = () => {
   };
 
   const stats = {
-    totalGenerated: orders.length,
+    totalGenerated: globalCounter,
     historyCount: orders.length,
     activeUsers: users.length
   };
@@ -169,6 +181,7 @@ const App: React.FC = () => {
     setCurrentView('login');
     setActiveBlock(null);
     setIsFinalizedView(false);
+    setEditingOrder(null);
   };
 
   const handleGoHome = () => {
@@ -177,21 +190,21 @@ const App: React.FC = () => {
     setIsAdminSidebarOpen(false);
     setAdminTab(null);
     setIsFinalizedView(false);
+    setEditingOrder(null);
   };
 
   const handleStartEditing = () => {
+      setEditingOrder(null);
       setCurrentView('editor');
       setAdminTab('content');
       setIsAdminSidebarOpen(true);
       setIsFinalizedView(false);
   };
 
-  // Render conditional screens based on navigation state
   if (currentView === 'login') return <LoginScreen onLogin={handleLogin} uiConfig={appState.ui} />;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans flex-col">
-      {/* Header Global Pós-Login */}
       {currentUser && (
         <AppHeader 
           currentUser={currentUser}
@@ -295,7 +308,6 @@ const App: React.FC = () => {
                 />
               )}
 
-              {/* Barra de Ações Flutuante quando finalizado */}
               {isFinalizedView && (
                 <FinalizedActionBar 
                     onDownload={handleDownloadPdf}
@@ -319,7 +331,7 @@ const App: React.FC = () => {
             onClearAll={() => { db.clearAllOrders(); setOrders([]); }}
             onEditOrder={handleEditOrder}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
-            totalCounter={orders.length}
+            totalCounter={globalCounter}
           />
         )}
       </div>
