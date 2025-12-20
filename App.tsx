@@ -18,6 +18,7 @@ import { EntityManagementScreen } from './components/EntityManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
+import { FinalizedActionBar } from './components/FinalizedActionBar';
 
 // Main App Component implementing document generation logic
 const App: React.FC = () => {
@@ -37,6 +38,9 @@ const App: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<string | null>(null);
+  
+  // Novo estado para controlar a visualização final do documento (sem sidebar)
+  const [isFinalizedView, setIsFinalizedView] = useState(false);
 
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -95,8 +99,10 @@ const App: React.FC = () => {
     };
     await db.saveOrder(newOrder);
     setOrders(prev => [...prev, newOrder]);
-    setCurrentView('home');
-    setActiveBlock(null);
+    
+    // Em vez de voltar para home, entramos no modo de visualização final
+    setIsFinalizedView(true);
+    setIsAdminSidebarOpen(false);
   };
 
   // Logic to reopen a document for editing
@@ -106,6 +112,43 @@ const App: React.FC = () => {
     setCurrentView('editor');
     setAdminTab('content');
     setIsAdminSidebarOpen(true);
+    setIsFinalizedView(false);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!componentRef.current) return;
+    setIsDownloading(true);
+    
+    // Captura o elemento do preview scaler
+    const element = document.getElementById('preview-scaler');
+    if (!element) {
+        setIsDownloading(false);
+        return;
+    }
+
+    const opt = {
+      margin: 0,
+      filename: `${appState.content.title || 'documento'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          scrollY: 0,
+          scrollX: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'css' }
+    };
+
+    // Usando html2pdf importado no index.html
+    // @ts-ignore
+    window.html2pdf().from(element).set(opt).save().then(() => {
+      setIsDownloading(false);
+    }).catch((err: any) => {
+        console.error("Erro ao gerar PDF:", err);
+        setIsDownloading(false);
+    });
   };
 
   const stats = {
@@ -118,12 +161,14 @@ const App: React.FC = () => {
     setCurrentView('admin');
     setAdminTab(tab || null);
     setIsAdminSidebarOpen(true);
+    setIsFinalizedView(false);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentView('login');
     setActiveBlock(null);
+    setIsFinalizedView(false);
   };
 
   const handleGoHome = () => {
@@ -131,6 +176,14 @@ const App: React.FC = () => {
     setActiveBlock(null);
     setIsAdminSidebarOpen(false);
     setAdminTab(null);
+    setIsFinalizedView(false);
+  };
+
+  const handleStartEditing = () => {
+      setCurrentView('editor');
+      setAdminTab('content');
+      setIsAdminSidebarOpen(true);
+      setIsFinalizedView(false);
   };
 
   // Render conditional screens based on navigation state
@@ -154,7 +207,7 @@ const App: React.FC = () => {
       <div className="flex-1 flex relative overflow-hidden">
         {currentView === 'home' && currentUser && (
           <HomeScreen 
-            onNewOrder={() => { setCurrentView('editor'); setAdminTab('content'); setIsAdminSidebarOpen(true); }}
+            onNewOrder={handleStartEditing}
             onTrackOrder={() => setCurrentView('tracking')}
             onLogout={handleLogout}
             onOpenAdmin={handleOpenAdmin}
@@ -168,25 +221,36 @@ const App: React.FC = () => {
         )}
 
         {(currentView === 'editor' || currentView === 'admin') && currentUser && (
-          <div className="flex-1 flex overflow-hidden h-full">
-            <AdminSidebar 
-              state={appState}
-              onUpdate={setAppState}
-              onPrint={() => window.print()}
-              isOpen={isAdminSidebarOpen}
-              onClose={() => { setIsAdminSidebarOpen(false); if (currentView === 'editor') setCurrentView('home'); }}
-              isDownloading={isDownloading}
-              currentUser={currentUser}
-              mode={currentView === 'admin' ? 'admin' : 'editor'}
-              onSaveDefault={() => db.saveGlobalSettings(appState)}
-              onFinish={handleFinish}
-              activeTab={adminTab}
-              onTabChange={setAdminTab}
-              availableSignatures={signatures}
-              activeBlock={activeBlock}
-            />
+          <div className="flex-1 flex overflow-hidden h-full relative">
             
-            <main className="flex-1 h-full overflow-hidden flex flex-col">
+            {!isFinalizedView && (
+              <AdminSidebar 
+                state={appState}
+                onUpdate={setAppState}
+                onPrint={() => window.print()}
+                isOpen={isAdminSidebarOpen}
+                onClose={() => { 
+                  if (currentView === 'editor') {
+                    setIsFinalizedView(true);
+                    setIsAdminSidebarOpen(false);
+                  } else {
+                    setIsAdminSidebarOpen(false);
+                    if (currentView === 'admin') setAdminTab(null);
+                  }
+                }}
+                isDownloading={isDownloading}
+                currentUser={currentUser}
+                mode={currentView === 'admin' ? 'admin' : 'editor'}
+                onSaveDefault={() => db.saveGlobalSettings(appState)}
+                onFinish={handleFinish}
+                activeTab={adminTab}
+                onTabChange={setAdminTab}
+                availableSignatures={signatures}
+                activeBlock={activeBlock}
+              />
+            )}
+            
+            <main className="flex-1 h-full overflow-hidden flex flex-col relative">
               {currentView === 'admin' && adminTab === 'users' ? (
                 <UserManagementScreen 
                   users={users}
@@ -228,6 +292,17 @@ const App: React.FC = () => {
                   isGenerating={isDownloading}
                   mode={currentView === 'admin' ? 'admin' : 'editor'}
                   blockType={activeBlock}
+                />
+              )}
+
+              {/* Barra de Ações Flutuante quando finalizado */}
+              {isFinalizedView && (
+                <FinalizedActionBar 
+                    onDownload={handleDownloadPdf}
+                    onBack={handleGoHome}
+                    onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }}
+                    isDownloading={isDownloading}
+                    documentTitle={appState.content.title}
                 />
               )}
             </main>

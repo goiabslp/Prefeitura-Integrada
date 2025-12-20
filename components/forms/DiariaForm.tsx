@@ -323,12 +323,18 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                 <MessageSquare className="w-4 h-4 text-indigo-600" /> 04. Justificativa da Viagem
               </h3>
               <div className={inputGroupClass}>
-                <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida (Página 1)</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida (Página 1)</label>
+                  <span className={`text-[9px] font-bold ${(content.descriptionReason?.length || 0) >= 365 ? 'text-red-500' : 'text-slate-400'}`}>
+                    {(content.descriptionReason?.length || 0)}/365
+                  </span>
+                </div>
                 <textarea 
                   value={content.descriptionReason || ''} 
                   onChange={(e) => handleUpdate('content', 'descriptionReason', e.target.value)} 
+                  maxLength={365}
                   className={`${inputClass} min-h-[120px] resize-none leading-relaxed`}
-                  placeholder="Descreva o objetivo da viagem..."
+                  placeholder="Descreva o objetivo da viagem (máximo 365 caracteres)..."
                 />
               </div>
             </div>
