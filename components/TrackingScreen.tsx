@@ -3,11 +3,10 @@ import React, { useState } from 'react';
 import { 
   ArrowLeft, Search, PackageX, FileText, Clock, Trash2, 
   FileDown, Calendar, Edit3, TrendingUp, Loader2,
-  CheckCircle2, AlertCircle, CalendarCheck
+  CheckCircle2, AlertCircle, CalendarCheck, Check, RotateCcw
 } from 'lucide-react';
 import { User, Order, AppState, BlockType } from '../types';
 
-// Custom Hash icon to match the UI style
 const HashIcon = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="4" y1="9" x2="20" y2="9"></line>
@@ -57,7 +56,8 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
         : order.userId === currentUser.id;
     
     const matchesSearch = order.protocol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.title.toLowerCase().includes(searchTerm.toLowerCase());
+                          (order.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (order.documentSnapshot?.content.requesterName || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     return hasPermission && matchesSearch;
   });
@@ -95,7 +95,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                  Histórico: {activeBlock?.toUpperCase()}
                </h2>
                <p className="text-slate-500 text-sm mt-1 font-medium">
-                 {isAdmin ? 'Gerenciamento global de registros deste módulo.' : 'Seus documentos gerados neste módulo.'}
+                 {isAdmin ? 'Gerenciamento global de registros.' : 'Seus documentos gerados neste módulo.'}
                </p>
              </div>
              
@@ -104,7 +104,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <div>
-                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-tight mb-1">Contador Histórico (Base)</p>
+                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-tight mb-1">Total Gerado</p>
                    <p className="text-3xl font-black text-indigo-900 leading-none">
                      {totalCounter.toString().padStart(3, '0')}
                    </p>
@@ -118,7 +118,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                  type="text"
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
-                 placeholder="Buscar por Título ou Protocolo..."
+                 placeholder="Buscar por Solicitante, Protocolo ou Título..."
                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
                />
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -143,7 +143,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                   <HashIcon className="w-3 h-3" /> Protocolo
                 </div>
                 <div className={`${isDiarias ? 'md:col-span-4' : 'md:col-span-6'} text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2`}>
-                  <FileText className="w-3 h-3" /> Título {isDiarias && '(Solicitante + Destino)'}
+                  <FileText className="w-3 h-3" /> Título (Solicitante + Destino)
                 </div>
                 {isDiarias && (
                   <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -151,7 +151,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                   </div>
                 )}
                 <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  {isDiarias ? 'Pagamento' : <><Calendar className="w-3 h-3" /> Data de Criação</>}
+                  {isDiarias ? <><RotateCcw className="w-3 h-3" /> Pagamento</> : <><Calendar className="w-3 h-3" /> Criação</>}
                 </div>
                 <div className="md:col-span-2 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</div>
               </div>
@@ -159,6 +159,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
               <div className="divide-y divide-slate-100">
                 {filteredOrders.map((order) => {
                   const content = order.documentSnapshot?.content;
+                  const isPaid = order.paymentStatus === 'paid';
                   
                   return (
                     <div key={order.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-5 hover:bg-slate-50/80 transition-colors items-center">
@@ -186,38 +187,45 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                       {isDiarias ? (
                          <div className="md:col-span-2">
                             {isAdmin ? (
-                              <div className="relative inline-flex flex-col">
-                                 <select 
-                                   value={order.paymentStatus || 'pending'}
-                                   onChange={(e) => onUpdatePaymentStatus?.(order.id, e.target.value as 'pending' | 'paid')}
-                                   className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all cursor-pointer outline-none ${
-                                     order.paymentStatus === 'paid' 
-                                       ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
-                                       : 'bg-amber-50 text-amber-600 border-amber-200'
-                                   }`}
-                                 >
-                                    <option value="pending">Pendente</option>
-                                    <option value="paid">Pago</option>
-                                 </select>
-                                 {order.paymentStatus === 'paid' && order.paymentDate && (
-                                   <span className="text-[8px] font-bold text-emerald-500 mt-1 pl-2">
-                                     Em: {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
-                                   </span>
-                                 )}
+                              <div className="flex flex-col gap-1">
+                                <button
+                                  onClick={() => onUpdatePaymentStatus?.(order.id, isPaid ? 'pending' : 'paid')}
+                                  className={`relative group flex items-center justify-between w-full max-w-[120px] px-3 py-2 rounded-xl border transition-all duration-300 active:scale-95 ${
+                                    isPaid 
+                                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-500/10' 
+                                      : 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm shadow-amber-500/10'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isPaid ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4 animate-pulse" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                      {isPaid ? 'Pago' : 'Pendente'}
+                                    </span>
+                                  </div>
+                                  <div className="hidden group-hover:block transition-all ml-1">
+                                    <Edit3 className="w-3 h-3 opacity-40" />
+                                  </div>
+                                </button>
+                                {isPaid && order.paymentDate && (
+                                  <span className="text-[9px] font-bold text-emerald-500 ml-2 flex items-center gap-1">
+                                    <Check className="w-2.5 h-2.5" /> 
+                                    {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
                               </div>
                             ) : (
-                              <div className="flex flex-col">
-                                 <div className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border w-fit ${
-                                   order.paymentStatus === 'paid' 
-                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                                     : 'bg-amber-50 text-amber-600 border-amber-100'
+                              <div className="flex flex-col gap-1">
+                                 <div className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border w-fit ${
+                                   isPaid 
+                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-500/5' 
+                                     : 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-amber-500/5'
                                  }`}>
-                                   {order.paymentStatus === 'paid' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                                   {order.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}
+                                   {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                                   {isPaid ? 'Pago' : 'Pendente'}
                                  </div>
-                                 {order.paymentStatus === 'paid' && order.paymentDate && (
-                                   <span className="text-[8px] font-bold text-emerald-500 mt-1 pl-2">
-                                     Em: {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
+                                 {isPaid && order.paymentDate && (
+                                   <span className="text-[9px] font-bold text-emerald-500 ml-3">
+                                     Data: {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
                                    </span>
                                  )}
                               </div>
@@ -250,15 +258,15 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 p-12">
                <PackageX className="w-12 h-12 opacity-30 mb-4" />
-               <p className="text-lg font-bold text-slate-500">Histórico de {activeBlock?.toUpperCase()} Vazio</p>
-               <p className="text-sm text-slate-400 mt-1 text-center">Nenhum registro encontrado para os critérios de busca.</p>
+               <p className="text-lg font-bold text-slate-500">Histórico Vazio</p>
+               <p className="text-sm text-slate-400 mt-1 text-center">Nenhum registro encontrado para este módulo.</p>
             </div>
           )}
         </div>
 
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-           <span>{filteredOrders.length} registros exibidos neste bloco</span>
-           <span>Sistema de Gestão Pública Integrada v1.2.0</span>
+           <span>Exibindo {filteredOrders.length} registros</span>
+           <span>Sistema de Gestão Pública v1.2.0</span>
         </div>
       </div>
     </div>
