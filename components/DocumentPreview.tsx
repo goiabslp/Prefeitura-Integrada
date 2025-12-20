@@ -176,7 +176,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   <div className={`max-w-none text-gray-700 leading-relaxed text-justify break-words w-full rich-content flex-1 flex flex-col ${isDiaria ? 'text-[9.5pt]' : 'text-[11pt]'}`} dangerouslySetInnerHTML={{ __html: pageContent }} />
 
                   {isLastPage && docConfig.showSignature && !isDiaria && (
-                    <div className={`${isDiaria ? 'mt-4' : 'mt-10'} mb-2 flex flex-col items-center justify-center pointer-events-none shrink-0`}>
+                    <div className={`${isDiaria ? 'mt-4' : 'mt-10'} mb-10 flex flex-col items-center justify-center pointer-events-none shrink-0`}>
                       <div className="w-80 border-t border-black pt-2 text-center">
                           <p className="text-gray-900 font-bold text-sm leading-tight uppercase">{content.signatureName}</p>
                           <p className="text-gray-600 text-xs mt-0.5">{content.signatureRole}</p>
