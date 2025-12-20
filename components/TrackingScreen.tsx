@@ -1,7 +1,21 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash, Edit3, TrendingUp, Loader2 } from 'lucide-react';
+import { 
+  ArrowLeft, Search, PackageX, FileText, Clock, Trash2, 
+  FileDown, Calendar, Edit3, TrendingUp, Loader2,
+  CheckCircle2, AlertCircle, CalendarCheck
+} from 'lucide-react';
 import { User, Order, AppState, BlockType } from '../types';
+
+// Custom Hash icon to match the UI style
+const HashIcon = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="4" y1="9" x2="20" y2="9"></line>
+    <line x1="4" y1="15" x2="20" y2="15"></line>
+    <line x1="10" y1="3" x2="8" y2="21"></line>
+    <line x1="16" y1="3" x2="14" y2="21"></line>
+  </svg>
+);
 
 interface TrackingScreenProps {
   onBack: () => void;
@@ -13,6 +27,7 @@ interface TrackingScreenProps {
   onEditOrder: (order: Order) => void;
   onDeleteOrder: (id: string) => void;
   totalCounter: number;
+  onUpdatePaymentStatus?: (orderId: string, status: 'pending' | 'paid') => void;
 }
 
 export const TrackingScreen: React.FC<TrackingScreenProps> = ({ 
@@ -24,16 +39,20 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   onClearAll, 
   onEditOrder,
   onDeleteOrder,
-  totalCounter
+  totalCounter,
+  onUpdatePaymentStatus
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const isAdmin = currentUser.role === 'admin';
+  const isDiarias = activeBlock === 'diarias';
 
   const filteredOrders = orders.filter(order => {
     const matchesBlock = order.blockType === activeBlock;
     if (!matchesBlock) return false;
 
-    const hasPermission = currentUser.role === 'admin' || currentUser.role === 'licitacao' 
+    const hasPermission = isAdmin || currentUser.role === 'licitacao' 
         ? true 
         : order.userId === currentUser.id;
     
@@ -46,8 +65,13 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   const handleDownload = (order: Order) => {
     setDownloadingId(order.id);
     onDownloadPdf(order.documentSnapshot);
-    // Simula reset do estado de loading após o trigger (o App gerencia o download real)
     setTimeout(() => setDownloadingId(null), 2000);
+  };
+
+  const getDepartureDate = (order: Order) => {
+    const content = order.documentSnapshot?.content;
+    if (!content?.departureDateTime) return '---';
+    return new Date(content.departureDateTime).toLocaleDateString('pt-BR');
   };
 
   return (
@@ -71,7 +95,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                  Histórico: {activeBlock?.toUpperCase()}
                </h2>
                <p className="text-slate-500 text-sm mt-1 font-medium">
-                 {currentUser.role === 'admin' ? 'Gerenciamento global de registros deste módulo.' : 'Seus documentos gerados neste módulo.'}
+                 {isAdmin ? 'Gerenciamento global de registros deste módulo.' : 'Seus documentos gerados neste módulo.'}
                </p>
              </div>
              
@@ -99,7 +123,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                />
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             </div>
-            {currentUser.role === 'admin' && filteredOrders.length > 0 && (
+            {isAdmin && filteredOrders.length > 0 && (
                <button 
                  onClick={onClearAll}
                  className="p-3.5 bg-red-50 text-red-500 border border-red-100 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center gap-2 font-bold text-xs uppercase"
@@ -115,42 +139,112 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
           {filteredOrders.length > 0 ? (
             <div className="min-w-full">
               <div className="border-b border-slate-100 bg-slate-50/50 hidden md:grid md:grid-cols-12 gap-4 px-8 py-4 sticky top-0 z-10">
-                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Hash className="w-3 h-3" /> Protocolo</div>
-                <div className="md:col-span-6 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><FileText className="w-3 h-3" /> Título do Documento</div>
-                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Calendar className="w-3 h-3" /> Data de Criação</div>
+                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <HashIcon className="w-3 h-3" /> Protocolo
+                </div>
+                <div className={`${isDiarias ? 'md:col-span-4' : 'md:col-span-6'} text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2`}>
+                  <FileText className="w-3 h-3" /> Título {isDiarias && '(Solicitante + Destino)'}
+                </div>
+                {isDiarias && (
+                  <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <CalendarCheck className="w-3 h-3" /> Saída
+                  </div>
+                )}
+                <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  {isDiarias ? 'Pagamento' : <><Calendar className="w-3 h-3" /> Data de Criação</>}
+                </div>
                 <div className="md:col-span-2 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</div>
               </div>
 
               <div className="divide-y divide-slate-100">
-                {filteredOrders.map(order => (
-                  <div key={order.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-5 hover:bg-slate-50/80 transition-colors items-center">
-                    <div className="md:col-span-2">
-                       <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50/50 px-2 py-1 rounded border border-indigo-100/50">
-                          {order.protocol}
-                       </span>
+                {filteredOrders.map((order) => {
+                  const content = order.documentSnapshot?.content;
+                  
+                  return (
+                    <div key={order.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-5 hover:bg-slate-50/80 transition-colors items-center">
+                      <div className="md:col-span-2">
+                         <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50/50 px-2 py-1 rounded border border-indigo-100/50">
+                            {order.protocol}
+                         </span>
+                      </div>
+                      
+                      <div className={`${isDiarias ? 'md:col-span-4' : 'md:col-span-6'}`}>
+                         <h3 className="text-sm font-bold text-slate-800 leading-tight">
+                           {isDiarias ? (content?.requesterName || '---') : order.title}
+                         </h3>
+                         <p className="text-[10px] text-slate-400 font-medium">
+                           {isDiarias ? (content?.destination || '---') : `Por: ${order.userName}`}
+                         </p>
+                      </div>
+
+                      {isDiarias && (
+                         <div className="md:col-span-2 text-slate-600 text-xs font-bold">
+                           {getDepartureDate(order)}
+                         </div>
+                      )}
+
+                      {isDiarias ? (
+                         <div className="md:col-span-2">
+                            {isAdmin ? (
+                              <div className="relative inline-flex flex-col">
+                                 <select 
+                                   value={order.paymentStatus || 'pending'}
+                                   onChange={(e) => onUpdatePaymentStatus?.(order.id, e.target.value as 'pending' | 'paid')}
+                                   className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all cursor-pointer outline-none ${
+                                     order.paymentStatus === 'paid' 
+                                       ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                       : 'bg-amber-50 text-amber-600 border-amber-200'
+                                   }`}
+                                 >
+                                    <option value="pending">Pendente</option>
+                                    <option value="paid">Pago</option>
+                                 </select>
+                                 {order.paymentStatus === 'paid' && order.paymentDate && (
+                                   <span className="text-[8px] font-bold text-emerald-500 mt-1 pl-2">
+                                     Em: {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
+                                   </span>
+                                 )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col">
+                                 <div className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border w-fit ${
+                                   order.paymentStatus === 'paid' 
+                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                     : 'bg-amber-50 text-amber-600 border-amber-100'
+                                 }`}>
+                                   {order.paymentStatus === 'paid' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                                   {order.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}
+                                 </div>
+                                 {order.paymentStatus === 'paid' && order.paymentDate && (
+                                   <span className="text-[8px] font-bold text-emerald-500 mt-1 pl-2">
+                                     Em: {new Date(order.paymentDate).toLocaleDateString('pt-BR')}
+                                   </span>
+                                 )}
+                              </div>
+                            )}
+                         </div>
+                      ) : (
+                         <div className="md:col-span-2 flex items-center gap-2 text-slate-500 text-xs font-medium">
+                            <Clock className="w-3 h-3 opacity-40" />
+                            {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                         </div>
+                      )}
+
+                      <div className="md:col-span-2 flex items-center justify-end gap-1">
+                         <button onClick={() => onEditOrder(order)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Editar"><Edit3 className="w-5 h-5" /></button>
+                         <button 
+                          onClick={() => handleDownload(order)} 
+                          disabled={downloadingId === order.id}
+                          className={`p-2 rounded-xl transition-all ${downloadingId === order.id ? 'text-indigo-400 bg-indigo-50' : 'text-indigo-600 hover:bg-indigo-600 hover:text-white'}`} 
+                          title="Download PDF"
+                         >
+                           {downloadingId === order.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
+                         </button>
+                         <button onClick={() => onDeleteOrder(order.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><Trash2 className="w-5 h-5" /></button>
+                      </div>
                     </div>
-                    <div className="md:col-span-6">
-                       <h3 className="text-sm font-bold text-slate-800 leading-tight">{order.title}</h3>
-                       <p className="text-[10px] text-slate-400 font-medium">Por: {order.userName}</p>
-                    </div>
-                    <div className="md:col-span-2 flex items-center gap-2 text-slate-500 text-xs font-medium">
-                       <Clock className="w-3 h-3 opacity-40" />
-                       {new Date(order.createdAt).toLocaleDateString('pt-BR')}
-                    </div>
-                    <div className="md:col-span-2 flex items-center justify-end gap-1">
-                       <button onClick={() => onEditOrder(order)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Editar"><Edit3 className="w-5 h-5" /></button>
-                       <button 
-                        onClick={() => handleDownload(order)} 
-                        disabled={downloadingId === order.id}
-                        className={`p-2 rounded-xl transition-all ${downloadingId === order.id ? 'text-indigo-400 bg-indigo-50' : 'text-indigo-600 hover:bg-indigo-600 hover:text-white'}`} 
-                        title="Download PDF"
-                       >
-                         {downloadingId === order.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
-                       </button>
-                       <button onClick={() => onDeleteOrder(order.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><Trash2 className="w-5 h-5" /></button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (

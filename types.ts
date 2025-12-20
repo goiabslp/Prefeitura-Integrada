@@ -134,6 +134,8 @@ export interface Order {
   userName: string;
   blockType: BlockType;
   documentSnapshot?: AppState;
+  paymentStatus?: 'pending' | 'paid';
+  paymentDate?: string;
 }
 
 // Novas Interfaces para o Módulo de Pessoas, Setores e Cargos

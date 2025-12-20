@@ -111,7 +111,8 @@ const App: React.FC = () => {
         userId: currentUser.id,
         userName: currentUser.name,
         blockType: activeBlock,
-        documentSnapshot: JSON.parse(JSON.stringify(appState))
+        documentSnapshot: JSON.parse(JSON.stringify(appState)),
+        paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => [...prev, finalOrder]);
@@ -129,6 +130,22 @@ const App: React.FC = () => {
     setAdminTab('content');
     setIsAdminSidebarOpen(true);
     setIsFinalizedView(false);
+  };
+
+  const handleUpdatePaymentStatus = async (orderId: string, status: 'pending' | 'paid') => {
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        const updated = { 
+          ...o, 
+          paymentStatus: status,
+          paymentDate: status === 'paid' ? new Date().toISOString() : undefined
+        };
+        db.saveOrder(updated);
+        return updated;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
   };
 
   // Função genérica de download
@@ -353,6 +370,7 @@ const App: React.FC = () => {
             onEditOrder={handleEditOrder}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
             totalCounter={globalCounter}
+            onUpdatePaymentStatus={handleUpdatePaymentStatus}
           />
         )}
       </div>
