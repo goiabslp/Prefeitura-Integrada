@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
@@ -166,12 +165,14 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
   const handleDiariaSubTypeChange = (type: 'diaria' | 'custeio') => {
     const newTitle = type === 'diaria' ? 'Requisição de Diária' : 'Requisição de Custeio';
+    const currentYear = new Date().getFullYear();
     onUpdate({
         ...state,
         content: {
             ...state.content,
             subType: type,
             title: newTitle,
+            leftBlockText: `Protocolo nº ${type.toUpperCase()}-001/${currentYear}`,
             paymentForecast: calculatePaymentForecast(),
             showDiariaSignatures: true,
             showExtraField: true,
@@ -293,11 +294,11 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
        {content.subType ? (
          <>
-            {/* Bloco de Protocolo / Endereçamento */}
+            {/* Bloco de Endereçamento */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Columns className="w-4 h-4 text-indigo-600" /> Bloco de Endereçamento (Protocolo)
+                  <Columns className="w-4 h-4 text-indigo-600" /> Endereçamento
                 </h3>
                 <button 
                   onClick={() => handleUpdate('document', 'showLeftBlock', !state.document.showLeftBlock)}
@@ -325,18 +326,18 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <User className="w-4 h-4 text-indigo-600" /> 01. Dados do Requerente
+                <User className="w-4 h-4 text-indigo-600" /> Dados do Solicitante
               </h3>
               <div className={inputGroupClass}>
                 <div className="grid grid-cols-1 gap-4">
                    <div className="relative" ref={requesterDropdownRef}>
-                      <label className={labelClass}><User className="w-3 h-3" /> Nome Completo (Beneficiário)</label>
+                      <label className={labelClass}><User className="w-3 h-3" /> Nome Completo</label>
                       <div 
                         onClick={() => setIsRequesterOpen(!isRequesterOpen)}
                         className={`${inputClass} flex items-center justify-between cursor-pointer ${isRequesterOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
                       >
                         <span className={content.requesterName ? 'text-slate-900' : 'text-slate-400'}>
-                          {content.requesterName || 'Selecione o Beneficiário...'}
+                          {content.requesterName || 'Selecione o Solicitante...'}
                         </span>
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isRequesterOpen ? 'rotate-180' : ''}`} />
                       </div>
@@ -400,10 +401,11 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                       <div>
                         <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Setor</label>
                         <input 
-                          type="text" value={content.requesterSector || ''} 
-                          readOnly
-                          className={`${inputClass} bg-slate-100/50 cursor-not-allowed text-slate-500`} 
-                          placeholder="Setor automático" 
+                          type="text" 
+                          value={content.requesterSector || ''} 
+                          onChange={(e) => handleUpdate('content', 'requesterSector', e.target.value)}
+                          className={inputClass} 
+                          placeholder="Digite o setor..." 
                         />
                       </div>
                    </div>
@@ -413,7 +415,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-indigo-600" /> 02. Logística e Período
+                <MapPin className="w-4 h-4 text-indigo-600" /> Logística e Período
               </h3>
               <div className={inputGroupClass}>
                  <div className="relative" ref={cityDropdownRef}>
@@ -506,7 +508,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-indigo-600" /> 03. Custos e Prazos
+                <DollarSign className="w-4 h-4 text-indigo-600" /> Custos e Prazos
               </h3>
               <div className={inputGroupClass}>
                  <div className="grid grid-cols-2 gap-4">
@@ -610,11 +612,11 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-indigo-600" /> 04. Justificativa da Viagem
+                <MessageSquare className="w-4 h-4 text-indigo-600" /> Justificativa da Viagem
               </h3>
               <div className={inputGroupClass}>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida (Página 1)</label>
+                  <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida</label>
                   <span className={`text-[9px] font-bold ${(content.descriptionReason?.length || 0) >= 365 ? 'text-red-500' : 'text-slate-400'}`}>
                     {(content.descriptionReason?.length || 0)}/365
                   </span>
@@ -632,7 +634,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-slate-600" /> 05. Informações Adicionais (Anexo)
+                  <PlusCircle className="w-4 h-4 text-slate-600" /> Informações Adicionais
                 </h3>
                 <button 
                   onClick={() => handleUpdate('content', 'showExtraField', !content.showExtraField)}
@@ -648,7 +650,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
               {content.showExtraField && (
                 <div className={`${inputGroupClass} animate-fade-in`}>
-                  <label className={labelClass}><FileText className="w-3 h-3" /> Texto do Anexo (Páginas 2+)</label>
+                  <label className={labelClass}><FileText className="w-3 h-3" /> Detalhamento</label>
                   <textarea 
                     value={content.extraFieldText || ''} 
                     onChange={(e) => handleUpdate('content', 'extraFieldText', e.target.value)} 
@@ -663,7 +665,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             <div className="space-y-4">
                <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-indigo-600" /> 06. Evidências (Fotos)
+                    <Camera className="w-4 h-4 text-indigo-600" /> Comprovantes
                   </h3>
                   <button 
                     onClick={addEvidence}
