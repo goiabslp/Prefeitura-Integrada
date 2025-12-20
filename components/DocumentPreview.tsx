@@ -19,16 +19,17 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
   const pages = useMemo(() => {
     /**
      * Lógica de Paginação Otimizada
-     * MAX_LINES_PER_PAGE: 34 linhas para permitir maior densidade em formulários.
      */
-    const MAX_LINES_PER_PAGE = 34; 
+    const isDiaria = content.subType !== undefined;
+    // Para diárias, permitimos mais densidade e tentamos manter tudo em uma página
+    const MAX_LINES_PER_PAGE = isDiaria ? 40 : 34; 
     const CHARS_PER_LINE = 75; 
     
-    const titleFontSizeFactor = (docConfig.titleStyle?.size || 32) / 12;
+    const titleFontSizeFactor = isDiaria ? 1.5 : (docConfig.titleStyle?.size || 32) / 12;
     const titleLines = Math.max(1, Math.ceil((content.title.length * titleFontSizeFactor) / CHARS_PER_LINE)) + 1;
     
     const LATERAL_BLOCKS_COST = (docConfig.showLeftBlock || docConfig.showRightBlock) ? 8 : 0;
-    const SIGNATURE_COST = 6; 
+    const SIGNATURE_COST = isDiaria ? 0 : 6; // Para diárias, a assinatura é parte do body estruturado em flexbox
 
     const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
     
@@ -52,10 +53,10 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
       
       // Tabelas têm custo fixo de altura em linhas estimado
       const isTable = /<table/i.test(blockHTML);
-      const linesInBlock = isTable ? 12 : Math.max(1, Math.ceil(plainText.length / CHARS_PER_LINE));
+      const linesInBlock = isTable ? 10 : Math.max(1, Math.ceil(plainText.length / CHARS_PER_LINE));
       const blockCost = linesInBlock;
 
-      if ((currentLinesUsed + blockCost) > MAX_LINES_PER_PAGE) {
+      if ((currentLinesUsed + blockCost) > MAX_LINES_PER_PAGE && !isDiaria) {
         resultPages.push(currentPageContent);
         currentPageContent = blockHTML;
         currentLinesUsed = blockCost;
@@ -66,18 +67,18 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
     }
     
     if (currentPageContent) {
-      if (docConfig.showSignature && (currentLinesUsed + SIGNATURE_COST) > MAX_LINES_PER_PAGE) {
+      if (docConfig.showSignature && !isDiaria && (currentLinesUsed + SIGNATURE_COST) > MAX_LINES_PER_PAGE) {
          resultPages.push(currentPageContent);
          resultPages.push(''); 
       } else {
          resultPages.push(currentPageContent);
       }
-    } else if (docConfig.showSignature && resultPages.length > 0) {
+    } else if (docConfig.showSignature && !isDiaria && resultPages.length > 0) {
        resultPages.push(''); 
     }
 
     return resultPages.length > 0 ? resultPages : [''];
-  }, [content.body, content.title, docConfig.showSignature, docConfig.showLeftBlock, docConfig.showRightBlock, docConfig.titleStyle?.size]);
+  }, [content.body, content.title, docConfig.showSignature, docConfig.showLeftBlock, docConfig.showRightBlock, docConfig.titleStyle?.size, content.subType]);
 
   const getBlockStyle = (styleConfig: { size: number, color: string }, isLeft: boolean) => ({
     fontSize: `${styleConfig.size}pt`,
@@ -108,7 +109,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                 className={`bg-white mx-auto flex flex-col relative ${branding.fontFamily} ${isGenerating ? 'mb-0' : 'mb-8 shadow-2xl ring-1 ring-black/5'}`}
                 style={{
                   width: '210mm', height: isGenerating ? '296.5mm' : '297mm',
-                  padding: '20mm', paddingTop: '55mm', paddingBottom: '12mm',
+                  padding: '20mm', paddingTop: '52mm', paddingBottom: '12mm',
                   position: 'relative', overflow: 'hidden' 
                 }}
               >
@@ -121,7 +122,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
 
                 <div className="absolute top-8 left-[20mm] right-[20mm] h-32 z-20">
                   <div className="absolute top-0 flex" style={{ left: branding.logoAlignment === 'left' ? 0 : branding.logoAlignment === 'center' ? '50%' : 'auto', right: branding.logoAlignment === 'right' ? 0 : 'auto', transform: branding.logoAlignment === 'center' ? 'translateX(-50%)' : 'none' }}>
-                    {branding.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="object-contain" style={{ width: `${branding.logoWidth}mm`, maxHeight: '32mm' }} /> : <div className="bg-slate-50 border rounded flex items-center justify-center text-[10px]" style={{ width: `${branding.logoWidth}mm`, height: '20mm' }}>Logo</div>}
+                    {branding.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="object-contain" style={{ width: `${branding.logoWidth}mm`, maxHeight: '30mm' }} /> : <div className="bg-slate-50 border rounded flex items-center justify-center text-[10px]" style={{ width: `${branding.logoWidth}mm`, height: '20mm' }}>Logo</div>}
                   </div>
                   
                   <div className="absolute top-0 right-0 text-right flex flex-col items-end">
@@ -137,13 +138,13 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                   </div>
                 </div>
 
-                <div className="absolute top-[42mm] left-[20mm] right-[20mm] border-b-2 border-gray-800 z-20" />
+                <div className="absolute top-[40mm] left-[20mm] right-[20mm] border-b border-gray-400 z-20" />
 
-                <main className={`flex-1 mt-2 relative z-10 flex flex-col overflow-hidden`}>
+                <main className={`flex-1 mt-1 relative z-10 flex flex-col overflow-hidden h-full`}>
                   {isFirstPage && (
                     <>
                       {(docConfig.showLeftBlock || docConfig.showRightBlock) && (
-                        <div className="flex justify-between items-start mb-6 min-h-[25mm] w-full gap-8 shrink-0">
+                        <div className="flex justify-between items-start mb-4 min-h-[22mm] w-full gap-8 shrink-0">
                            {docConfig.showRightBlock && (
                              <div className="w-1/2" style={getBlockStyle(docConfig.rightBlockStyle, true)}>
                                {content.rightBlockText}
@@ -158,10 +159,10 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                       )}
 
                       <h1 
-                        className="font-bold mb-6 leading-tight tracking-tight break-words w-full overflow-hidden shrink-0" 
+                        className="font-bold mb-4 leading-tight tracking-tight break-words w-full overflow-hidden shrink-0" 
                         style={{ 
                           color: docConfig.titleStyle?.color || branding.primaryColor, 
-                          fontSize: isDiaria ? '24pt' : `${docConfig.titleStyle?.size || 32}pt`, 
+                          fontSize: isDiaria ? '18pt' : `${docConfig.titleStyle?.size || 32}pt`, 
                           textAlign: docConfig.titleStyle?.alignment || 'left',
                           wordBreak: 'break-word',
                           maxWidth: '100%'
@@ -172,10 +173,10 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                     </>
                   )}
                   
-                  <div className={`max-w-none text-gray-700 leading-relaxed text-justify break-words w-full rich-content ${isDiaria ? 'text-[10pt]' : 'text-[11pt]'}`} dangerouslySetInnerHTML={{ __html: pageContent }} />
+                  <div className={`max-w-none text-gray-700 leading-relaxed text-justify break-words w-full rich-content flex-1 flex flex-col ${isDiaria ? 'text-[9.5pt]' : 'text-[11pt]'}`} dangerouslySetInnerHTML={{ __html: pageContent }} />
 
-                  {isLastPage && docConfig.showSignature && (
-                    <div className={`${isDiaria ? 'mt-[25px]' : 'mt-[45px]'} mb-2 flex flex-col items-center justify-center pointer-events-none shrink-0`}>
+                  {isLastPage && docConfig.showSignature && !isDiaria && (
+                    <div className={`${isDiaria ? 'mt-4' : 'mt-10'} mb-2 flex flex-col items-center justify-center pointer-events-none shrink-0`}>
                       <div className="w-80 border-t border-black pt-2 text-center">
                           <p className="text-gray-900 font-bold text-sm leading-tight uppercase">{content.signatureName}</p>
                           <p className="text-gray-600 text-xs mt-0.5">{content.signatureRole}</p>

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { AppState, ContentData, DocumentConfig, Signature } from '../../types';
 
-interface DiariaFormProps {
+interface OficioFormProps {
   state: AppState;
   content: ContentData;
   docConfig: DocumentConfig;
@@ -16,7 +16,7 @@ interface DiariaFormProps {
   onUpdate: (newState: AppState) => void;
 }
 
-export const DiariaForm: React.FC<DiariaFormProps> = ({ 
+export const DiariaForm: React.FC<OficioFormProps> = ({ 
   state, 
   content, 
   allowedSignatures, 
@@ -28,7 +28,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   const calculatePaymentForecast = () => {
     const now = new Date();
     let year = now.getFullYear();
-    let month = now.getMonth() + 2; // +1 para o próximo mês, +1 porque getMonth é 0-indexed
+    let month = now.getMonth() + 2; 
     
     if (month > 12) {
       month = 1;
@@ -38,12 +38,17 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
     return `10/${month.toString().padStart(2, '0')}/${year}`;
   };
 
-  // Atualiza a previsão ao montar ou quando o subtipo muda
+  // Atualiza a previsão e garante que showSignature do documento esteja desativado para Diárias
   useEffect(() => {
-    if (content.subType && !content.paymentForecast) {
-      handleUpdate('content', 'paymentForecast', calculatePaymentForecast());
+    if (content.subType) {
+      if (!content.paymentForecast) {
+        handleUpdate('content', 'paymentForecast', calculatePaymentForecast());
+      }
+      if (state.document.showSignature) {
+        handleUpdate('document', 'showSignature', false);
+      }
     }
-  }, [content.subType]);
+  }, [content.subType, handleUpdate, state.document.showSignature]);
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, "");
@@ -59,66 +64,127 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
     handleUpdate('content', 'requestedValue', formatted);
   };
 
-  // Efeito para sincronizar os campos estruturados com o "body" do documento (Layout Compacto)
+  // Efeito para sincronizar os campos estruturados + Assinaturas Triplas no "body"
   useEffect(() => {
     if (content.subType) {
+      // Usando medidas em PT/MM para maior precisão no motor de renderização do PDF
       const htmlBody = `
-        <div style="font-family: inherit; line-height: 1.3; color: #1e293b; font-size: 10pt;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1.5px solid #334155;">
-            <tr>
-              <td colspan="2" style="padding: 6px 10px; border: 1px solid #94a3b8; background: #f1f5f9; font-weight: 800; text-transform: uppercase; font-size: 8.5pt;">Dados do Beneficiário</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; width: 25%;">Nome:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8;">${content.requesterName || '---'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold;">Cargo / Setor:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8;">${content.requesterRole || '---'} — ${content.requesterSector || '---'}</td>
-            </tr>
-            <tr>
-              <td colspan="2" style="padding: 6px 10px; border: 1px solid #94a3b8; background: #f1f5f9; font-weight: 800; text-transform: uppercase; font-size: 8.5pt;">Logística da Viagem</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold;">Destino:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8;">${content.destination || '---'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold;">Período:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8;">
-                Saída: ${content.departureDateTime ? new Date(content.departureDateTime).toLocaleString('pt-BR') : '---'} | 
-                Retorno: ${content.returnDateTime ? new Date(content.returnDateTime).toLocaleString('pt-BR') : '---'}
-              </td>
-            </tr>
-            <tr>
-              <td colspan="2" style="padding: 6px 10px; border: 1px solid #94a3b8; background: #f1f5f9; font-weight: 800; text-transform: uppercase; font-size: 8.5pt;">Resumo Financeiro e Autorização</td>
-            </tr>
-          </table>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1.5px solid #334155;">
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; width: 25%;">Hospedagens:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; width: 25%;">${content.lodgingCount || 0}</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; width: 25%;">Distância (KM):</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; width: 25%;">${content.distanceKm || 0} km</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold;">Valor Solicitado:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; color: #111827;">${content.requestedValue || 'R$ 0,00'}</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; background: #fffbeb;">Previsão Pgto:</td>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold; color: #b45309; background: #fffbeb;">${content.paymentForecast || '---'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 5px 10px; border: 1px solid #94a3b8; font-weight: bold;">Autorizado por:</td>
-              <td colspan="3" style="padding: 5px 10px; border: 1px solid #94a3b8;">${content.authorizedBy || '---'}</td>
-            </tr>
-          </table>
+        <div style="display: flex; flex-direction: column; width: 100%; height: 232mm; font-family: inherit; line-height: 1.1; color: #1e293b; font-size: 9pt; box-sizing: border-box;">
           
-          <div style="margin-top: 10px; page-break-inside: avoid;">
-            <p style="font-weight: 900; margin-bottom: 5px; text-transform: uppercase; font-size: 8.5pt; color: #475569;">Descrição Detalhada / Motivo da Viagem:</p>
-            <div style="padding: 10px; border: 1px solid #cbd5e1; min-height: 80px; text-align: justify; background: #fcfcfc; font-size: 10.5pt; line-height: 1.4;">
-              ${content.descriptionReason || 'Nenhuma justificativa informada.'}
+          <div style="flex: 0 0 auto;">
+            <!-- CARD 01: Dados do Beneficiário -->
+            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
+              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
+                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">01. Dados do Beneficiário</span>
+              </div>
+              <div style="padding: 8px 10px;">
+                <div style="margin-bottom: 4px;">
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Nome do Servidor</span>
+                  <span style="color: #0f172a; font-weight: 700; font-size: 9.5pt;">${content.requesterName || '---'}</span>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                  <div style="flex: 1;">
+                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cargo / Função</span>
+                    <span style="color: #334155; font-weight: 600;">${content.requesterRole || '---'}</span>
+                  </div>
+                  <div style="flex: 1;">
+                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Setor / Lotação</span>
+                    <span style="color: #334155; font-weight: 600;">${content.requesterSector || '---'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- CARD 02: Logística -->
+            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
+              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
+                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">02. Logística e Itinerário</span>
+              </div>
+              <div style="padding: 8px 10px;">
+                <div style="margin-bottom: 6px;">
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cidade / Estado de Destino</span>
+                  <span style="color: #0f172a; font-weight: 700;">${content.destination || '---'}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                  <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Saída (Data/Hora)</span>
+                    <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.departureDateTime ? new Date(content.departureDateTime).toLocaleString('pt-BR') : '---'}</span>
+                  </div>
+                  <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Retorno (Data/Hora)</span>
+                    <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.returnDateTime ? new Date(content.returnDateTime).toLocaleString('pt-BR') : '---'}</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                  <div><span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Pernoites:</span> <span style="font-weight: 700; color: #1e293b;">${content.lodgingCount || 0}</span></div>
+                  <div><span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Distância:</span> <span style="font-weight: 700; color: #1e293b;">${content.distanceKm || 0} KM</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD 03: Financeiro -->
+            <div style="margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff;">
+              <div style="background: #f1f5f9; padding: 4px 10px; border-bottom: 1px solid #cbd5e1;">
+                <span style="font-weight: 800; font-size: 7.5pt; color: #475569; text-transform: uppercase;">03. Resumo Financeiro</span>
+              </div>
+              <div style="padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div style="flex: 1;">
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Valor Solicitado</span>
+                  <span style="font-size: 12pt; font-weight: 900; color: #4f46e5;">${content.requestedValue || 'R$ 0,00'}</span>
+                </div>
+                <div style="flex: 1; padding: 6px 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; text-align: center;">
+                  <span style="font-size: 6pt; font-weight: 900; color: #92400e; text-transform: uppercase; display: block;">Previsão Pgto</span>
+                  <span style="font-size: 10pt; font-weight: 900; color: #b45309;">${content.paymentForecast || '---'}</span>
+                </div>
+                <div style="flex: 1.5; text-align: right;">
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Autorizador do Gasto</span>
+                  <span style="font-size: 8.5pt; font-weight: 700; color: #334155;">${content.authorizedBy || '---'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CARD 04: Justificativa -->
+          <div style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="background: #0f172a; padding: 4px 10px; border-radius: 8px 8px 0 0;">
+                <span style="font-weight: 800; font-size: 7.5pt; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em;">04. Justificativa Detalhada</span>
+            </div>
+            <div style="padding: 10px 14px; border: 1px solid #0f172a; border-top: none; border-radius: 0 0 8px 8px; flex: 1 1 auto; max-height: 75mm; min-height: 25mm; text-align: justify; background: #ffffff; font-size: 9.5pt; line-height: 1.4; overflow: hidden; box-sizing: border-box; color: #0f172a;">
+              ${content.descriptionReason || 'A justificativa será exibida aqui após o preenchimento.'}
+            </div>
+          </div>
+
+          <!-- BLOCO DE ASSINATURAS REORGANIZADO -->
+          <div style="flex: 0 0 auto; width: 100%; text-align: center; margin-top: auto;">
+             
+             <!-- 1. Assinatura do Requerente (Cascata Superior) -->
+             <!-- paddingTop: 5.5em simula aprox. 5 linhas de espaço com o texto acima -->
+             <div style="width: 260px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px; margin-top: 5.5em;">
+                <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 9pt; color: #0f172a;">${content.requesterName || 'NOME DO SERVIDOR SOLICITANTE'}</p>
+                <p style="margin: 1px 0 0 0; font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase;">Servidor Requerente</p>
+             </div>
+
+             <!-- 2. Assinaturas de Controle e Autorização (Cascata Inferior) -->
+             <!-- marginTop: 5.5em simula aprox. 5 linhas de espaço com o Requerente acima -->
+             <table style="width: 100%; border-collapse: collapse; border: none; margin: 5.5em 0 0 0; padding: 0;">
+                <tr>
+                   <!-- Lado Esquerdo: Contabilidade -->
+                   <td style="width: 50%; vertical-align: top; text-align: center; padding: 0 10px;">
+                      <div style="width: 220px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px;">
+                         <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 8.5pt; color: #0f172a;">Visto Contabilidade</p>
+                         <p style="margin: 1px 0 0 0; font-size: 7pt; color: #64748b; font-weight: 700; text-transform: uppercase;">Tesouraria / Fazenda</p>
+                      </div>
+                   </td>
+
+                   <!-- Lado Direito: Responsável Autorizador -->
+                   <td style="width: 50%; vertical-align: top; text-align: center; padding: 0 10px;">
+                      <div style="width: 220px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px;">
+                         <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 8.5pt; color: #0f172a;">${content.signatureName || 'ORDENADOR DE DESPESA'}</p>
+                         <p style="margin: 1px 0 0 0; font-size: 7pt; color: #64748b; font-weight: 700; text-transform: uppercase; line-height: 1.2;">${content.signatureRole || 'Responsável'}</p>
+                      </div>
+                   </td>
+                </tr>
+             </table>
           </div>
         </div>
       `;
@@ -131,7 +197,9 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
     content.requesterName, content.requesterRole, content.requesterSector,
     content.destination, content.departureDateTime, content.returnDateTime,
     content.lodgingCount, content.authorizedBy, content.distanceKm,
-    content.requestedValue, content.descriptionReason, content.subType, content.paymentForecast
+    content.requestedValue, content.descriptionReason, content.subType, content.paymentForecast,
+    content.signatureName, content.signatureRole, content.signatureSector,
+    state.content.body, handleUpdate
   ]);
 
   const handleDiariaSubTypeChange = (type: 'diaria' | 'custeio') => {
@@ -142,7 +210,11 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             ...state.content,
             subType: type,
             title: newTitle,
-            paymentForecast: calculatePaymentForecast() // Garante atualização imediata
+            paymentForecast: calculatePaymentForecast()
+        },
+        document: {
+          ...state.document,
+          showSignature: false 
         }
     });
   };
@@ -327,13 +399,13 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                   value={content.descriptionReason || ''} 
                   onChange={(e) => handleUpdate('content', 'descriptionReason', e.target.value)} 
                   className={`${inputClass} min-h-[120px] resize-none leading-relaxed`}
-                  placeholder="Descreva detalhadamente o objetivo da viagem, reuniões agendadas ou eventos a participar..."
+                  placeholder="Descreva detalhadamente o objetivo da viagem..."
                 />
               </div>
             </div>
 
             <div className="space-y-4 border-t border-slate-200 pt-6">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Responsável pela Assinatura</h3>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4" /> Autorização Final (Responsável)</h3>
               <div className="grid grid-cols-1 gap-3">
                   {allowedSignatures.map((sig) => {
                     const isSelected = content.signatureName === sig.name;
