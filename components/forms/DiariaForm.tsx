@@ -3,9 +3,10 @@ import React, { useEffect } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
   User, Briefcase, MapPin, Calendar, Clock, Bed, ShieldCheck, Route, 
-  DollarSign, MessageSquare, CreditCard, Eye, EyeOff, PlusCircle, Columns
+  DollarSign, MessageSquare, CreditCard, Eye, EyeOff, PlusCircle, Columns,
+  Plus, Trash2, Camera, Image as ImageIcon
 } from 'lucide-react';
-import { AppState, ContentData, Signature } from '../../types';
+import { AppState, ContentData, Signature, EvidenceItem } from '../../types';
 
 interface DiariaFormProps {
   state: AppState;
@@ -48,6 +49,9 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
       if (content.showExtraField === undefined) {
         handleUpdate('content', 'showExtraField', false);
       }
+      if (content.evidenceItems === undefined) {
+        handleUpdate('content', 'evidenceItems', []);
+      }
     }
   }, [content.subType, handleUpdate, state.document.showSignature, content.showDiariaSignatures, content.showExtraField]);
 
@@ -76,6 +80,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             paymentForecast: calculatePaymentForecast(),
             showDiariaSignatures: true,
             showExtraField: false,
+            evidenceItems: [],
             body: '' 
         },
         document: {
@@ -83,6 +88,35 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
           showSignature: false 
         }
     });
+  };
+
+  const addEvidence = () => {
+    const items = [...(content.evidenceItems || [])];
+    items.push({ title: '', imageUrl: '' });
+    handleUpdate('content', 'evidenceItems', items);
+  };
+
+  const removeEvidence = (index: number) => {
+    const items = [...(content.evidenceItems || [])];
+    items.splice(index, 1);
+    handleUpdate('content', 'evidenceItems', items);
+  };
+
+  const updateEvidence = (index: number, key: keyof EvidenceItem, value: string) => {
+    const items = [...(content.evidenceItems || [])];
+    items[index] = { ...items[index], [key]: value };
+    handleUpdate('content', 'evidenceItems', items);
+  };
+
+  const handleImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateEvidence(index, 'imageUrl', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const inputGroupClass = "bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4";
@@ -132,7 +166,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
        {content.subType ? (
          <>
-            {/* NOVO: Bloco de Protocolo / Endereçamento */}
+            {/* Bloco de Protocolo / Endereçamento */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -164,7 +198,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <User className="w-4 h-4 text-indigo-600" /> Dados do Requerente
+                <User className="w-4 h-4 text-indigo-600" /> 01. Dados do Requerente
               </h3>
               <div className={inputGroupClass}>
                 <div className="grid grid-cols-1 gap-4">
@@ -200,7 +234,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-indigo-600" /> Logística e Período
+                <MapPin className="w-4 h-4 text-indigo-600" /> 02. Logística e Período
               </h3>
               <div className={inputGroupClass}>
                  <div>
@@ -234,7 +268,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-indigo-600" /> Custos e Prazos
+                <DollarSign className="w-4 h-4 text-indigo-600" /> 03. Custos e Prazos
               </h3>
               <div className={inputGroupClass}>
                  <div className="grid grid-cols-2 gap-4">
@@ -286,7 +320,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-indigo-600" /> Justificativa da Viagem
+                <MessageSquare className="w-4 h-4 text-indigo-600" /> 04. Justificativa da Viagem
               </h3>
               <div className={inputGroupClass}>
                 <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida (Página 1)</label>
@@ -302,7 +336,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-slate-600" /> Informações Adicionais (Anexo)
+                  <PlusCircle className="w-4 h-4 text-slate-600" /> 05. Informações Adicionais (Anexo)
                 </h3>
                 <button 
                   onClick={() => handleUpdate('content', 'showExtraField', !content.showExtraField)}
@@ -328,6 +362,72 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                   <p className="text-[9px] text-slate-400 font-medium italic">O conteúdo acima será paginado automaticamente a partir da Página 2.</p>
                 </div>
               )}
+            </div>
+
+            {/* BLOCO 06: EVIDÊNCIAS */}
+            <div className="space-y-4">
+               <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-indigo-600" /> 06. Evidências (Fotos)
+                  </h3>
+                  <button 
+                    onClick={addEvidence}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-all"
+                  >
+                    <Plus className="w-3 h-3" /> Adicionar Evidência
+                  </button>
+               </div>
+
+               <div className="space-y-4">
+                  {(content.evidenceItems || []).map((item, index) => (
+                    <div key={index} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm animate-fade-in">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-1 space-y-4">
+                                <div>
+                                    <label className={labelClass}>Título da Evidência</label>
+                                    <input 
+                                        type="text"
+                                        value={item.title}
+                                        onChange={(e) => updateEvidence(index, 'title', e.target.value)}
+                                        className={inputClass}
+                                        placeholder="Ex: Foto do Evento, Recibo de Pedágio..."
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-20 h-20 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0 relative group">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt="Evidência" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <ImageIcon className="w-6 h-6 text-slate-300" />
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            onChange={(e) => handleImageUpload(index, e)}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] text-slate-400 font-medium mb-2 leading-tight">Clique no ícone ao lado para carregar uma imagem comprobatória.</p>
+                                        <button 
+                                            onClick={() => removeEvidence(index)}
+                                            className="text-red-500 hover:text-red-700 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors"
+                                        >
+                                            <Trash2 className="w-3 h-3" /> Remover Item
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                  ))}
+                  
+                  {(!content.evidenceItems || content.evidenceItems.length === 0) && (
+                    <div className="p-8 border-2 border-dashed border-slate-100 rounded-3xl text-center">
+                        <p className="text-xs text-slate-400 font-medium italic">Nenhuma evidência adicionada. Use o botão "+" para anexar fotos.</p>
+                    </div>
+                  )}
+               </div>
             </div>
 
             <div className="space-y-4 border-t border-slate-200 pt-6">

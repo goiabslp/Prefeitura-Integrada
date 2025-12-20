@@ -51,6 +51,11 @@ export interface DocumentConfig {
   };
 }
 
+export interface EvidenceItem {
+  title: string;
+  imageUrl: string;
+}
+
 export interface ContentData {
   title: string;
   body: string;
@@ -63,6 +68,7 @@ export interface ContentData {
   showDiariaSignatures?: boolean;
   showExtraField?: boolean;
   extraFieldText?: string;
+  evidenceItems?: EvidenceItem[];
   // Campos específicos para Diárias e Custeio
   requesterName?: string;
   requesterRole?: string;

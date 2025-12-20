@@ -1,6 +1,6 @@
 
 import React, { forwardRef, useMemo } from 'react';
-import { AppState } from '../types';
+import { AppState, EvidenceItem } from '../types';
 
 interface DocumentPreviewProps {
   state: AppState;
@@ -22,8 +22,9 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
    */
   const pages = useMemo(() => {
     if (isDiaria) {
-      const result: { type: 'diaria-fom' | 'extra-flow'; content: string }[] = [{ type: 'diaria-fom', content: '' }];
+      const result: { type: 'diaria-fom' | 'extra-flow' | 'evidences'; content: any }[] = [{ type: 'diaria-fom', content: '' }];
       
+      // Bloco 05: Anexo de Texto
       if (content.showExtraField && content.extraFieldText) {
         const text = content.extraFieldText;
         const MAX_CHARS_PER_PAGE = 2500; 
@@ -47,6 +48,18 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
           result.push({ type: 'extra-flow', content: currentPageText });
         }
       }
+
+      // Bloco 06: Evidências (Fotos)
+      if (content.evidenceItems && content.evidenceItems.length > 0) {
+          const ITEMS_PER_PAGE = 2; // 2 fotos por página para boa visibilidade
+          for (let i = 0; i < content.evidenceItems.length; i += ITEMS_PER_PAGE) {
+              result.push({ 
+                  type: 'evidences', 
+                  content: content.evidenceItems.slice(i, i + ITEMS_PER_PAGE) 
+              });
+          }
+      }
+
       return result;
     }
 
@@ -74,7 +87,7 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
     
     if (currentPageContent) resultPages.push({ type: 'standard', content: currentPageContent });
     return resultPages;
-  }, [content.body, content.extraFieldText, content.showExtraField, isDiaria]);
+  }, [content.body, content.extraFieldText, content.showExtraField, content.evidenceItems, isDiaria]);
 
   const renderDiariaPage1 = () => {
     const showSigs = content.showDiariaSignatures !== false;
@@ -252,6 +265,31 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
                        <div className="flex-1 p-6 border border-slate-300 border-t-0 rounded-b-lg bg-slate-50/30 text-[10.5pt] leading-relaxed text-justify whitespace-pre-wrap">
                           {page.content}
                        </div>
+                    </div>
+                  ) : page.type === 'evidences' ? (
+                    <div className="flex flex-col h-full gap-6">
+                        <div className="bg-indigo-900 px-3 py-1 rounded-t-lg">
+                            <span className="font-black text-[7.5pt] text-white uppercase tracking-widest">06. Evidências / Comprovantes</span>
+                        </div>
+                        <div className="flex-1 grid grid-rows-2 gap-4">
+                            {(page.content as EvidenceItem[]).map((item, idx) => (
+                                <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-slate-50/20 p-2">
+                                    <div className="mb-2 border-b border-slate-200 pb-1">
+                                        <span className="text-[7pt] font-black text-slate-400 uppercase">Item: {item.title || 'Sem título'}</span>
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center bg-white rounded-lg border border-slate-100 overflow-hidden">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt={item.title} className="max-w-full max-h-[90mm] object-contain" />
+                                        ) : (
+                                            <div className="text-slate-200 flex flex-col items-center">
+                                                <div className="w-16 h-16 border-4 border-dashed border-slate-100 rounded-full mb-2"></div>
+                                                <span className="text-[10pt] font-bold">Sem imagem</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                   ) : (
                     <>
