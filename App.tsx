@@ -40,6 +40,10 @@ const App: React.FC = () => {
   const [adminTab, setAdminTab] = useState<string | null>(null);
   const [isFinalizedView, setIsFinalizedView] = useState(false);
 
+  // States for background download from history
+  const [snapshotToDownload, setSnapshotToDownload] = useState<AppState | null>(null);
+  const backgroundPreviewRef = useRef<HTMLDivElement>(null);
+
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,7 +91,6 @@ const App: React.FC = () => {
     let finalOrder: Order;
 
     if (editingOrder) {
-      // APENAS ATUALIZA O REGISTRO EXISTENTE
       finalOrder = {
         ...editingOrder,
         title: appState.content.title,
@@ -96,7 +99,6 @@ const App: React.FC = () => {
       await db.saveOrder(finalOrder);
       setOrders(prev => prev.map(o => o.id === finalOrder.id ? finalOrder : o));
     } else {
-      // CRIA UM NOVO REGISTRO E INCREMENTA O CONTADOR
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
 
@@ -129,19 +131,14 @@ const App: React.FC = () => {
     setIsFinalizedView(false);
   };
 
-  const handleDownloadPdf = () => {
-    if (!componentRef.current) return;
-    setIsDownloading(true);
-    
-    const element = document.getElementById('preview-scaler');
-    if (!element) {
-        setIsDownloading(false);
-        return;
-    }
+  // Função genérica de download
+  const performDownload = (elementId: string, filename: string) => {
+    const element = document.getElementById(elementId);
+    if (!element) return Promise.reject("Element not found");
 
     const opt = {
       margin: 0,
-      filename: `${appState.content.title || 'documento'}.pdf`,
+      filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
           scale: 2, 
@@ -155,12 +152,33 @@ const App: React.FC = () => {
     };
 
     // @ts-ignore
-    window.html2pdf().from(element).set(opt).save().then(() => {
-      setIsDownloading(false);
-    }).catch((err: any) => {
-        console.error("Erro ao gerar PDF:", err);
+    return window.html2pdf().from(element).set(opt).save();
+  };
+
+  const handleDownloadPdf = () => {
+    setIsDownloading(true);
+    performDownload('preview-scaler', `${appState.content.title || 'documento'}.pdf`)
+      .finally(() => setIsDownloading(false));
+  };
+
+  // Lógica para baixar a partir do Histórico
+  const handleDownloadFromHistory = async (order: Order) => {
+    if (!order.documentSnapshot) return;
+    
+    setIsDownloading(true);
+    setSnapshotToDownload(order.documentSnapshot);
+    
+    // Pequeno delay para garantir que o React renderize o container oculto
+    setTimeout(async () => {
+      try {
+        await performDownload('background-preview-scaler', `${order.title || 'documento'}.pdf`);
+      } catch (err) {
+        console.error("Erro no download do histórico:", err);
+      } finally {
+        setSnapshotToDownload(null);
         setIsDownloading(false);
-    });
+      }
+    }, 500);
   };
 
   const stats = {
@@ -327,11 +345,31 @@ const App: React.FC = () => {
             currentUser={currentUser}
             activeBlock={activeBlock}
             orders={orders}
-            onDownloadPdf={() => {}}
+            onDownloadPdf={(snapshot) => {
+               const order = orders.find(o => o.documentSnapshot === snapshot);
+               if (order) handleDownloadFromHistory(order);
+            }}
             onClearAll={() => { db.clearAllOrders(); setOrders([]); }}
             onEditOrder={handleEditOrder}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
             totalCounter={globalCounter}
+          />
+        )}
+      </div>
+
+      {/* Container Oculto para Renderização de Download em Segundo Plano */}
+      <div 
+        id="background-pdf-generation-container" 
+        style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}
+        aria-hidden="true"
+      >
+        {snapshotToDownload && (
+          <DocumentPreview 
+            ref={backgroundPreviewRef}
+            state={snapshotToDownload}
+            isGenerating={true}
+            blockType={snapshotToDownload.content.subType ? 'diarias' : (activeBlock || 'oficio')}
+            customId="background-preview-scaler"
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash, Edit3, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Search, PackageX, FileText, Clock, Trash2, FileDown, Calendar, Hash, Edit3, TrendingUp, Loader2 } from 'lucide-react';
 import { User, Order, AppState, BlockType } from '../types';
 
 interface TrackingScreenProps {
@@ -27,6 +27,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   totalCounter
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const filteredOrders = orders.filter(order => {
     const matchesBlock = order.blockType === activeBlock;
@@ -41,6 +42,13 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
 
     return hasPermission && matchesSearch;
   });
+
+  const handleDownload = (order: Order) => {
+    setDownloadingId(order.id);
+    onDownloadPdf(order.documentSnapshot);
+    // Simula reset do estado de loading após o trigger (o App gerencia o download real)
+    setTimeout(() => setDownloadingId(null), 2000);
+  };
 
   return (
     <div className="min-h-screen w-full bg-slate-100/50 backdrop-blur-sm font-sans flex items-center justify-center p-4 md:p-8 overflow-hidden animate-fade-in">
@@ -131,7 +139,14 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                     </div>
                     <div className="md:col-span-2 flex items-center justify-end gap-1">
                        <button onClick={() => onEditOrder(order)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Editar"><Edit3 className="w-5 h-5" /></button>
-                       <button onClick={() => onDownloadPdf(order.documentSnapshot)} className="p-2 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all" title="Download"><FileDown className="w-5 h-5" /></button>
+                       <button 
+                        onClick={() => handleDownload(order)} 
+                        disabled={downloadingId === order.id}
+                        className={`p-2 rounded-xl transition-all ${downloadingId === order.id ? 'text-indigo-400 bg-indigo-50' : 'text-indigo-600 hover:bg-indigo-600 hover:text-white'}`} 
+                        title="Download PDF"
+                       >
+                         {downloadingId === order.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
+                       </button>
                        <button onClick={() => onDeleteOrder(order.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   </div>

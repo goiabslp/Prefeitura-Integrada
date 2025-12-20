@@ -11,17 +11,18 @@ interface DocumentPreviewProps {
   isGenerating?: boolean;
   mode?: 'admin' | 'editor';
   blockType?: BlockType | null;
+  customId?: string;
 }
 
 export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(({ 
   state, 
   isGenerating = false, 
   mode = 'editor',
-  blockType
+  blockType,
+  customId = "preview-scaler"
 }, ref) => {
   
   // Decide qual componente de visualização renderizar
-  // Caso o blockType não esteja disponível, tenta inferir (legado)
   const renderPreviewContent = () => {
     const effectiveBlock = blockType || (state.content.subType ? 'diarias' : 'oficio');
 
@@ -40,8 +41,8 @@ export const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(
 
   return (
     <div className={`flex justify-center items-start overflow-auto w-full h-full ${isGenerating ? 'bg-white p-0 m-0' : 'bg-slate-200/40 backdrop-blur-sm pt-8 pb-20 px-4'}`}>
-      <div id="preview-scaler" ref={ref} className={`origin-top transition-transform duration-300 ${isGenerating ? 'scale-100 transform-none' : 'scale-[0.45] md:scale-[0.55] lg:scale-[0.6] xl:scale-[0.7] 2xl:scale-[0.8]'}`}>
-        <div id="document-preview-container" className={isGenerating ? 'block w-[210mm] mx-auto p-0 bg-white' : 'flex flex-col items-center'}>
+      <div id={customId} ref={ref} className={`origin-top transition-transform duration-300 ${isGenerating ? 'scale-100 transform-none' : 'scale-[0.45] md:scale-[0.55] lg:scale-[0.6] xl:scale-[0.7] 2xl:scale-[0.8]'}`}>
+        <div id={`${customId}-container`} className={isGenerating ? 'block w-[210mm] mx-auto p-0 bg-white' : 'flex flex-col items-center'}>
            {renderPreviewContent()}
         </div>
       </div>
