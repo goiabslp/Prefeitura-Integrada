@@ -207,6 +207,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </div>
           )}
 
+          {activeTab === 'entities' && (
+            <div className="animate-fade-in">
+              {renderSectionHeader('Base Organizacional', 'Pessoas, Setores e Cargos')}
+              <p className="text-sm text-slate-500 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm font-medium">
+                Utilize a tela de gerenciamento à direita para adicionar pessoas, definir setores e cadastrar cargos.
+              </p>
+            </div>
+          )}
+
           {activeTab === 'signatures' && (
             <div className="animate-fade-in">
               {renderSectionHeader('Assinaturas', 'Gerencie quem assina os documentos gerados')}

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  AppState, User, Order, Signature, BlockType 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import * as db from './services/dbService';
@@ -14,6 +14,7 @@ import { AdminSidebar } from './components/AdminSidebar';
 import { DocumentPreview } from './components/DocumentPreview';
 import { AdminDocumentPreview } from './components/AdminDocumentPreview';
 import { UserManagementScreen } from './components/UserManagementScreen';
+import { EntityManagementScreen } from './components/EntityManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
@@ -27,6 +28,12 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
   const [signatures, setSignatures] = useState<Signature[]>(MOCK_SIGNATURES);
+  
+  // Novos Estados Organizacionais
+  const [persons, setPersons] = useState<Person[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<string | null>(null);
@@ -45,6 +52,15 @@ const App: React.FC = () => {
         if (savedSigs.length > 0) setSignatures(savedSigs);
         const savedSettings = await db.getGlobalSettings();
         if (savedSettings) setAppState(savedSettings);
+        
+        // Carregar Pessoas, Setores e Cargos
+        const savedPersons = await db.getAllPersons();
+        setPersons(savedPersons);
+        const savedSectors = await db.getAllSectors();
+        setSectors(savedSectors);
+        const savedJobs = await db.getAllJobs();
+        setJobs(savedJobs);
+
       } catch (err) {
         console.error("Failed to load local database", err);
       }
@@ -100,7 +116,6 @@ const App: React.FC = () => {
 
   const handleOpenAdmin = (tab?: string | null) => {
     setCurrentView('admin');
-    // Se nenhum tab for passado, definimos como null para mostrar o menu de módulos
     setAdminTab(tab || null);
     setIsAdminSidebarOpen(true);
   };
@@ -180,6 +195,19 @@ const App: React.FC = () => {
                   onUpdateUser={u => { db.saveUser(u); setUsers(p => p.map(us => us.id === u.id ? u : us)); }}
                   onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }}
                   availableSignatures={signatures}
+                />
+              ) : currentView === 'admin' && adminTab === 'entities' ? (
+                <EntityManagementScreen 
+                  persons={persons} sectors={sectors} jobs={jobs}
+                  onAddPerson={p => { db.savePerson(p); setPersons(prev => [...prev, p]); }}
+                  onUpdatePerson={p => { db.savePerson(p); setPersons(prev => prev.map(x => x.id === p.id ? p : x)); }}
+                  onDeletePerson={id => { db.deletePerson(id); setPersons(prev => prev.filter(x => x.id !== id)); }}
+                  onAddSector={s => { db.saveSector(s); setSectors(prev => [...prev, s]); }}
+                  onUpdateSector={s => { db.saveSector(s); setSectors(prev => prev.map(x => x.id === s.id ? s : x)); }}
+                  onDeleteSector={id => { db.deleteSector(id); setSectors(prev => prev.filter(x => x.id !== id)); }}
+                  onAddJob={j => { db.saveJob(j); setJobs(prev => [...prev, j]); }}
+                  onUpdateJob={j => { db.saveJob(j); setJobs(prev => prev.map(x => x.id === j.id ? j : x)); }}
+                  onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }}
                 />
               ) : currentView === 'admin' && adminTab === 'signatures' ? (
                 <SignatureManagementScreen 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, User as UserIcon, PenTool, Home, Palette } from 'lucide-react';
+import { Users, User as UserIcon, PenTool, Home, Palette, Briefcase, Network } from 'lucide-react';
 import { User } from '../../types';
 
 interface AdminMenuProps {
@@ -18,6 +18,14 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ currentUser, onTabChange }
       description: isAdmin ? 'Gerencie acessos e equipe do sistema' : 'Configure seus dados de acesso', 
       icon: isAdmin ? <Users className="w-6 h-6 text-indigo-600" /> : <UserIcon className="w-6 h-6 text-indigo-600" />, 
       colorClass: 'bg-indigo-50 border-indigo-100 hover:border-indigo-300 shadow-sm' 
+    },
+    {
+      id: 'entities',
+      title: 'Pessoas, Setores e Cargos',
+      description: 'Gerencie a base de dados organizacional',
+      icon: <Network className="w-6 h-6 text-orange-600" />,
+      colorClass: 'bg-orange-50 border-orange-100 hover:border-orange-300 shadow-sm',
+      adminOnly: true
     },
     { 
       id: 'signatures', 

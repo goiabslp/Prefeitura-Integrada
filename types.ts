@@ -135,3 +135,21 @@ export interface Order {
   blockType: BlockType;
   documentSnapshot?: AppState;
 }
+
+// Novas Interfaces para o Módulo de Pessoas, Setores e Cargos
+export interface Person {
+  id: string;
+  name: string;
+  jobId?: string;
+  sectorId?: string;
+}
+
+export interface Sector {
+  id: string;
+  name: string;
+}
+
+export interface Job {
+  id: string;
+  name: string;
+}

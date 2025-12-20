@@ -1,13 +1,16 @@
 
-import { Order, User, Signature, AppState } from '../types';
+import { Order, User, Signature, AppState, Person, Sector, Job } from '../types';
 
 const DB_NAME = 'BrandDocDB_v2';
-const DB_VERSION = 2; // Incremented version to add settings store
+const DB_VERSION = 3; // Incrementado para adicionar novas stores
 const STORES = {
   ORDERS: 'orders',
   USERS: 'users',
   SIGNATURES: 'signatures',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  PERSONS: 'persons',
+  SECTORS: 'sectors',
+  JOBS: 'jobs'
 };
 
 export const initDB = (): Promise<IDBDatabase> => {
@@ -30,6 +33,15 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.PERSONS)) {
+        db.createObjectStore(STORES.PERSONS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.SECTORS)) {
+        db.createObjectStore(STORES.SECTORS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.JOBS)) {
+        db.createObjectStore(STORES.JOBS, { keyPath: 'id' });
       }
     };
   });
@@ -91,6 +103,19 @@ export const deleteUser = (id: string) => remove(STORES.USERS, id);
 export const getAllSignatures = () => getAll<Signature>(STORES.SIGNATURES);
 export const saveSignature = (sig: Signature) => save(STORES.SIGNATURES, sig);
 export const deleteSignature = (id: string) => remove(STORES.SIGNATURES, id);
+
+// Pessoas, Setores e Cargos
+export const getAllPersons = () => getAll<Person>(STORES.PERSONS);
+export const savePerson = (person: Person) => save(STORES.PERSONS, person);
+export const deletePerson = (id: string) => remove(STORES.PERSONS, id);
+
+export const getAllSectors = () => getAll<Sector>(STORES.SECTORS);
+export const saveSector = (sector: Sector) => save(STORES.SECTORS, sector);
+export const deleteSector = (id: string) => remove(STORES.SECTORS, id);
+
+export const getAllJobs = () => getAll<Job>(STORES.JOBS);
+export const saveJob = (job: Job) => save(STORES.JOBS, job);
+export const deleteJob = (id: string) => remove(STORES.JOBS, id);
 
 // Settings persistence
 export const getGlobalSettings = async (): Promise<AppState | null> => {
