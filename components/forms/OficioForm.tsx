@@ -1,9 +1,6 @@
-
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { 
-  FileText, Columns, Bold, Italic, Underline, Highlighter, Quote, 
-  RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  PenTool, CheckCircle2, ChevronRight, Eye, EyeOff
+  FileText, Columns, PenTool, CheckCircle2, Eye, EyeOff, AlignJustify
 } from 'lucide-react';
 import { AppState, ContentData, DocumentConfig, Signature } from '../../types';
 
@@ -24,33 +21,6 @@ export const OficioForm: React.FC<OficioFormProps> = ({
   handleUpdate,
   onUpdate
 }) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== content.body) {
-      editorRef.current.innerHTML = content.body;
-    }
-  }, [content.body]);
-
-  const execCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value);
-    if (editorRef.current) handleUpdate('content', 'body', editorRef.current.innerHTML);
-  };
-
-  const applyCitation = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
-    document.execCommand('foreColor', false, '#f0000f');
-    const highlightedTags = editorRef.current?.querySelectorAll('font[color="#f0000f"]');
-    highlightedTags?.forEach(tag => {
-      const span = document.createElement('span');
-      span.style.fontFamily = "'Merriweather', serif";
-      span.style.fontStyle = 'italic';
-      span.innerHTML = `"${tag.innerHTML}"`;
-      tag.parentNode?.replaceChild(span, tag);
-    });
-    if (editorRef.current) handleUpdate('content', 'body', editorRef.current.innerHTML);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -82,7 +52,8 @@ export const OficioForm: React.FC<OficioFormProps> = ({
                   <textarea 
                     value={content.rightBlockText} 
                     onChange={(e) => handleUpdate('content', 'rightBlockText', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all outline-none"
+                    placeholder="Ao Excelentíssimo..."
                   />
                )}
             </div>
@@ -99,7 +70,8 @@ export const OficioForm: React.FC<OficioFormProps> = ({
                   <textarea 
                     value={content.leftBlockText} 
                     onChange={(e) => handleUpdate('content', 'leftBlockText', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs h-24 resize-none focus:bg-white transition-all outline-none"
+                    placeholder="Ofício nº..."
                   />
                )}
             </div>
@@ -107,21 +79,17 @@ export const OficioForm: React.FC<OficioFormProps> = ({
       </div>
 
       <div className="space-y-4 border-t border-slate-200 pt-6">
-         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><FileText className="w-4 h-4" /> Corpo do Ofício</h3>
+         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><AlignJustify className="w-4 h-4" /> Corpo do Ofício</h3>
          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-1">
-              <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600"><Bold className="w-4 h-4" /></button>
-              <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600"><Italic className="w-4 h-4" /></button>
-              <button onClick={() => execCommand('justifyFull')} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-slate-600"><AlignJustify className="w-4 h-4" /></button>
-              <button onClick={applyCitation} className="p-1.5 hover:bg-slate-200 rounded transition-colors text-indigo-600"><Quote className="w-4 h-4" /></button>
-            </div>
-            <div 
-              ref={editorRef}
-              contentEditable
-              onInput={(e) => handleUpdate('content', 'body', (e.target as HTMLDivElement).innerHTML)}
-              className="w-full bg-white p-6 text-sm leading-relaxed min-h-[300px] outline-none prose prose-slate max-w-none"
+            <textarea 
+              value={content.body}
+              onChange={(e) => handleUpdate('content', 'body', e.target.value)}
+              className="w-full bg-white p-6 text-sm leading-relaxed min-h-[400px] outline-none resize-none focus:bg-slate-50/30 transition-all"
+              placeholder="Digite o texto do ofício aqui... Pressione Enter para novas linhas."
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
             />
          </div>
+         <p className="text-[10px] text-slate-400 italic">O texto será paginado automaticamente com base nas quebras de linha digitadas.</p>
       </div>
 
       <div className="space-y-4 border-t border-slate-200 pt-6">

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AppState } from '../types';
 
@@ -24,9 +23,13 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
     <div
       className={`bg-white mx-auto flex flex-col relative ${branding.fontFamily} ${isGenerating ? 'mb-0' : 'mb-8 shadow-2xl ring-1 ring-black/5'}`}
       style={{
-        width: '210mm', height: isGenerating ? '296.5mm' : '297mm',
-        padding: '20mm', paddingTop: '52mm', paddingBottom: '20mm',
-        position: 'relative', overflow: 'hidden' 
+        width: '210mm', 
+        height: isGenerating ? '296.5mm' : '297mm',
+        padding: '20mm', 
+        paddingTop: '52mm', 
+        paddingBottom: '35mm', // Aumentado para garantir a zona de segurança antes do rodapé
+        position: 'relative', 
+        overflow: 'hidden' 
       }}
     >
       {/* Marca d'água */}
@@ -72,11 +75,11 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
       <div className="absolute top-[40mm] left-[20mm] right-[20mm] border-b border-gray-400 z-20" />
 
       {/* Conteúdo da Página */}
-      <main className="flex-1 mt-1 relative z-10 flex flex-col overflow-hidden h-full">
+      <main className="flex-1 mt-1 relative z-10 flex flex-col h-full">
         {children}
       </main>
 
-      {/* Rodapé */}
+      {/* Rodapé - Protegido por posição absoluta no fundo da folha */}
       <div className="absolute bottom-6 left-[20mm] right-[20mm] pt-2 border-t border-gray-300 flex justify-between items-end text-[9px] z-20 bg-white">
         <div className="flex flex-col gap-0.5 max-w-[80%]">
             <span className="font-bold text-gray-800 uppercase tracking-tighter">Prefeitura de São José do Goiabal - Minas Gerais</span>

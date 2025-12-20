@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job 
@@ -229,6 +228,17 @@ const App: React.FC = () => {
   };
 
   const handleStartEditing = () => {
+      // Quando inicia um novo documento, resetamos o estado de conteúdo para o boilerplate
+      setAppState(prev => ({
+        ...prev,
+        content: { ...INITIAL_STATE.content },
+        document: { 
+          ...prev.document, 
+          showSignature: INITIAL_STATE.document.showSignature,
+          showLeftBlock: INITIAL_STATE.document.showLeftBlock,
+          showRightBlock: INITIAL_STATE.document.showRightBlock
+        }
+      }));
       setEditingOrder(null);
       setCurrentView('editor');
       setAdminTab('content');

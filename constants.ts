@@ -1,4 +1,3 @@
-
 import { AppState, FontFamily, User, Order, Signature } from './types';
 
 export const INITIAL_STATE: AppState = {
@@ -24,10 +23,10 @@ export const INITIAL_STATE: AppState = {
     showDate: true,
     showPageNumbers: true,
     showSignature: false,
-    showLeftBlock: false,
-    showRightBlock: false,
+    showLeftBlock: true,
+    showRightBlock: true,
     titleStyle: {
-      size: 10,
+      size: 12,
       color: '#131216',
       alignment: 'left'
     },
@@ -42,13 +41,7 @@ export const INITIAL_STATE: AppState = {
   },
   content: {
     title: 'Ofício nº 001/2024',
-    body: `Cumprimentando-o cordialmente, vimos por meio deste solicitar a Vossa Senhoria o que segue:
-
-Escreva aqui o detalhamento da sua solicitação ou comunicado de forma clara e objetiva.
-
-Certos de contarmos com vossa costumeira atenção, antecipamos nossos agradecimentos.
-
-Atenciosamente,`,
+    body: `Cumprimentando-o cordialmente, vimos por meio deste solicitar a Vossa Senhoria o que segue:\n\nEscreva aqui o detalhamento da sua solicitação, pedido ou comunicado de forma clara e objetiva. O texto agora utiliza quebras de linha nativas (Enter).\n\nCertos de contarmos com vossa costumeira atenção, antecipamos nossos sinceros agradecimentos e renovamos nossos votos de estima e consideração.\n\nAtenciosamente,`,
     signatureName: '',
     signatureRole: '',
     signatureSector: '',
