@@ -84,11 +84,11 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                 </div>
                 <div style="display: flex; gap: 20px;">
                   <div style="flex: 1;">
-                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cargo / Função</span>
+                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cargo</span>
                     <span style="color: #334155; font-weight: 600;">${content.requesterRole || '---'}</span>
                   </div>
                   <div style="flex: 1;">
-                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Setor / Lotação</span>
+                    <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Setor</span>
                     <span style="color: #334155; font-weight: 600;">${content.requesterSector || '---'}</span>
                   </div>
                 </div>
@@ -102,16 +102,16 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
               </div>
               <div style="padding: 8px 10px;">
                 <div style="margin-bottom: 6px;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cidade / Estado de Destino</span>
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block;">Cidade / UF</span>
                   <span style="color: #0f172a; font-weight: 700;">${content.destination || '---'}</span>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
                   <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Saída (Data/Hora)</span>
+                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Saída</span>
                     <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.departureDateTime ? new Date(content.departureDateTime).toLocaleString('pt-BR') : '---'}</span>
                   </div>
                   <div style="padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Retorno (Data/Hora)</span>
+                    <span style="font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Retorno</span>
                     <span style="color: #0f172a; font-weight: 700; font-size: 8pt;">${content.returnDateTime ? new Date(content.returnDateTime).toLocaleString('pt-BR') : '---'}</span>
                   </div>
                 </div>
@@ -137,7 +137,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                   <span style="font-size: 10pt; font-weight: 900; color: #b45309;">${content.paymentForecast || '---'}</span>
                 </div>
                 <div style="flex: 1.5; text-align: right;">
-                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Autorizador do Gasto</span>
+                  <span style="font-size: 6.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; display: block;">Autorizado Por</span>
                   <span style="font-size: 8.5pt; font-weight: 700; color: #334155;">${content.authorizedBy || '---'}</span>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
           <!-- CARD 04: Justificativa -->
           <div style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden;">
             <div style="background: #0f172a; padding: 4px 10px; border-radius: 8px 8px 0 0;">
-                <span style="font-weight: 800; font-size: 7.5pt; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em;">04. Justificativa Detalhada</span>
+                <span style="font-weight: 800; font-size: 7.5pt; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em;">04. Justificativa Resumida</span>
             </div>
             <div style="padding: 10px 14px; border: 1px solid #0f172a; border-top: none; border-radius: 0 0 8px 8px; flex: 1 1 auto; max-height: 75mm; min-height: 25mm; text-align: justify; background: #ffffff; font-size: 9.5pt; line-height: 1.4; overflow: hidden; box-sizing: border-box; color: #0f172a;">
               ${content.descriptionReason || 'A justificativa será exibida aqui após o preenchimento.'}
@@ -158,14 +158,12 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
           <div style="flex: 0 0 auto; width: 100%; text-align: center; margin-top: auto;">
              
              <!-- 1. Assinatura do Requerente (Cascata Superior) -->
-             <!-- paddingTop: 5.5em simula aprox. 5 linhas de espaço com o texto acima -->
              <div style="width: 260px; margin: 0 auto; border-top: 1.2px solid #0f172a; padding-top: 5px; margin-top: 5.5em;">
                 <p style="margin: 0; font-weight: 800; text-transform: uppercase; font-size: 9pt; color: #0f172a;">${content.requesterName || 'NOME DO SERVIDOR SOLICITANTE'}</p>
                 <p style="margin: 1px 0 0 0; font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase;">Servidor Requerente</p>
              </div>
 
              <!-- 2. Assinaturas de Controle e Autorização (Cascata Inferior) -->
-             <!-- marginTop: 5.5em simula aprox. 5 linhas de espaço com o Requerente acima -->
              <table style="width: 100%; border-collapse: collapse; border: none; margin: 5.5em 0 0 0; padding: 0;">
                 <tr>
                    <!-- Lado Esquerdo: Contabilidade -->
@@ -308,16 +306,16 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
               </h3>
               <div className={inputGroupClass}>
                  <div>
-                    <label className={labelClass}><MapPin className="w-3 h-3" /> Destino</label>
+                    <label className={labelClass}><MapPin className="w-3 h-3" /> Cidade / UF</label>
                     <input 
                       type="text" value={content.destination || ''} 
                       onChange={(e) => handleUpdate('content', 'destination', e.target.value)} 
-                      className={inputClass} placeholder="Cidade / Estado de destino" 
+                      className={inputClass} placeholder="Ex: Belo Horizonte - MG" 
                     />
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className={labelClass}><Calendar className="w-3 h-3" /> Saída (Data/Hora)</label>
+                      <label className={labelClass}><Calendar className="w-3 h-3" /> Saída</label>
                       <input 
                         type="datetime-local" value={content.departureDateTime || ''} 
                         onChange={(e) => handleUpdate('content', 'departureDateTime', e.target.value)} 
@@ -325,7 +323,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                       />
                     </div>
                     <div>
-                      <label className={labelClass}><Clock className="w-3 h-3" /> Retorno (Data/Hora)</label>
+                      <label className={labelClass}><Clock className="w-3 h-3" /> Retorno</label>
                       <input 
                         type="datetime-local" value={content.returnDateTime || ''} 
                         onChange={(e) => handleUpdate('content', 'returnDateTime', e.target.value)} 
@@ -379,7 +377,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                     </div>
                  </div>
                  <div>
-                    <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Autorizado por</label>
+                    <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Autorizado Por</label>
                     <input 
                       type="text" value={content.authorizedBy || ''} 
                       onChange={(e) => handleUpdate('content', 'authorizedBy', e.target.value)} 
@@ -394,7 +392,7 @@ export const DiariaForm: React.FC<OficioFormProps> = ({
                 <MessageSquare className="w-4 h-4 text-indigo-600" /> Justificativa da Viagem
               </h3>
               <div className={inputGroupClass}>
-                <label className={labelClass}><FileText className="w-3 h-3" /> Detalhamento / Motivo</label>
+                <label className={labelClass}><FileText className="w-3 h-3" /> Justificativa Resumida</label>
                 <textarea 
                   value={content.descriptionReason || ''} 
                   onChange={(e) => handleUpdate('content', 'descriptionReason', e.target.value)} 
