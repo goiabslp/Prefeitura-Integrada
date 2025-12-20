@@ -7,7 +7,6 @@ import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import * as db from './services/dbService';
 
 // Components
-import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { HomeScreen } from './components/HomeScreen';
 import { TrackingScreen } from './components/TrackingScreen';
@@ -21,7 +20,7 @@ import { AppHeader } from './components/AppHeader';
 
 // Main App Component implementing document generation logic
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'login' | 'home' | 'admin' | 'tracking' | 'editor'>('landing');
+  const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
   const [activeBlock, setActiveBlock] = useState<BlockType | null>(null);
@@ -120,7 +119,6 @@ const App: React.FC = () => {
   };
 
   // Render conditional screens based on navigation state
-  if (currentView === 'landing') return <LandingPage onStart={() => setCurrentView('login')} />;
   if (currentView === 'login') return <LoginScreen onLogin={handleLogin} uiConfig={appState.ui} />;
 
   return (
