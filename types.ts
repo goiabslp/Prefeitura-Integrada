@@ -141,6 +141,14 @@ export interface StatusMovement {
   justification?: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  date: string;
+}
+
 export interface Order {
   id: string;
   protocol: string;
@@ -155,6 +163,8 @@ export interface Order {
   documentSnapshot?: AppState;
   paymentStatus?: 'pending' | 'paid';
   paymentDate?: string;
+  budgetFileUrl?: string;
+  attachments?: Attachment[];
 }
 
 // Novas Interfaces para o Módulo de Pessoas, Setores e Cargos

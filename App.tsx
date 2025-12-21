@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import * as db from './services/dbService';
@@ -120,7 +120,8 @@ const App: React.FC = () => {
         blockType: activeBlock,
         documentSnapshot: finalSnapshot,
         paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined,
-        statusHistory: []
+        statusHistory: [],
+        attachments: []
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => [...prev, finalOrder]);
@@ -160,30 +161,22 @@ const App: React.FC = () => {
     
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
-        // Se o status já for o mesmo, ignora para evitar duplicidade no histórico
         if (o.status === status) return o;
-
         const statusLabelMap = { approved: 'Aprovação Administrativa', rejected: 'Rejeição Administrativa', pending: 'Pendente de Análise', completed: 'Concluído', canceled: 'Cancelado' };
-        
         const newLabel = statusLabelMap[status] || status;
-
         const newMovement: StatusMovement = {
           statusLabel: newLabel,
           date: new Date().toISOString(),
           userName: currentUser.name,
           justification
         };
-
         const updatedHistory = [...(o.statusHistory || []), newMovement];
-        
         const updated = { 
           ...o, 
           status,
           statusHistory: updatedHistory,
           purchaseStatus: (status === 'approved' && o.blockType === 'compras') ? 'recebido' as const : o.purchaseStatus
         };
-
-        // Se mudou para recebido automaticamente por causa da aprovação, registra apenas se não houver histórico de recebimento imediato
         if (status === 'approved' && o.blockType === 'compras') {
            updated.statusHistory.push({
              statusLabel: 'Pedido Recebido (Início Atendimento)',
@@ -191,7 +184,6 @@ const App: React.FC = () => {
              userName: 'Sistema (Automático)'
            });
         }
-
         db.saveOrder(updated);
         return updated;
       }
@@ -200,13 +192,12 @@ const App: React.FC = () => {
     setOrders(updatedOrders);
   };
 
-  const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string) => {
+  const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string, budgetFileUrl?: string) => {
     if (!currentUser) return;
 
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
-        // Se o purchaseStatus já for o mesmo, ignora para evitar duplicidade no histórico
-        if (o.purchaseStatus === purchaseStatus) return o;
+        if (o.purchaseStatus === purchaseStatus && !budgetFileUrl) return o;
 
         const purchaseStatusLabelMap = { 
           recebido: 'Pedido Recebido', 
@@ -219,7 +210,6 @@ const App: React.FC = () => {
         };
         
         const newLabel = purchaseStatusLabelMap[purchaseStatus!] || purchaseStatus!;
-
         const newMovement: StatusMovement = {
           statusLabel: newLabel,
           date: new Date().toISOString(),
@@ -228,12 +218,38 @@ const App: React.FC = () => {
         };
 
         const updatedHistory = [...(o.statusHistory || []), newMovement];
+        const updatedAttachments = o.attachments ? [...o.attachments] : [];
+
+        if (budgetFileUrl) {
+          const budgetAttachment: Attachment = {
+            id: `budget-${Date.now()}`,
+            name: 'Orçamento Principal',
+            url: budgetFileUrl,
+            type: budgetFileUrl.startsWith('data:application/pdf') ? 'application/pdf' : 'image/png',
+            date: new Date().toISOString()
+          };
+          updatedAttachments.push(budgetAttachment);
+        }
 
         const updated = { 
           ...o, 
           purchaseStatus,
-          statusHistory: updatedHistory
+          statusHistory: updatedHistory,
+          budgetFileUrl: budgetFileUrl || o.budgetFileUrl,
+          attachments: updatedAttachments
         };
+        db.saveOrder(updated);
+        return updated;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+  };
+
+  const handleUpdateOrderAttachments = async (orderId: string, attachments: Attachment[]) => {
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        const updated = { ...o, attachments };
         db.saveOrder(updated);
         return updated;
       }
@@ -258,7 +274,6 @@ const App: React.FC = () => {
     setOrders(updatedOrders);
   };
 
-  // Função genérica de download
   const performDownload = (elementId: string, filename: string) => {
     const element = document.getElementById(elementId);
     if (!element) return Promise.reject("Element not found");
@@ -277,7 +292,6 @@ const App: React.FC = () => {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: 'css' }
     };
-
     // @ts-ignore
     return window.html2pdf().from(element).set(opt).save();
   };
@@ -288,13 +302,10 @@ const App: React.FC = () => {
       .finally(() => setIsDownloading(false));
   };
 
-  // Lógica para baixar a partir do Histórico
   const handleDownloadFromHistory = async (order: Order) => {
     if (!order.documentSnapshot) return;
-    
     setIsDownloading(true);
     setSnapshotToDownload(order.documentSnapshot);
-    
     setTimeout(async () => {
       try {
         await performDownload('background-preview-scaler', `${order.title || 'documento'}.pdf`);
@@ -525,6 +536,7 @@ const App: React.FC = () => {
             }}
             onUpdateStatus={handleUpdateOrderStatus}
             onUpdatePurchaseStatus={handleUpdatePurchaseStatus}
+            onUpdateAttachments={handleUpdateOrderAttachments}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
           />
         )}
