@@ -155,7 +155,7 @@ const App: React.FC = () => {
     setIsFinalizedView(false);
   };
 
-  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status'], justification?: string) => {
     if (!currentUser) return;
     
     const updatedOrders = orders.map(o => {
@@ -170,7 +170,8 @@ const App: React.FC = () => {
         const newMovement: StatusMovement = {
           statusLabel: newLabel,
           date: new Date().toISOString(),
-          userName: currentUser.name
+          userName: currentUser.name,
+          justification
         };
 
         const updatedHistory = [...(o.statusHistory || []), newMovement];
@@ -199,7 +200,7 @@ const App: React.FC = () => {
     setOrders(updatedOrders);
   };
 
-  const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus']) => {
+  const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string) => {
     if (!currentUser) return;
 
     const updatedOrders = orders.map(o => {
@@ -209,7 +210,9 @@ const App: React.FC = () => {
 
         const purchaseStatusLabelMap = { 
           recebido: 'Pedido Recebido', 
-          andamento: 'Em andamento', 
+          coletando_orcamento: 'Coletando Orçamento',
+          aprovacao_orcamento: 'Aprovação do Orçamento',
+          coletando_dotacao: 'Coletando Dotação',
           realizado: 'Pedido Realizado', 
           concluido: 'Concluído',
           cancelado: 'Cancelado'
@@ -220,7 +223,8 @@ const App: React.FC = () => {
         const newMovement: StatusMovement = {
           statusLabel: newLabel,
           date: new Date().toISOString(),
-          userName: currentUser.name
+          userName: currentUser.name,
+          justification
         };
 
         const updatedHistory = [...(o.statusHistory || []), newMovement];

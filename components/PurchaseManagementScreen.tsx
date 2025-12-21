@@ -1,11 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ArrowLeft, Search, Inbox, Clock, Trash2, 
   FileDown, CheckCircle2, XCircle, AlertCircle, Loader2,
   User, ShoppingBag, Eye, X, Lock, ChevronDown, PackageCheck, Truck, ShoppingCart, CheckCircle,
-  History, Calendar, UserCheck, ArrowDown
+  History, Calendar, UserCheck, ArrowDown, Landmark, MessageCircle, FileSearch, Scale, ClipboardCheck,
+  AlertTriangle, MousePointer2, ChevronRight, Check, Sparkles
 } from 'lucide-react';
 import { User as UserType, Order, AppState, StatusMovement } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -15,8 +15,8 @@ interface PurchaseManagementScreenProps {
   currentUser: UserType;
   orders: Order[];
   onDownloadPdf: (snapshot?: AppState) => void;
-  onUpdateStatus: (orderId: string, status: Order['status']) => void;
-  onUpdatePurchaseStatus?: (orderId: string, purchaseStatus: Order['purchaseStatus']) => void;
+  onUpdateStatus: (orderId: string, status: Order['status'], justification?: string) => void;
+  onUpdatePurchaseStatus?: (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string) => void;
   onDeleteOrder: (id: string) => void;
 }
 
@@ -33,20 +33,9 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
-  const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
+  const [statusSelectionOrder, setStatusSelectionOrder] = useState<Order | null>(null);
   const [historyOrder, setHistoryOrder] = useState<Order | null>(null);
-
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenStatusDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const [confirmApprovalOrder, setConfirmApprovalOrder] = useState<Order | null>(null);
 
   const isAdmin = currentUser.role === 'admin';
   const isComprasUser = currentUser.role === 'compras';
@@ -88,16 +77,58 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
   };
 
   const purchaseStatusMap = {
-    recebido: { label: 'Pedido Recebido', icon: <PackageCheck className="w-3.5 h-3.5" />, color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-    andamento: { label: 'Em andamento', icon: <Truck className="w-3.5 h-3.5" />, color: 'bg-amber-50 text-amber-700 border-amber-200' },
-    realizado: { label: 'Pedido Realizado', icon: <ShoppingCart className="w-3.5 h-3.5" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    concluido: { label: 'Concluído', icon: <CheckCircle className="w-3.5 h-3.5" />, color: 'bg-slate-900 text-white border-slate-900' },
-    cancelado: { label: 'Cancelado', icon: <XCircle className="w-3.5 h-3.5" />, color: 'bg-rose-50 text-rose-700 border-rose-200' },
+    recebido: { 
+      label: 'Pedido Recebido', 
+      description: 'Demanda aguardando triagem.',
+      icon: PackageCheck, 
+      color: 'indigo' 
+    },
+    coletando_orcamento: { 
+      label: 'Coletando Orçamento', 
+      description: 'Pesquisa de mercado ativa.',
+      icon: FileSearch, 
+      color: 'amber' 
+    },
+    aprovacao_orcamento: { 
+      label: 'Aprovação do Orçamento', 
+      description: 'Aguardando validação administrativa.',
+      icon: Scale, 
+      color: 'purple' 
+    },
+    coletando_dotacao: { 
+      label: 'Coletando Dotação', 
+      description: 'Identificação de reserva orçamentária.',
+      icon: Landmark, 
+      color: 'blue' 
+    },
+    realizado: { 
+      label: 'Pedido Realizado', 
+      description: 'Processo de compra concluído.',
+      icon: ShoppingCart, 
+      color: 'emerald' 
+    },
+    concluido: { 
+      label: 'Concluído', 
+      description: 'Ciclo completo e atestado.',
+      icon: CheckCircle, 
+      color: 'slate' 
+    },
+    cancelado: { 
+      label: 'Cancelado', 
+      description: 'Interrupção definitiva.',
+      icon: XCircle, 
+      color: 'rose' 
+    },
   };
 
   const PurchaseStatusSelector = ({ order }: { order: Order }) => {
-    const current = purchaseStatusMap[order.purchaseStatus || 'recebido'];
+    const currentStatus = order.purchaseStatus || 'recebido';
+    const config = purchaseStatusMap[currentStatus as keyof typeof purchaseStatusMap];
     const isApproved = order.status === 'approved';
+    
+    // O bloqueio do seletor ocorre se o status ATUAL for aprovação do orçamento e o usuário não for admin
+    const isLockedForUser = currentStatus === 'aprovacao_orcamento' && !isAdmin;
+    
     const lastMovement = order.statusHistory && order.statusHistory.length > 0 
       ? order.statusHistory[order.statusHistory.length - 1] 
       : null;
@@ -107,7 +138,6 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
     return (
       <div className="flex flex-col gap-1.5 items-end">
         <div className="flex items-center gap-2">
-          {/* Botão de Histórico que abre o MODAL GRANDE */}
           <button 
             onClick={() => setHistoryOrder(order)}
             className="p-2 rounded-xl border bg-white text-slate-400 border-slate-200 hover:text-indigo-600 hover:border-indigo-200 transition-all hover:bg-indigo-50/50"
@@ -116,64 +146,30 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
             <History className="w-4 h-4" />
           </button>
 
-          {/* Seletor ou Badge de Status */}
-          {isComprasUser ? (
-            <div className="relative" ref={openStatusDropdown === order.id ? dropdownRef : null}>
-              <button
-                onClick={() => setOpenStatusDropdown(openStatusDropdown === order.id ? null : order.id)}
-                className={`flex items-center justify-between gap-3 px-4 py-2 rounded-xl border transition-all duration-300 hover:shadow-lg active:scale-95 group ${current.color}`}
-              >
-                <div className="flex items-center gap-2">
-                  {current.icon}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{current.label}</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${openStatusDropdown === order.id ? 'rotate-180' : ''}`} />
-              </button>
-
-              {openStatusDropdown === order.id && (
-                <div className="absolute z-50 right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-slide-up p-1.5 ring-4 ring-slate-900/5">
-                   <p className="px-3 py-2 text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Alterar Status Interno</p>
-                   {(Object.keys(purchaseStatusMap) as Array<keyof typeof purchaseStatusMap>).map((key) => {
-                     const opt = purchaseStatusMap[key];
-                     const isSelected = order.purchaseStatus === key || (!order.purchaseStatus && key === 'recebido');
-                     
-                     return (
-                       <button
-                         key={key}
-                         onClick={() => {
-                           onUpdatePurchaseStatus?.(order.id, key);
-                           setOpenStatusDropdown(null);
-                         }}
-                         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                           isSelected 
-                             ? 'bg-slate-50 text-slate-900' 
-                             : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                         }`}
-                       >
-                         <div className="flex items-center gap-3">
-                            <div className={`p-1.5 rounded-lg ${isSelected ? (key === 'cancelado' ? 'bg-rose-600' : 'bg-indigo-600') + ' text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>
-                              {opt.icon}
-                            </div>
-                            {opt.label}
-                         </div>
-                         {isSelected && <CheckCircle2 className={`w-4 h-4 ${key === 'cancelado' ? 'text-rose-600' : 'text-indigo-600'}`} />}
-                       </button>
-                     );
-                   })}
-                </div>
-              )}
+          <button
+            onClick={() => isComprasUser && !isLockedForUser && setStatusSelectionOrder(order)}
+            disabled={isLockedForUser}
+            className={`flex items-center justify-between gap-3 px-4 py-2 rounded-xl border transition-all duration-300 group
+              ${isComprasUser && !isLockedForUser ? 'cursor-pointer hover:shadow-lg active:scale-95' : 'cursor-default'}
+              ${isLockedForUser ? 'bg-purple-50 text-purple-700 border-purple-200 ring-2 ring-purple-500/10 opacity-80' : `bg-${config.color}-50 text-${config.color}-700 border-${config.color}-200`}
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <config.icon className={`w-4 h-4 ${isLockedForUser ? 'animate-pulse' : ''}`} />
+              <span className="text-[10px] font-black uppercase tracking-widest">{config.label}</span>
             </div>
-          ) : (
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${current.color}`}>
-              {current.icon} {current.label}
-            </div>
-          )}
+            {isLockedForUser ? (
+              <Lock className="w-3 h-3 text-purple-400 ml-1" />
+            ) : isComprasUser ? (
+              <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover:translate-x-0.5 transition-transform" />
+            ) : null}
+          </button>
         </div>
 
         {lastMovement && (
           <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-tight italic bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100/50">
              <UserCheck className="w-3 h-3 text-emerald-500" />
-             <span>Atualizado por: <span className="text-slate-600 not-italic">{lastMovement.userName}</span></span>
+             <span>Ativo por: <span className="text-slate-600 not-italic">{lastMovement.userName}</span></span>
           </div>
         )}
       </div>
@@ -279,6 +275,18 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                        <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                           {isAdmin && (
                             <>
+                              {/* BOTÃO DE LIBERAÇÃO DE ORÇAMENTO PARA ADMIN */}
+                              {order.purchaseStatus === 'aprovacao_orcamento' && (
+                                <button 
+                                  onClick={() => setConfirmApprovalOrder(order)} 
+                                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 active:scale-95 group"
+                                  title="Liberar Pedido (Aprovar Orçamento)"
+                                >
+                                  <ClipboardCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                  Liberar Fluxo
+                                </button>
+                              )}
+
                               <button 
                                 onClick={() => onUpdateStatus(order.id, 'approved')} 
                                 className={`p-2 rounded-xl transition-all ${order.status === 'approved' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
@@ -287,7 +295,15 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
                               <button 
-                                onClick={() => onUpdateStatus(order.id, 'rejected')} 
+                                onClick={() => {
+                                  const reason = window.prompt("Motivo da Rejeição Administrativa:");
+                                  if (reason === null) return;
+                                  if (!reason.trim()) {
+                                    alert("Justificativa necessária para rejeição.");
+                                    return;
+                                  }
+                                  onUpdateStatus(order.id, 'rejected', reason);
+                                }} 
                                 className={`p-2 rounded-xl transition-all ${order.status === 'rejected' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'}`}
                                 title="Rejeitar Pedido"
                               >
@@ -347,7 +363,141 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
         </div>
       </div>
 
-      {/* Modal de Histórico de Movimentação (Grande com Blur) */}
+      {/* MODAL DE SELEÇÃO DE STATUS (ESTILO PEQUENO/COMPACTO COM BLUR) */}
+      {statusSelectionOrder && createPortal(
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in">
+           <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-slide-up">
+              
+              {/* Header Compacto */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                       <MousePointer2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                       <h3 className="text-base font-black text-slate-900 tracking-tight uppercase leading-none">Alterar Status</h3>
+                       <p className="text-[10px] font-bold text-indigo-600 font-mono mt-1 tracking-wider">{statusSelectionOrder.protocol}</p>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={() => setStatusSelectionOrder(null)}
+                   className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 hover:text-slate-900 transition-all active:scale-90"
+                 >
+                    <X className="w-5 h-5" />
+                 </button>
+              </div>
+
+              {/* Lista Vertical de Opções */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+                 {(Object.keys(purchaseStatusMap) as Array<keyof typeof purchaseStatusMap>).map((key) => {
+                    const opt = purchaseStatusMap[key];
+                    const isSelected = statusSelectionOrder.purchaseStatus === key || (!statusSelectionOrder.purchaseStatus && key === 'recebido');
+                    const Icon = opt.icon;
+                    
+                    // Removido o bloqueio individual das opções para permitir que o usuário de compras chegue à fase de aprovação.
+                    // O bloqueio agora é centralizado na abertura do modal no trigger da lista principal.
+
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          if (key === 'cancelado') {
+                            const reason = window.prompt("Por favor, informe o motivo do cancelamento deste pedido:");
+                            if (reason === null) return;
+                            if (!reason.trim()) {
+                              alert("O motivo do cancelamento é obrigatório.");
+                              return;
+                            }
+                            onUpdatePurchaseStatus?.(statusSelectionOrder.id, key, reason);
+                          } else {
+                            onUpdatePurchaseStatus?.(statusSelectionOrder.id, key);
+                          }
+                          setStatusSelectionOrder(null);
+                        }}
+                        className={`w-full group relative p-4 rounded-2xl border-2 text-left transition-all duration-300 flex items-center gap-4
+                          ${isSelected 
+                            ? `bg-${opt.color}-50 border-${opt.color}-500 shadow-md ring-4 ring-${opt.color}-500/5` 
+                            : 'bg-white border-transparent hover:border-slate-200 hover:bg-slate-50'
+                          }
+                        `}
+                      >
+                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300
+                           ${isSelected ? `bg-${opt.color}-600 text-white` : `bg-slate-100 text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50`}
+                         `}>
+                            <Icon className="w-5 h-5" />
+                         </div>
+
+                         <div className="flex-1 min-w-0">
+                            <h4 className={`text-xs font-black uppercase tracking-tight ${isSelected ? `text-${opt.color}-900` : 'text-slate-800'}`}>
+                               {opt.label}
+                            </h4>
+                            <p className={`text-[10px] font-medium leading-tight truncate ${isSelected ? `text-${opt.color}-700/80` : 'text-slate-400'}`}>
+                               {opt.description}
+                            </p>
+                         </div>
+
+                         {isSelected && (
+                           <div className={`w-6 h-6 rounded-full bg-${opt.color}-600 flex items-center justify-center text-white animate-scale-in`}>
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                           </div>
+                         )}
+                      </button>
+                    );
+                 })}
+              </div>
+
+              {/* Footer Compacto */}
+              <div className="p-4 bg-slate-50 border-t border-slate-100">
+                 <button 
+                   onClick={() => setStatusSelectionOrder(null)}
+                   className="w-full py-3 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg hover:bg-indigo-600 transition-all active:scale-95"
+                 >
+                    Cancelar Operação
+                 </button>
+              </div>
+           </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Confirmação de Aprovação de Orçamento (Pelo Administrador) */}
+      {confirmApprovalOrder && createPortal(
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+             <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-purple-500/10">
+                   <Scale className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 uppercase">Aprovar Orçamento?</h3>
+                <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">
+                   Deseja confirmar a aprovação do orçamento para o pedido <span className="font-bold text-purple-600">{confirmApprovalOrder.protocol}</span>? 
+                   Esta ação liberará o status e retornará o processo ao setor de compras para a próxima etapa (Dotação Orçamentária).
+                </p>
+             </div>
+             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                <button 
+                  onClick={() => {
+                    onUpdatePurchaseStatus?.(confirmApprovalOrder.id, 'coletando_dotacao', 'Orçamento Aprovado pelo Administrador');
+                    setConfirmApprovalOrder(null);
+                  }}
+                  className="w-full py-4 bg-purple-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-purple-600/20 hover:bg-purple-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Confirmar e Liberar
+                </button>
+                <button 
+                  onClick={() => setConfirmApprovalOrder(null)}
+                  className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                >
+                  Voltar
+                </button>
+             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Histórico de Movimentação */}
       {historyOrder && createPortal(
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-md animate-fade-in">
            <div className="w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-slide-up max-h-[85vh]">
@@ -371,7 +521,6 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
 
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  <div className="relative">
-                    {/* Linha da Timeline */}
                     <div className="absolute left-[19px] top-4 bottom-4 w-1 bg-gradient-to-b from-indigo-500 via-indigo-200 to-slate-100 rounded-full"></div>
 
                     <div className="space-y-10">
@@ -380,22 +529,23 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                            const isFirst = idx === 0;
                            return (
                              <div key={idx} className="relative pl-14 group animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
-                                {/* Círculo da Timeline */}
                                 <div className={`absolute left-0 top-0 w-10 h-10 rounded-2xl border-4 border-white shadow-md flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${
-                                  isFirst ? (move.statusLabel.includes('Cancela') ? 'bg-rose-600' : 'bg-indigo-600') + ' text-white ring-4 ring-indigo-100' : 'bg-white text-indigo-500 border-indigo-100'
+                                  isFirst ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-600' : 'bg-indigo-600') + ' text-white ring-4 ring-indigo-100' : 'bg-white text-indigo-500 border-indigo-100'
                                 }`}>
                                    {move.statusLabel.includes('Aprova') ? <CheckCircle2 className="w-5 h-5" /> : 
-                                    move.statusLabel.includes('Cancela') ? <XCircle className="w-5 h-5" /> :
+                                    (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição')) ? <XCircle className="w-5 h-5" /> :
                                     move.statusLabel.includes('Recebido') ? <PackageCheck className="w-5 h-5" /> : 
+                                    move.statusLabel.includes('Dotação') ? <Landmark className="w-5 h-5" /> :
+                                    move.statusLabel.includes('Orçamento') ? <FileSearch className="w-5 h-5" /> :
                                     move.statusLabel.includes('Concluído') ? <CheckCircle className="w-5 h-5" /> :
                                     move.statusLabel.includes('Realizado') ? <ShoppingCart className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                                 </div>
 
                                 <div className={`p-6 rounded-[2rem] border transition-all ${
-                                  isFirst ? (move.statusLabel.includes('Cancela') ? 'bg-rose-50/50 border-rose-100' : 'bg-indigo-50/50 border-indigo-100') + ' shadow-sm' : 'bg-white border-slate-100'
+                                  isFirst ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-50/50 border-rose-100' : 'bg-indigo-50/50 border-indigo-100') + ' shadow-sm' : 'bg-white border-slate-100'
                                 }`}>
                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
-                                      <h4 className={`text-sm font-black uppercase tracking-wider ${isFirst ? (move.statusLabel.includes('Cancela') ? 'text-rose-900' : 'text-indigo-900') : 'text-slate-800'}`}>
+                                      <h4 className={`text-sm font-black uppercase tracking-wider ${isFirst ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'text-rose-900' : 'text-indigo-900') : 'text-slate-800'}`}>
                                         {move.statusLabel}
                                       </h4>
                                       <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-slate-100 text-[10px] font-bold text-slate-500 shadow-sm">
@@ -403,13 +553,23 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                                          {new Date(move.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                    </div>
+
+                                   {move.justification && (
+                                     <div className={`mb-4 p-4 rounded-2xl border flex items-start gap-3 ${move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-100/50 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                       <MessageCircle className="w-4 h-4 shrink-0 mt-0.5 opacity-60" />
+                                       <div className="space-y-1">
+                                          <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Motivo informado:</p>
+                                          <p className="text-xs font-bold leading-relaxed">{move.justification}</p>
+                                       </div>
+                                     </div>
+                                   )}
                                    
                                    <div className="flex items-center gap-2">
-                                      <div className={`w-6 h-6 rounded-lg ${move.statusLabel.includes('Cancela') ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'} flex items-center justify-center`}>
+                                      <div className={`w-6 h-6 rounded-lg ${move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'} flex items-center justify-center`}>
                                          <User className="w-3.5 h-3.5" />
                                       </div>
                                       <p className="text-xs font-black text-slate-600">
-                                        Responsável: <span className={`${move.statusLabel.includes('Cancela') ? 'text-rose-600' : 'text-indigo-600'} ml-1`}>{move.userName}</span>
+                                        Responsável: <span className={`${move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'text-rose-600' : 'text-indigo-600'} ml-1`}>{move.userName}</span>
                                       </p>
                                    </div>
                                 </div>

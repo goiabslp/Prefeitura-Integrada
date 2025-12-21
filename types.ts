@@ -1,4 +1,3 @@
-
 export enum FontFamily {
   SANS = 'font-sans',
   SERIF = 'font-serif',
@@ -139,6 +138,7 @@ export interface StatusMovement {
   statusLabel: string;
   date: string;
   userName: string;
+  justification?: string;
 }
 
 export interface Order {
@@ -146,7 +146,7 @@ export interface Order {
   protocol: string;
   title: string;
   status: 'pending' | 'completed' | 'canceled' | 'approved' | 'rejected';
-  purchaseStatus?: 'recebido' | 'andamento' | 'realizado' | 'concluido' | 'cancelado';
+  purchaseStatus?: 'recebido' | 'coletando_orcamento' | 'aprovacao_orcamento' | 'coletando_dotacao' | 'realizado' | 'concluido' | 'cancelado';
   statusHistory?: StatusMovement[];
   createdAt: string;
   userId: string;
