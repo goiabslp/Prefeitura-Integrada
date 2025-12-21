@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  AppState, User, Order, Signature, BlockType, Person, Sector, Job 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
 import * as db from './services/dbService';
@@ -93,7 +92,7 @@ const App: React.FC = () => {
 
     if (editingOrder) {
       const updatedSnapshot = JSON.parse(JSON.stringify(appState));
-      updatedSnapshot.content.protocol = editingOrder.protocol; // Mantém o protocolo original no snapshot
+      updatedSnapshot.content.protocol = editingOrder.protocol; 
 
       finalOrder = {
         ...editingOrder,
@@ -108,7 +107,7 @@ const App: React.FC = () => {
       const protocolString = `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
 
       const finalSnapshot = JSON.parse(JSON.stringify(appState));
-      finalSnapshot.content.protocol = protocolString; // Salva protocolo no snapshot
+      finalSnapshot.content.protocol = protocolString; 
 
       finalOrder = {
         id: Date.now().toString(),
@@ -120,11 +119,12 @@ const App: React.FC = () => {
         userName: currentUser.name,
         blockType: activeBlock,
         documentSnapshot: finalSnapshot,
-        paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined
+        paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined,
+        statusHistory: []
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => [...prev, finalOrder]);
-      setAppState(finalSnapshot); // Atualiza o estado atual para refletir o protocolo no preview imediato
+      setAppState(finalSnapshot); 
     }
     
     setIsFinalizedView(true);
@@ -156,9 +156,80 @@ const App: React.FC = () => {
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    if (!currentUser) return;
+    
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
-        const updated = { ...o, status };
+        // Se o status já for o mesmo, ignora para evitar duplicidade no histórico
+        if (o.status === status) return o;
+
+        const statusLabelMap = { approved: 'Aprovação Administrativa', rejected: 'Rejeição Administrativa', pending: 'Pendente de Análise', completed: 'Concluído', canceled: 'Cancelado' };
+        
+        const newLabel = statusLabelMap[status] || status;
+
+        const newMovement: StatusMovement = {
+          statusLabel: newLabel,
+          date: new Date().toISOString(),
+          userName: currentUser.name
+        };
+
+        const updatedHistory = [...(o.statusHistory || []), newMovement];
+        
+        const updated = { 
+          ...o, 
+          status,
+          statusHistory: updatedHistory,
+          purchaseStatus: (status === 'approved' && o.blockType === 'compras') ? 'recebido' as const : o.purchaseStatus
+        };
+
+        // Se mudou para recebido automaticamente por causa da aprovação, registra apenas se não houver histórico de recebimento imediato
+        if (status === 'approved' && o.blockType === 'compras') {
+           updated.statusHistory.push({
+             statusLabel: 'Pedido Recebido (Início Atendimento)',
+             date: new Date().toISOString(),
+             userName: 'Sistema (Automático)'
+           });
+        }
+
+        db.saveOrder(updated);
+        return updated;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+  };
+
+  const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus']) => {
+    if (!currentUser) return;
+
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        // Se o purchaseStatus já for o mesmo, ignora para evitar duplicidade no histórico
+        if (o.purchaseStatus === purchaseStatus) return o;
+
+        const purchaseStatusLabelMap = { 
+          recebido: 'Pedido Recebido', 
+          andamento: 'Em andamento', 
+          realizado: 'Pedido Realizado', 
+          concluido: 'Concluído',
+          cancelado: 'Cancelado'
+        };
+        
+        const newLabel = purchaseStatusLabelMap[purchaseStatus!] || purchaseStatus!;
+
+        const newMovement: StatusMovement = {
+          statusLabel: newLabel,
+          date: new Date().toISOString(),
+          userName: currentUser.name
+        };
+
+        const updatedHistory = [...(o.statusHistory || []), newMovement];
+
+        const updated = { 
+          ...o, 
+          purchaseStatus,
+          statusHistory: updatedHistory
+        };
         db.saveOrder(updated);
         return updated;
       }
@@ -220,7 +291,6 @@ const App: React.FC = () => {
     setIsDownloading(true);
     setSnapshotToDownload(order.documentSnapshot);
     
-    // Pequeno delay para garantir que o React renderize o container oculto
     setTimeout(async () => {
       try {
         await performDownload('background-preview-scaler', `${order.title || 'documento'}.pdf`);
@@ -265,7 +335,12 @@ const App: React.FC = () => {
 
   const handleStartEditing = () => {
       let defaultTitle = INITIAL_STATE.content.title;
-      if (activeBlock === 'compras') defaultTitle = 'Requisição de Compra';
+      let defaultRightBlock = INITIAL_STATE.content.rightBlockText;
+
+      if (activeBlock === 'compras') {
+          defaultTitle = 'Requisição de Compras e Serviços';
+          defaultRightBlock = 'Ao Departamento de Compras da\nPrefeitura de São José do Goiabal-MG';
+      }
       if (activeBlock === 'licitacao') defaultTitle = 'Processo Licitatório nº 01/2024';
       if (activeBlock === 'diarias') defaultTitle = 'Requisição de Diária';
 
@@ -274,7 +349,8 @@ const App: React.FC = () => {
         content: { 
           ...INITIAL_STATE.content, 
           title: defaultTitle,
-          protocol: '' // Limpa protocolo para novos documentos
+          rightBlockText: defaultRightBlock,
+          protocol: '' 
         },
         document: { 
           ...prev.document, 
@@ -444,6 +520,7 @@ const App: React.FC = () => {
                if (order) handleDownloadFromHistory(order);
             }}
             onUpdateStatus={handleUpdateOrderStatus}
+            onUpdatePurchaseStatus={handleUpdatePurchaseStatus}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
           />
         )}

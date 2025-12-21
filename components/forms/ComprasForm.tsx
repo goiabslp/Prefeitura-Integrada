@@ -91,16 +91,16 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
        {/* Identificação e Prioridade */}
        <div className="space-y-4">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4 text-emerald-600" /> Requisição de Compra
+            <ShoppingCart className="w-4 h-4 text-emerald-600" /> Requisição
           </h3>
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div>
-                <label className={labelClass}>Finalidade da Compra</label>
+                <label className={labelClass}>Finalidade</label>
                 <input 
                   value={content.title} 
                   onChange={(e) => handleUpdate('content', 'title', e.target.value)} 
                   className={`${inputClass} font-bold text-slate-900 text-base`} 
-                  placeholder="Ex: Requisição de Compra de Material Escolar" 
+                  placeholder="Ex: Requisição de Compras e Serviços de Material Escolar" 
                 />
               </div>
 
@@ -169,7 +169,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                     value={content.rightBlockText} 
                     onChange={(e) => handleUpdate('content', 'rightBlockText', e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs h-24 resize-none focus:bg-white transition-all outline-none text-slate-700 font-medium"
-                    placeholder="Ao Excelentíssimo..."
+                    placeholder={"Ao Departamento de Compras da\nPrefeitura de São José do Goiabal-MG"}
                   />
                )}
             </div>

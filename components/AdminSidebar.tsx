@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   X, ArrowLeft, Loader2, Check, Save 
@@ -237,7 +236,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   {renderSectionHeader(
                       activeBlock?.toUpperCase() === 'DIARIAS' ? 'Diárias e Custeio' : 
                       activeBlock?.toUpperCase() === 'OFICIO' ? 'Módulo de Ofício' : 
-                      activeBlock?.toUpperCase() === 'COMPRAS' ? 'Pedido de Compra' :
+                      activeBlock?.toUpperCase() === 'COMPRAS' ? 'Novo Pedido' :
                       activeBlock?.toUpperCase() === 'LICITACAO' ? 'Processo Licitatório' : 'Editor',
                       'Preencha os dados abaixo para gerar o documento'
                   )}

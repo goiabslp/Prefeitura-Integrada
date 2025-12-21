@@ -135,11 +135,19 @@ export interface Signature {
   sector: string;
 }
 
+export interface StatusMovement {
+  statusLabel: string;
+  date: string;
+  userName: string;
+}
+
 export interface Order {
   id: string;
   protocol: string;
   title: string;
   status: 'pending' | 'completed' | 'canceled' | 'approved' | 'rejected';
+  purchaseStatus?: 'recebido' | 'andamento' | 'realizado' | 'concluido' | 'cancelado';
+  statusHistory?: StatusMovement[];
   createdAt: string;
   userId: string;
   userName: string;
