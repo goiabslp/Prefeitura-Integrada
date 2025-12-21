@@ -15,7 +15,7 @@ const HashIcon = ({ className }: { className?: string }) => (
     <line x1="4" y1="9" x2="20" y2="9"></line>
     <line x1="4" y1="15" x2="20" y2="15"></line>
     <line x1="10" y1="3" x2="8" y2="21"></line>
-    <line x1="16" y1="3" x2="14" y2="21"></line>
+    <line x1="16" x2="14" y2="21"></line>
   </svg>
 );
 
@@ -52,6 +52,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   const [historyOrder, setHistoryOrder] = useState<Order | null>(null);
   const [attachmentManagerOrder, setAttachmentManagerOrder] = useState<Order | null>(null);
   const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(null);
+  const [priorityJustificationOrder, setPriorityJustificationOrder] = useState<Order | null>(null);
 
   const genericAttachmentRef = useRef<HTMLInputElement>(null);
 
@@ -252,7 +253,9 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                       {isCompras && (
                          <div className="md:col-span-1 flex justify-center">
                             <div className="w-11 h-11 bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center shadow-sm shrink-0">
-                               <span className="text-[7px] font-black text-slate-400 uppercase">{new Date(order.createdAt).toLocaleDateString('pt-BR', { month: 'short' })}</span>
+                               <span className="text-[7px] font-black text-slate-400 uppercase">
+                                 {new Date(order.createdAt).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace(/ de /g, '/').replace('.', '')}
+                               </span>
                                <span className="text-base font-black text-emerald-600 leading-none">{new Date(order.createdAt).getDate()}</span>
                             </div>
                          </div>
@@ -260,14 +263,25 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                       
                       {isCompras && (
                         <div className="md:col-span-1 flex justify-center">
-                           <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-tight ${pStyle.color}`} title={`Prioridade: ${priority}`}>
-                              <pStyle.icon className="w-2.5 h-2.5" />
-                              {priority}
-                           </div>
+                           {(priority === 'Alta' || priority === 'Urgência') ? (
+                             <button 
+                               onClick={() => setPriorityJustificationOrder(order)}
+                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-tight transition-all hover:scale-105 active:scale-95 cursor-pointer hover:shadow-sm ${pStyle.color}`} 
+                               title="Clique para ver a justificativa"
+                             >
+                                <pStyle.icon className="w-2.5 h-2.5" />
+                                {priority}
+                             </button>
+                           ) : (
+                             <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-tight ${pStyle.color}`} title={`Prioridade: ${priority}`}>
+                                <pStyle.icon className="w-2.5 h-2.5" />
+                                {priority}
+                             </div>
+                           )}
                         </div>
                       )}
 
-                      <div className={`${isCompras ? 'md:col-span-1 flex justify-center' : 'md:col-span-2'}`}>
+                      <div className={`${isCompras ? 'md:col-span-1' : 'md:col-span-2'} flex justify-center`}>
                          <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50/50 px-2 py-1 rounded border border-indigo-100/50">
                             {order.protocol}
                          </span>
@@ -292,16 +306,21 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
 
                       {isCompras && (
                          <>
-                            <div className="md:col-span-1 flex justify-center">
+                            <div className="md:col-span-1 flex flex-col items-center">
                                {order.completionForecast ? (
-                                 <div className="flex flex-col items-center gap-0.5">
-                                    <span className={`text-[10px] font-bold ${isOverdue ? 'text-rose-500' : 'text-slate-600'}`}>
-                                       {new Date(order.completionForecast).toLocaleDateString('pt-BR')}
-                                    </span>
-                                    <span className={`text-[7px] font-black uppercase px-1 rounded w-fit ${isOverdue ? 'text-rose-500 bg-rose-50' : 'text-slate-400 bg-slate-50'}`}>
+                                 <>
+                                    <div className={`w-11 h-11 bg-white rounded-xl border flex flex-col items-center justify-center shadow-sm shrink-0 transition-colors ${isOverdue ? 'border-rose-200 shadow-rose-500/5' : 'border-slate-200'}`}>
+                                       <span className="text-[7px] font-black text-slate-400 uppercase">
+                                          {new Date(order.completionForecast).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace(/ de /g, '/').replace('.', '')}
+                                       </span>
+                                       <span className={`text-base font-black leading-none ${isOverdue ? 'text-rose-500' : 'text-indigo-600'}`}>
+                                          {new Date(order.completionForecast).getDate()}
+                                       </span>
+                                    </div>
+                                    <span className={`text-[7px] font-black uppercase px-1 mt-1 rounded w-fit ${isOverdue ? 'text-rose-500 bg-rose-50' : 'text-slate-400 bg-slate-50'}`}>
                                        {isOverdue ? 'Atrasado' : 'No Prazo'}
                                     </span>
-                                 </div>
+                                 </>
                                ) : (
                                  <span className="text-[10px] text-slate-400 italic">---</span>
                                )}
@@ -437,6 +456,45 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
            <span>Sistema de Gestão Pública v1.2.0</span>
         </div>
       </div>
+
+      {/* MODAL DE JUSTIFICATIVA DE PRIORIDADE */}
+      {priorityJustificationOrder && createPortal(
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+           <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-slide-up">
+              <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                 <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${priorityJustificationOrder.documentSnapshot?.content.priority === 'Urgência' ? 'bg-rose-600 shadow-rose-600/20' : 'bg-amber-600 shadow-amber-600/20'}`}>
+                       {priorityJustificationOrder.documentSnapshot?.content.priority === 'Urgência' ? <ShieldAlert className="w-6 h-6 text-white" /> : <AlertTriangle className="w-6 h-6 text-white" />}
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Justificativa de Prioridade</h3>
+                       <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{priorityJustificationOrder.documentSnapshot?.content.priority}</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setPriorityJustificationOrder(null)} className="p-3 hover:bg-white hover:shadow-md rounded-2xl text-slate-400 hover:text-slate-900 transition-all active:scale-90"><X className="w-6 h-6" /></button>
+              </div>
+
+              <div className="p-8">
+                 <div className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 relative">
+                    <MessageCircle className="absolute -top-3 -right-3 w-10 h-10 text-slate-200" />
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Motivo Informado:</p>
+                    <p className="text-base text-slate-700 font-medium leading-relaxed italic">
+                       "{priorityJustificationOrder.documentSnapshot?.content.priorityJustification || 'Nenhuma justificativa específica foi informada para este pedido.'}"
+                    </p>
+                 </div>
+                 <div className="mt-6 flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                    <Info className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <p className="text-[10px] text-indigo-700 font-bold leading-tight">Pedidos com prioridade elevada são sinalizados automaticamente para o setor de compras visando agilizar o processo de aquisição.</p>
+                 </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-100 shrink-0">
+                 <button onClick={() => setPriorityJustificationOrder(null)} className="w-full py-4 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-indigo-600 transition-all">Fechar</button>
+              </div>
+           </div>
+        </div>,
+        document.body
+      )}
 
       {/* MODAL DE GERENCIAMENTO DE ANEXOS */}
       {attachmentManagerOrder && createPortal(
