@@ -2,7 +2,10 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { User, UserRole, Signature, AppPermission } from '../types';
-import { Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, PenTool, LayoutGrid, User as UserIcon, CheckCircle2 } from 'lucide-react';
+import { 
+  Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, 
+  PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart 
+} from 'lucide-react';
 
 interface UserManagementScreenProps {
   users: User[];
@@ -125,11 +128,12 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   const labelClass = "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1";
 
   const permissionsList: { id: AppPermission, label: string }[] = [
-    { id: 'parent_criar_oficio', label: 'Bloco Pai: Ofícios' },
-    { id: 'parent_compras', label: 'Bloco Pai: Compras' },
-    { id: 'parent_licitacao', label: 'Bloco Pai: Licitação' },
-    { id: 'parent_diarias', label: 'Bloco Pai: Diárias e Custeio' },
-    { id: 'parent_admin', label: 'Bloco Pai: Administração' }
+    { id: 'parent_criar_oficio', label: 'Módulo: Ofícios' },
+    { id: 'parent_compras', label: 'Módulo: Compras' },
+    { id: 'parent_licitacao', label: 'Módulo: Licitação' },
+    { id: 'parent_diarias', label: 'Módulo: Diárias e Custeio' },
+    { id: 'parent_admin', label: 'Administrativo' },
+    { id: 'parent_compras_pedidos', label: 'Gestão de Pedidos (Compras)' }
   ];
 
   return (
@@ -170,7 +174,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm ${
                      user.role === 'admin' ? 'bg-indigo-600 text-white' : 
-                     'bg-slate-100 text-slate-600'
+                     (user.role === 'licitacao' || user.role === 'compras') ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {user.name.charAt(0)}
                   </div>
@@ -181,8 +185,12 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                       <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-xs font-semibold text-slate-600">
                          {user.jobTitle || 'Usuário'}
                       </span>
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${user.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
-                         {user.role === 'admin' ? 'ADMINISTRADOR' : 'COLABORADOR'}
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
+                        user.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 
+                        user.role === 'licitacao' ? 'bg-blue-100 text-blue-700' : 
+                        user.role === 'compras' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                         {user.role}
                       </span>
                     </div>
                   </div>
@@ -202,7 +210,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
 
         {isModalOpen && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[95vh] border border-white/20">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border border-white/20">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 className="text-xl font-bold text-slate-800">{isAdmin ? (editingUser ? 'Editar Usuário' : 'Novo Usuário') : 'Meu Perfil'}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><X className="w-5 h-5" /></button>
@@ -211,11 +219,13 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
               <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
                  {/* Seletor Dinâmico de Perfil */}
                  <div className="space-y-4">
-                    <label className={labelClass}>Tipo de Acesso (Perfil)</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className={labelClass}>Tipo de Perfil</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                        {[
-                         { id: 'admin', label: 'Administrador', desc: 'Acesso total ao sistema, assinaturas e gestão de equipe.', icon: <ShieldCheck className="w-6 h-6" />, color: 'indigo' },
-                         { id: 'collaborator', label: 'Colaborador', desc: 'Gera documentos e acessa apenas o próprio perfil.', icon: <UserIcon className="w-6 h-6" />, color: 'slate' }
+                         { id: 'admin', label: 'Admin', desc: 'Acesso total.', icon: <ShieldCheck className="w-5 h-5" />, color: 'indigo' },
+                         { id: 'licitacao', label: 'Licitação', desc: 'Módulos sem Admin.', icon: <Gavel className="w-5 h-5" />, color: 'blue' },
+                         { id: 'compras', label: 'Compras', desc: 'Módulos + Visão.', icon: <ShoppingCart className="w-5 h-5" />, color: 'emerald' },
+                         { id: 'collaborator', label: 'Colaborador', desc: 'Operação básica.', icon: <UserIcon className="w-5 h-5" />, color: 'slate' }
                        ].map((role) => {
                          const isSelected = formData.role === role.id;
                          const disabled = !isAdmin && formData.role !== role.id;
@@ -226,29 +236,23 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                              type="button"
                              disabled={disabled}
                              onClick={() => isAdmin && setFormData({...formData, role: role.id as UserRole})}
-                             className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 group ${
+                             className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-300 group ${
                                isSelected 
                                  ? `bg-${role.color}-50 border-${role.color}-600 ring-4 ring-${role.color}-600/10` 
                                  : `bg-white border-slate-100 hover:border-slate-300 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`
                              }`}
                            >
                              <div className="flex items-start justify-between">
-                                <div className={`p-3 rounded-xl transition-colors ${
-                                  isSelected ? `bg-${role.color}-600 text-white` : `bg-slate-100 text-slate-400 group-hover:bg-slate-200`
+                                <div className={`p-2 rounded-xl transition-colors ${
+                                  isSelected ? `bg-${role.color}-600 text-white` : `bg-slate-100 text-slate-400 group-hover:bg-emerald-100`
                                 }`}>
                                    {role.icon}
                                 </div>
-                                {isSelected && (
-                                   <CheckCircle2 className={`w-5 h-5 text-${role.color}-600 animate-fade-in`} />
-                                )}
+                                {isSelected && <CheckCircle2 className={`w-4 h-4 text-${role.color}-600 animate-fade-in`} />}
                              </div>
-                             <div className="mt-4">
-                                <h4 className={`font-bold text-lg ${isSelected ? `text-${role.color}-900` : 'text-slate-800'}`}>
-                                  {role.label}
-                                </h4>
-                                <p className={`text-xs mt-1 leading-relaxed ${isSelected ? `text-${role.color}-700` : 'text-slate-500'}`}>
-                                  {role.desc}
-                                </p>
+                             <div className="mt-3">
+                                <h4 className={`font-bold text-sm ${isSelected ? `text-${role.color}-900` : 'text-slate-800'}`}>{role.label}</h4>
+                                <p className="text-[10px] mt-0.5 leading-tight text-slate-500">{role.desc}</p>
                              </div>
                            </button>
                          );
@@ -256,8 +260,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                     </div>
                  </div>
 
-                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                    <div className="col-span-2">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                    <div className="md:col-span-2">
                       <label className={labelClass}>Nome Completo</label>
                       <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} placeholder="Ex: Nome do Colaborador" />
                     </div>
@@ -301,7 +305,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                      </div>
 
                      <div className="border-t border-slate-100 pt-8">
-                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Disponíveis</label>
+                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Permitidas</label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {availableSignatures.map(sig => {
                                 const isChecked = formData.allowedSignatureIds?.includes(sig.id);

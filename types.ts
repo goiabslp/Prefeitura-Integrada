@@ -66,6 +66,7 @@ export interface PurchaseItem {
 export interface ContentData {
   title: string;
   body: string;
+  protocol?: string;
   signatureName: string;
   signatureRole: string;
   signatureSector: string;
@@ -109,9 +110,9 @@ export interface AppState {
   ui: UIConfig;
 }
 
-export type UserRole = 'admin' | 'collaborator' | 'licitacao';
+export type UserRole = 'admin' | 'collaborator' | 'licitacao' | 'compras';
 
-export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias';
+export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias' | 'parent_compras_pedidos';
 
 export type BlockType = 'oficio' | 'compras' | 'licitacao' | 'diarias';
 
@@ -138,7 +139,7 @@ export interface Order {
   id: string;
   protocol: string;
   title: string;
-  status: 'pending' | 'completed' | 'canceled';
+  status: 'pending' | 'completed' | 'canceled' | 'approved' | 'rejected';
   createdAt: string;
   userId: string;
   userName: string;

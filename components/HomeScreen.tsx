@@ -1,11 +1,12 @@
 
 import React from 'react';
-import { FilePlus, Package, History, FileText, ArrowRight, ArrowLeft, ShoppingCart, Gavel, Wallet } from 'lucide-react';
+import { FilePlus, Package, History, FileText, ArrowRight, ArrowLeft, ShoppingCart, Gavel, Wallet, Inbox } from 'lucide-react';
 import { UserRole, UIConfig, AppPermission, BlockType } from '../types';
 
 interface HomeScreenProps {
   onNewOrder: () => void;
   onTrackOrder: () => void;
+  onManagePurchaseOrders?: () => void;
   onLogout: () => void;
   onOpenAdmin: (tab?: string | null) => void;
   userRole: UserRole;
@@ -25,6 +26,7 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ 
   onNewOrder, 
   onTrackOrder,
+  onManagePurchaseOrders,
   userName,
   permissions = [],
   activeBlock,
@@ -35,6 +37,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const canAccessCompras = permissions.includes('parent_compras');
   const canAccessLicitacao = permissions.includes('parent_licitacao');
   const canAccessDiarias = permissions.includes('parent_diarias');
+  const canManagePurchaseOrders = permissions.includes('parent_compras_pedidos');
 
   const hasAnyPermission = canAccessOficio || canAccessCompras || canAccessLicitacao || canAccessDiarias;
   const firstName = userName.split(' ')[0];
@@ -46,6 +49,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       case 'licitacao': return "Módulo de Licitação";
       case 'diarias': return "Diárias e Custeio";
       default: return "";
+    }
+  };
+
+  const getNewActionLabel = () => {
+    switch (activeBlock) {
+      case 'compras': return 'Novo Pedido';
+      case 'oficio': return 'Novo Ofício';
+      case 'diarias': return 'Nova Solicitação';
+      case 'licitacao': return 'Novo Processo';
+      default: return 'Novo Documento';
     }
   };
 
@@ -122,17 +135,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <button onClick={() => setActiveBlock(null)} className="group flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold mb-4 transition-all"><ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /><span className="text-xs uppercase tracking-widest">Módulos</span></button>
               <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight text-center">{getBlockName()}</h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              <div className={`grid grid-cols-1 md:grid-cols-${(activeBlock === 'compras' && canManagePurchaseOrders) ? '3' : '2'} gap-8 pt-4`}>
                 <button onClick={onNewOrder} className="group p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl transition-all flex flex-col items-center text-center h-56 justify-center">
                   <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg mb-4 group-hover:scale-110 transition-transform"><FilePlus className="w-7 h-7 text-white" /></div>
-                  <h3 className="text-xl font-black text-slate-900 mb-1">Novo Documento</h3>
+                  <h3 className="text-xl font-black text-slate-900 mb-1">{getNewActionLabel()}</h3>
                   <p className="text-slate-500 text-xs font-medium">Contador Global: {stats.totalGenerated.toString().padStart(3, '0')}</p>
                 </button>
+
                 <button onClick={onTrackOrder} className="group p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl transition-all flex flex-col items-center text-center h-56 justify-center">
                   <div className="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg mb-4 group-hover:scale-110 transition-transform"><History className="w-7 h-7 text-white" /></div>
                   <h3 className="text-xl font-black text-slate-900 mb-1">Histórico</h3>
                   <p className="text-slate-500 text-xs font-medium">Consulte registros de {activeBlock.toUpperCase()}.</p>
                 </button>
+
+                {activeBlock === 'compras' && canManagePurchaseOrders && (
+                   <button onClick={onManagePurchaseOrders} className="group p-8 bg-white border border-slate-200 rounded-[2rem] shadow-lg hover:shadow-xl transition-all flex flex-col items-center text-center h-56 justify-center">
+                    <div className="w-14 h-14 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg mb-4 group-hover:scale-110 transition-transform"><Inbox className="w-7 h-7 text-white" /></div>
+                    <h3 className="text-xl font-black text-slate-900 mb-1">Pedidos</h3>
+                    <p className="text-slate-500 text-xs font-medium">Gestão Administrativa (Admin)</p>
+                  </button>
+                )}
               </div>
             </div>
           </div>

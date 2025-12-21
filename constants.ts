@@ -79,46 +79,46 @@ export const DEFAULT_USERS: User[] = [
     id: '1', 
     username: 'GAF', 
     password: 'GAF', 
-    name: 'Guilherme Araújo Ferreira dos Santos', 
+    name: 'Guilherme Araújo (GAF)', 
     role: 'admin', 
     sector: 'Administração Municipal', 
-    jobTitle: 'Secretário Administrativo Municipal', 
+    jobTitle: 'Secretário Municipal', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
+  },
+  { 
+    id: 'user_licitacao', 
+    username: 'licitacao', 
+    password: '123', 
+    name: 'Operador de Licitação', 
+    role: 'licitacao', 
+    sector: 'Setor de Licitação', 
+    jobTitle: 'Analista de Licitação', 
+    allowedSignatureIds: [],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
+  },
+  { 
+    id: 'user_compras', 
+    username: 'compras', 
+    password: '123', 
+    name: 'Responsável Compras', 
+    role: 'compras', 
+    sector: 'Setor de Compras', 
+    jobTitle: 'Analista de Compras', 
+    allowedSignatureIds: [],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
   },
   { 
     id: '2', 
-    username: 'JMV', 
-    password: 'JMV', 
-    name: 'Juliana Miranda Vasconcelos Almeida', 
-    role: 'admin', 
-    sector: 'Administração', 
-    jobTitle: 'Tecnico Administrativo', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
-  },
-  { 
-    id: '3', 
-    username: 'MDL', 
-    password: 'MDL', 
-    name: 'Maria Doroteia Dias Lemos', 
+    username: 'colaborador', 
+    password: '123', 
+    name: 'Colaborador Padrão', 
     role: 'collaborator', 
-    sector: 'Gabinete do Prefeito', 
-    jobTitle: 'Chefe De Gabinete', 
-    allowedSignatureIds: ['sig1'],
-    permissions: ['parent_criar_oficio']
-  },
-  { 
-    id: '4', 
-    username: 'TAR', 
-    password: 'TAR', 
-    name: 'Tamires Araújo Rufino', 
-    role: 'admin', 
-    sector: 'EMulti e Proteção Especial', 
-    jobTitle: 'Assistente Social', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias']
-  },
+    sector: 'Secretaria Geral', 
+    jobTitle: 'Técnico Administrativo', 
+    allowedSignatureIds: [],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias']
+  }
 ];
 
 export const MOCK_ORDERS: Order[] = [];

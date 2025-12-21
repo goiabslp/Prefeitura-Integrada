@@ -74,7 +74,7 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
           {pageIndex === 0 && (
             <div className="mb-6 space-y-4">
               <div className="bg-emerald-600 text-white px-4 py-2 rounded-t-lg font-black text-[7pt] uppercase tracking-[0.2em] mb-4">
-                Pedido de Compra nº {content.title.split(' ')[2] || '---'}
+                Pedido de Compra Administrativo
               </div>
 
               {/* Blocos de Endereçamento */}
@@ -104,11 +104,16 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
               </div>
 
               <div className="flex items-center gap-3 border-b-2 border-emerald-100 pb-2">
-                <h1 className="font-bold leading-tight tracking-tight text-[18pt] text-emerald-900 flex-1">
-                  {content.title}
-                </h1>
+                <div className="flex-1 flex flex-col gap-1">
+                  <h1 className="font-bold leading-tight tracking-tight text-[16pt] text-emerald-900">
+                    {content.title}
+                  </h1>
+                  <span className="text-[10pt] font-mono font-bold text-emerald-600 uppercase tracking-tighter">
+                    Protocolo: {content.protocol || 'AGUARDANDO FINALIZAÇÃO'}
+                  </span>
+                </div>
                 {/* Badge de Prioridade */}
-                <div className={`px-3 py-1 rounded-full text-[8pt] font-black uppercase tracking-widest border ${priorityStyles[content.priority || 'Normal']}`}>
+                <div className={`px-3 py-1 rounded-full text-[8pt] font-black uppercase tracking-widest border shrink-0 ${priorityStyles[content.priority || 'Normal']}`}>
                   {content.priority || 'Normal'}
                 </div>
               </div>

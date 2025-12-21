@@ -1,12 +1,10 @@
 
 import React from 'react';
 import { 
-  LayoutDashboard, 
   Settings, 
   LogOut, 
   User as UserIcon, 
   ChevronDown,
-  ShieldCheck,
   FileText,
   Home
 } from 'lucide-react';
@@ -31,7 +29,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onGoHome,
   currentView
 }) => {
-  const isAdmin = currentUser.role === 'admin' || currentUser.permissions.includes('parent_admin');
+  // Apenas role 'admin' acessa o Administrativo conforme solicitado.
+  // Usuários de licitacao e compras, embora tenham permissão de módulo, não devem ver o Painel Admin.
+  const canAccessAdmin = currentUser.role === 'admin';
   const isNotHome = currentView !== 'home';
   
   const getModuleTitle = () => {
@@ -94,9 +94,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           )}
 
-          {isAdmin && currentView !== 'admin' && (
+          {canAccessAdmin && currentView !== 'admin' && (
             <button 
-              onClick={() => onOpenAdmin(null)} // Alterado de 'users' para null para abrir o menu de módulos
+              onClick={() => onOpenAdmin(null)} 
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
             >
               <Settings className="w-4 h-4" />
@@ -115,7 +115,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div className="relative group">
                <button className="flex items-center gap-1 p-1 rounded-xl hover:bg-slate-100 transition-colors">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black shadow-sm ${
-                    currentUser.role === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
+                    currentUser.role === 'admin' ? 'bg-indigo-600 text-white' : 
+                    (currentUser.role === 'compras' || currentUser.role === 'licitacao') ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
                   }`}>
                     {currentUser.name.charAt(0)}
                   </div>
@@ -127,13 +128,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   <div className="px-4 py-2 mb-2 border-b border-slate-50">
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acesso {currentUser.role}</p>
                   </div>
-                  <button 
-                    onClick={() => onOpenAdmin('users')}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
-                  >
-                    <UserIcon className="w-4 h-4" />
-                    Meu Perfil
-                  </button>
+                  {canAccessAdmin && (
+                    <button 
+                      onClick={() => onOpenAdmin('users')}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                    >
+                      <UserIcon className="w-4 h-4" />
+                      Meu Perfil
+                    </button>
+                  )}
                   <button 
                     onClick={onGoHome}
                     className="w-full sm:hidden flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"

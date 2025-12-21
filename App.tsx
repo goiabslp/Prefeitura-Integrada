@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job 
@@ -18,9 +19,10 @@ import { SignatureManagementScreen } from './components/SignatureManagementScree
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
 import { FinalizedActionBar } from './components/FinalizedActionBar';
+import { PurchaseManagementScreen } from './components/PurchaseManagementScreen';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor' | 'purchase-management'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
   const [activeBlock, setActiveBlock] = useState<BlockType | null>(null);
@@ -90,35 +92,57 @@ const App: React.FC = () => {
     let finalOrder: Order;
 
     if (editingOrder) {
+      const updatedSnapshot = JSON.parse(JSON.stringify(appState));
+      updatedSnapshot.content.protocol = editingOrder.protocol; // Mantém o protocolo original no snapshot
+
       finalOrder = {
         ...editingOrder,
         title: appState.content.title,
-        documentSnapshot: JSON.parse(JSON.stringify(appState))
+        documentSnapshot: updatedSnapshot
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => prev.map(o => o.id === finalOrder.id ? finalOrder : o));
     } else {
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
+      const protocolString = `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
+
+      const finalSnapshot = JSON.parse(JSON.stringify(appState));
+      finalSnapshot.content.protocol = protocolString; // Salva protocolo no snapshot
 
       finalOrder = {
         id: Date.now().toString(),
-        protocol: `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`,
+        protocol: protocolString,
         title: appState.content.title,
-        status: 'completed',
+        status: 'pending',
         createdAt: new Date().toISOString(),
         userId: currentUser.id,
         userName: currentUser.name,
         blockType: activeBlock,
-        documentSnapshot: JSON.parse(JSON.stringify(appState)),
+        documentSnapshot: finalSnapshot,
         paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => [...prev, finalOrder]);
+      setAppState(finalSnapshot); // Atualiza o estado atual para refletir o protocolo no preview imediato
     }
     
     setIsFinalizedView(true);
     setIsAdminSidebarOpen(false);
+  };
+
+  const handleSendOrder = async () => {
+    if (!currentUser || !activeBlock) return;
+
+    const lastOrder = orders[orders.length - 1];
+    
+    setIsDownloading(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsDownloading(false);
+
+    alert(`SUCESSO!\n\nO pedido "${appState.content.title}" foi registrado e enviado com sucesso para análise administrativa.\n\nProtocolo: ${lastOrder?.protocol || '---'}`);
+    
+    handleGoHome();
   };
 
   const handleEditOrder = (order: Order) => {
@@ -129,6 +153,18 @@ const App: React.FC = () => {
     setAdminTab('content');
     setIsAdminSidebarOpen(true);
     setIsFinalizedView(false);
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        const updated = { ...o, status };
+        db.saveOrder(updated);
+        return updated;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
   };
 
   const handleUpdatePaymentStatus = async (orderId: string, status: 'pending' | 'paid') => {
@@ -228,7 +264,6 @@ const App: React.FC = () => {
   };
 
   const handleStartEditing = () => {
-      // Definimos o título padrão baseado no módulo selecionado
       let defaultTitle = INITIAL_STATE.content.title;
       if (activeBlock === 'compras') defaultTitle = 'Requisição de Compra';
       if (activeBlock === 'licitacao') defaultTitle = 'Processo Licitatório nº 01/2024';
@@ -238,7 +273,8 @@ const App: React.FC = () => {
         ...prev,
         content: { 
           ...INITIAL_STATE.content, 
-          title: defaultTitle 
+          title: defaultTitle,
+          protocol: '' // Limpa protocolo para novos documentos
         },
         document: { 
           ...prev.document, 
@@ -275,6 +311,7 @@ const App: React.FC = () => {
           <HomeScreen 
             onNewOrder={handleStartEditing}
             onTrackOrder={() => setCurrentView('tracking')}
+            onManagePurchaseOrders={() => setCurrentView('purchase-management')}
             onLogout={handleLogout}
             onOpenAdmin={handleOpenAdmin}
             userRole={currentUser.role}
@@ -369,6 +406,8 @@ const App: React.FC = () => {
                     onDownload={handleDownloadPdf}
                     onBack={handleGoHome}
                     onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }}
+                    onSend={handleSendOrder}
+                    showSendButton={activeBlock === 'compras'}
                     isDownloading={isDownloading}
                     documentTitle={appState.content.title}
                 />
@@ -394,9 +433,22 @@ const App: React.FC = () => {
             onUpdatePaymentStatus={handleUpdatePaymentStatus}
           />
         )}
+
+        {currentView === 'purchase-management' && currentUser && (
+          <PurchaseManagementScreen 
+            onBack={() => setCurrentView('home')}
+            currentUser={currentUser}
+            orders={orders}
+            onDownloadPdf={(snapshot) => {
+               const order = orders.find(o => o.documentSnapshot === snapshot);
+               if (order) handleDownloadFromHistory(order);
+            }}
+            onUpdateStatus={handleUpdateOrderStatus}
+            onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
+          />
+        )}
       </div>
 
-      {/* Container Oculto para Renderização de Download em Segundo Plano */}
       <div 
         id="background-pdf-generation-container" 
         style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}
