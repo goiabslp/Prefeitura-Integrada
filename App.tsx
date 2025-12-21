@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
@@ -104,10 +105,30 @@ const App: React.FC = () => {
     } else {
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
-      const protocolString = `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
+      
+      // Lógica de Protocolo Customizada
+      let protocolString = '';
+      if (activeBlock === 'compras') {
+        // Protocolo aleatório para Compras: # + número de 6 dígitos
+        const randomNum = Math.floor(100000 + Math.random() * 900000);
+        protocolString = `#${randomNum}`;
+      } else {
+        // Protocolo sequencial para outros blocos
+        protocolString = `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
+      }
 
       const finalSnapshot = JSON.parse(JSON.stringify(appState));
       finalSnapshot.content.protocol = protocolString; 
+
+      // Adiciona o status inicial de criação se for o módulo de compras
+      const initialHistory: StatusMovement[] = [];
+      if (activeBlock === 'compras') {
+        initialHistory.push({
+          statusLabel: 'Criação do Pedido',
+          date: new Date().toISOString(),
+          userName: currentUser.name
+        });
+      }
 
       finalOrder = {
         id: Date.now().toString(),
@@ -120,7 +141,7 @@ const App: React.FC = () => {
         blockType: activeBlock,
         documentSnapshot: finalSnapshot,
         paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined,
-        statusHistory: [],
+        statusHistory: initialHistory,
         attachments: []
       };
       await db.saveOrder(finalOrder);
@@ -238,6 +259,18 @@ const App: React.FC = () => {
           budgetFileUrl: budgetFileUrl || o.budgetFileUrl,
           attachments: updatedAttachments
         };
+        db.saveOrder(updated);
+        return updated;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+  };
+
+  const handleUpdateCompletionForecast = async (orderId: string, date: string) => {
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        const updated = { ...o, completionForecast: date };
         db.saveOrder(updated);
         return updated;
       }
@@ -520,6 +553,7 @@ const App: React.FC = () => {
             onClearAll={() => { db.clearAllOrders(); setOrders([]); }}
             onEditOrder={handleEditOrder}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
+            onUpdateAttachments={handleUpdateOrderAttachments}
             totalCounter={globalCounter}
             onUpdatePaymentStatus={handleUpdatePaymentStatus}
           />
@@ -536,6 +570,7 @@ const App: React.FC = () => {
             }}
             onUpdateStatus={handleUpdateOrderStatus}
             onUpdatePurchaseStatus={handleUpdatePurchaseStatus}
+            onUpdateCompletionForecast={handleUpdateCompletionForecast}
             onUpdateAttachments={handleUpdateOrderAttachments}
             onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
           />

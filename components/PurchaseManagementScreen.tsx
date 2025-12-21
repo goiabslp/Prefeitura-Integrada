@@ -19,6 +19,7 @@ interface PurchaseManagementScreenProps {
   onDownloadPdf: (snapshot?: AppState) => void;
   onUpdateStatus: (orderId: string, status: Order['status'], justification?: string) => void;
   onUpdatePurchaseStatus?: (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string, budgetFileUrl?: string) => void;
+  onUpdateCompletionForecast?: (orderId: string, date: string) => void;
   onUpdateAttachments?: (orderId: string, attachments: Attachment[]) => void;
   onDeleteOrder: (id: string) => void;
 }
@@ -30,6 +31,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
   onDownloadPdf, 
   onUpdateStatus,
   onUpdatePurchaseStatus,
+  onUpdateCompletionForecast,
   onUpdateAttachments,
   onDeleteOrder
 }) => {
@@ -123,7 +125,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
       case 'rejected':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black uppercase tracking-widest"><XCircle className="w-3 h-3" /> Rejeitado</span>;
       case 'pending':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black uppercase tracking-widest"><Clock className="w-3 h-3 animate-pulse" /> Pendente</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black uppercase tracking-widest"><Clock className="w-3 h-3 animate-pulse" /> Aguardando Aprovação</span>;
       default:
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-100 text-[10px] font-black uppercase tracking-widest"><AlertCircle className="w-3 h-3" /> Recebido</span>;
     }
@@ -327,6 +329,38 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                              <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {order.userName}</div>
                              <div className="flex items-center gap-1.5"><ShoppingBag className="w-3.5 h-3.5" /> {(order.documentSnapshot?.content.purchaseItems || []).length} itens</div>
                           </div>
+
+                          {/* CAMPO DE PREVISÃO DE CONCLUSÃO */}
+                          {order.status === 'approved' && (
+                            <div className="mt-3 flex items-center gap-3">
+                               <div className="flex flex-col">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-0.5">Previsão de Conclusão</label>
+                                  {isComprasUser || isAdmin ? (
+                                    <div className="flex items-center gap-2">
+                                       <div className="relative group/input">
+                                          <input 
+                                            type="date" 
+                                            value={order.completionForecast || ''}
+                                            onChange={(e) => onUpdateCompletionForecast?.(order.id, e.target.value)}
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-bold text-slate-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all cursor-pointer"
+                                          />
+                                          <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 pointer-events-none group-focus-within/input:text-emerald-500 transition-colors" />
+                                       </div>
+                                       {order.completionForecast && (
+                                          <span className={`text-[10px] font-black uppercase px-2 py-1 rounded bg-slate-100 ${new Date(order.completionForecast) < new Date() ? 'text-rose-500 bg-rose-50' : 'text-slate-400'}`}>
+                                            {new Date(order.completionForecast) < new Date() ? 'Atrasado' : 'No Prazo'}
+                                          </span>
+                                       )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit">
+                                       <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                                       <span className="text-xs font-bold text-slate-600">{order.completionForecast ? new Date(order.completionForecast).toLocaleDateString('pt-BR') : 'Aguardando Compras'}</span>
+                                    </div>
+                                  )}
+                               </div>
+                            </div>
+                          )}
                        </div>
                     </div>
 
@@ -658,7 +692,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                          [...historyOrder.statusHistory].reverse().map((move, idx) => (
                            <div key={idx} className="relative pl-14 group animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
                                 <div className={`absolute left-0 top-0 w-10 h-10 rounded-2xl border-4 border-white shadow-md flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${idx === 0 ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-600' : 'bg-indigo-600') + ' text-white ring-4 ring-indigo-100' : 'bg-white text-indigo-500 border-indigo-100'}`}>
-                                   {move.statusLabel.includes('Aprova') ? <CheckCircle2 className="w-5 h-5" /> : (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição')) ? <XCircle className="w-5 h-5" /> : move.statusLabel.includes('Recebido') ? <PackageCheck className="w-5 h-5" /> : move.statusLabel.includes('Dotação') ? <Landmark className="w-5 h-5" /> : move.statusLabel.includes('Orçamento') ? <FileSearch className="w-5 h-5" /> : move.statusLabel.includes('Concluído') ? <CheckCircle className="w-5 h-5" /> : move.statusLabel.includes('Realizado') ? <ShoppingCart className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                                   {move.statusLabel.includes('Aprova') ? <CheckCircle2 className="w-5 h-5" /> : (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição')) ? <XCircle className="w-5 h-5" /> : move.statusLabel.includes('Criação') ? <Sparkles className="w-5 h-5" /> : move.statusLabel.includes('Recebido') ? <PackageCheck className="w-5 h-5" /> : move.statusLabel.includes('Dotação') ? <Landmark className="w-5 h-5" /> : move.statusLabel.includes('Orçamento') ? <FileSearch className="w-5 h-5" /> : move.statusLabel.includes('Concluído') ? <CheckCircle className="w-5 h-5" /> : move.statusLabel.includes('Realizado') ? <ShoppingCart className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                                 </div>
                                 <div className={`p-6 rounded-[2rem] border transition-all ${idx === 0 ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'bg-rose-50/50 border-rose-100' : 'bg-indigo-50/50 border-indigo-100') + ' shadow-sm' : 'bg-white border-slate-100'}`}>
                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3"><h4 className={`text-sm font-black uppercase tracking-wider ${idx === 0 ? (move.statusLabel.includes('Cancela') || move.statusLabel.includes('Rejeição') ? 'text-rose-900' : 'text-indigo-900') : 'text-slate-800'}`}>{move.statusLabel}</h4><div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-slate-100 text-[10px] font-bold text-slate-500 shadow-sm"><Calendar className="w-3.5 h-3.5 text-indigo-400" /> {new Date(move.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>

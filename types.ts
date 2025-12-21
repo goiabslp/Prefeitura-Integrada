@@ -1,3 +1,4 @@
+
 export enum FontFamily {
   SANS = 'font-sans',
   SERIF = 'font-serif',
@@ -165,6 +166,7 @@ export interface Order {
   paymentDate?: string;
   budgetFileUrl?: string;
   attachments?: Attachment[];
+  completionForecast?: string;
 }
 
 // Novas Interfaces para o Módulo de Pessoas, Setores e Cargos
