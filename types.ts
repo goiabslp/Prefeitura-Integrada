@@ -77,6 +77,8 @@ export interface ContentData {
   extraFieldText?: string;
   evidenceItems?: EvidenceItem[];
   purchaseItems?: PurchaseItem[];
+  priority?: 'Normal' | 'Média' | 'Alta' | 'Urgência';
+  priorityJustification?: string;
   // Campos específicos para Diárias e Custeio
   requesterName?: string;
   requesterRole?: string;

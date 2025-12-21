@@ -228,10 +228,18 @@ const App: React.FC = () => {
   };
 
   const handleStartEditing = () => {
-      // Quando inicia um novo documento, resetamos o estado de conteúdo para o boilerplate
+      // Definimos o título padrão baseado no módulo selecionado
+      let defaultTitle = INITIAL_STATE.content.title;
+      if (activeBlock === 'compras') defaultTitle = 'Requisição de Compra';
+      if (activeBlock === 'licitacao') defaultTitle = 'Processo Licitatório nº 01/2024';
+      if (activeBlock === 'diarias') defaultTitle = 'Requisição de Diária';
+
       setAppState(prev => ({
         ...prev,
-        content: { ...INITIAL_STATE.content },
+        content: { 
+          ...INITIAL_STATE.content, 
+          title: defaultTitle 
+        },
         document: { 
           ...prev.document, 
           showSignature: INITIAL_STATE.document.showSignature,

@@ -48,7 +48,9 @@ export const INITIAL_STATE: AppState = {
     signatureSector: '',
     leftBlockText: 'Ofício nº 001/2024\nAssunto: Solicitação de Material',
     rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade',
-    purchaseItems: []
+    purchaseItems: [],
+    priority: 'Normal',
+    priorityJustification: ''
   },
   ui: {
     loginLogoUrl: null,

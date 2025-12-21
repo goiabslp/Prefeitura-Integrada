@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShoppingCart, FileText, PenTool, CheckCircle2, Columns, 
   Plus, Trash2, Hash, Layers, MessageSquare, AlignLeft,
-  Minus, ChevronDown, Package, Archive, Scale, Briefcase, Box
+  Minus, ChevronDown, Package, Archive, Scale, Briefcase, Box,
+  AlertTriangle, ShieldAlert, Zap, Info
 } from 'lucide-react';
 import { AppState, ContentData, DocumentConfig, Signature, PurchaseItem } from '../../types';
 
@@ -22,6 +22,13 @@ const UNIT_OPTIONS = [
   { value: 'Caixa', label: 'Caixa', icon: Archive },
   { value: 'Kg', label: 'Kg', icon: Scale },
   { value: 'Serviço', label: 'Serviço', icon: Briefcase },
+] as const;
+
+const PRIORITY_OPTIONS = [
+  { value: 'Normal', label: 'Normal', icon: Info, color: 'slate' },
+  { value: 'Média', label: 'Média', icon: Zap, color: 'indigo' },
+  { value: 'Alta', label: 'Alta', icon: AlertTriangle, color: 'amber' },
+  { value: 'Urgência', label: 'Urgência', icon: ShieldAlert, color: 'rose' },
 ] as const;
 
 export const ComprasForm: React.FC<ComprasFormProps> = ({ 
@@ -77,23 +84,69 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
   const inputClass = "bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:bg-white focus:ring-4 focus:ring-emerald-500/5 transition-all w-full";
   const labelClass = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
 
+  const showPriorityJustification = content.priority === 'Alta' || content.priority === 'Urgência';
+
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-       {/* Identificação */}
+       {/* Identificação e Prioridade */}
        <div className="space-y-4">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-emerald-600" /> Requisição de Compra
           </h3>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div>
                 <label className={labelClass}>Finalidade da Compra</label>
                 <input 
                   value={content.title} 
                   onChange={(e) => handleUpdate('content', 'title', e.target.value)} 
                   className={`${inputClass} font-bold text-slate-900 text-base`} 
-                  placeholder="Ex: Aquisição de Toners para TI" 
+                  placeholder="Ex: Requisição de Compra de Material Escolar" 
                 />
               </div>
+
+              {/* Bloco de Prioridade */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className={labelClass}>Prioridade do Pedido</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                   {PRIORITY_OPTIONS.map((opt) => {
+                     const Icon = opt.icon;
+                     const isSelected = content.priority === opt.value;
+                     const colors = {
+                       slate: isSelected ? 'bg-slate-600 border-slate-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100',
+                       indigo: isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-indigo-50 border-indigo-100 text-indigo-400 hover:bg-indigo-100',
+                       amber: isSelected ? 'bg-amber-500 border-amber-500 text-white' : 'bg-amber-50 border-amber-100 text-amber-500 hover:bg-amber-100',
+                       rose: isSelected ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100',
+                     };
+                     
+                     return (
+                       <button
+                         key={opt.value}
+                         onClick={() => handleUpdate('content', 'priority', opt.value)}
+                         className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${colors[opt.color as keyof typeof colors]}`}
+                       >
+                         <Icon className="w-3.5 h-3.5" />
+                         {opt.label}
+                       </button>
+                     );
+                   })}
+                </div>
+              </div>
+
+              {/* Justificativa de Prioridade (Condicional) */}
+              {showPriorityJustification && (
+                <div className="pt-4 animate-slide-up">
+                  <label className={labelClass}>Justificativa da {content.priority}</label>
+                  <div className="relative">
+                    <textarea 
+                      value={content.priorityJustification || ''}
+                      onChange={(e) => handleUpdate('content', 'priorityJustification', e.target.value)}
+                      className={`${inputClass} min-h-[100px] resize-none leading-relaxed p-4 border-rose-100 bg-rose-50/20`}
+                      placeholder={`Por que este pedido tem prioridade ${content.priority}?`}
+                    />
+                    <MessageSquare className="absolute right-3 top-3 w-4 h-4 text-rose-300 pointer-events-none" />
+                  </div>
+                </div>
+              )}
           </div>
        </div>
 

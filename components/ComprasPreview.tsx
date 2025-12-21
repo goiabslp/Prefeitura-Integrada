@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { AppState, PurchaseItem } from '../types';
 import { PageWrapper } from './PageWrapper';
@@ -11,13 +12,18 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
   const { branding, document: docConfig, content } = state;
 
   const pages = useMemo(() => {
-    const SECURITY_MARGIN_LINES = 3; // LIMITE DE 03 LINHAS ANTES DO RODAPÉ
+    const SECURITY_MARGIN_LINES = 3; 
     const TOTAL_LINES_CAPACITY = 38; 
     const CHARS_PER_LINE = 65;
     
-    // Calcula linhas ocupadas pela justificativa
+    // Calcula linhas ocupadas pela justificativa geral (body)
     const justificationLines = content.body 
-      ? content.body.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 1 
+      ? content.body.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 2
+      : 0;
+
+    // Calcula linhas ocupadas pela justificativa de prioridade
+    const priorityJustificationLines = content.priorityJustification
+      ? content.priorityJustification.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 3
       : 0;
 
     const LIMIT_FIRST_PAGE = 22 - justificationLines;
@@ -52,7 +58,14 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
     if (resultPages.length === 0) resultPages.push([]);
     
     return resultPages;
-  }, [content.purchaseItems, content.body]);
+  }, [content.purchaseItems, content.body, content.priorityJustification]);
+
+  const priorityStyles = {
+    'Normal': 'bg-slate-100 text-slate-600',
+    'Média': 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    'Alta': 'bg-amber-50 text-amber-700 border-amber-200',
+    'Urgência': 'bg-rose-50 text-rose-700 border-rose-200',
+  };
 
   return (
     <>
@@ -90,11 +103,17 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 )}
               </div>
 
-              <h1 className="font-bold leading-tight tracking-tight text-[18pt] text-emerald-900 border-b-2 border-emerald-100 pb-2">
-                {content.title}
-              </h1>
+              <div className="flex items-center gap-3 border-b-2 border-emerald-100 pb-2">
+                <h1 className="font-bold leading-tight tracking-tight text-[18pt] text-emerald-900 flex-1">
+                  {content.title}
+                </h1>
+                {/* Badge de Prioridade */}
+                <div className={`px-3 py-1 rounded-full text-[8pt] font-black uppercase tracking-widest border ${priorityStyles[content.priority || 'Normal']}`}>
+                  {content.priority || 'Normal'}
+                </div>
+              </div>
 
-              {/* Justificativa no Preview */}
+              {/* Justificativa Geral no Cabeçalho */}
               {content.body && (
                 <div className="bg-slate-50/50 p-4 rounded-xl border-l-4 border-emerald-500 my-4">
                   <p className="text-[7pt] font-black text-emerald-600 uppercase tracking-widest mb-1">Justificativa do Pedido:</p>
@@ -127,6 +146,16 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 </div>
              ) : (
                 pageIndex === 0 && <p className="text-slate-400 italic text-sm">Nenhum item listado.</p>
+             )}
+
+             {/* Justificativa de Prioridade ao final dos itens na última página */}
+             {pageIndex === pages.length - 1 && content.priorityJustification && (
+               <div className="mt-8 bg-rose-50/30 p-4 rounded-xl border-l-4 border-rose-500">
+                  <p className="text-[7pt] font-black text-rose-600 uppercase tracking-widest mb-1">Nota de Prioridade ({content.priority}):</p>
+                  <p className="text-[10pt] text-slate-700 leading-relaxed italic whitespace-pre-wrap">
+                    {content.priorityJustification}
+                  </p>
+               </div>
              )}
           </div>
           
