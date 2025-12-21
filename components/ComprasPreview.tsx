@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import { AppState } from '../types';
+import { AppState, PurchaseItem } from '../types';
 import { PageWrapper } from './PageWrapper';
 
 interface ComprasPreviewProps {
@@ -12,47 +11,124 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
   const { branding, document: docConfig, content } = state;
 
   const pages = useMemo(() => {
-    const MAX_LINES_PER_PAGE = 34; 
-    const CHARS_PER_LINE = 75; 
-    const blocks = content.body.split(/(?<=<\/p>)|(?<=<\/div>)|<br\s*\/?>/g);
-    const resultPages: string[] = [];
-    let currentPageContent = '';
-    let currentLinesUsed = 0;
+    const SECURITY_MARGIN_LINES = 3; // LIMITE DE 03 LINHAS ANTES DO RODAPÉ
+    const TOTAL_LINES_CAPACITY = 38; 
+    const CHARS_PER_LINE = 65;
+    
+    // Calcula linhas ocupadas pela justificativa
+    const justificationLines = content.body 
+      ? content.body.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 1 
+      : 0;
 
-    blocks.forEach((blockHTML) => {
-      if (!blockHTML?.trim()) return;
-      const plainText = blockHTML.replace(/<[^>]+>/g, '') || ' ';
-      const linesInBlock = Math.max(1, Math.ceil(plainText.length / CHARS_PER_LINE));
-      
-      if ((currentLinesUsed + linesInBlock) > MAX_LINES_PER_PAGE) {
-        resultPages.push(currentPageContent);
-        currentPageContent = blockHTML;
-        currentLinesUsed = linesInBlock;
+    const LIMIT_FIRST_PAGE = 22 - justificationLines;
+    const LIMIT_NORMAL = TOTAL_LINES_CAPACITY - SECURITY_MARGIN_LINES;
+
+    const items = content.purchaseItems || [];
+    const resultPages: PurchaseItem[][] = [];
+    let currentPageItems: PurchaseItem[] = [];
+    let currentLinesUsed = 0;
+    let isFirstPage = true;
+
+    const getLimit = () => isFirstPage ? LIMIT_FIRST_PAGE : LIMIT_NORMAL;
+
+    items.forEach((item) => {
+      const linesForName = Math.max(1, Math.ceil((item.name || '').length / CHARS_PER_LINE));
+      const totalItemLines = linesForName + 0.5; 
+
+      const limit = getLimit();
+
+      if ((currentLinesUsed + totalItemLines) <= limit) {
+        currentPageItems.push(item);
+        currentLinesUsed += totalItemLines;
       } else {
-        currentPageContent += blockHTML;
-        currentLinesUsed += linesInBlock;
+        resultPages.push(currentPageItems);
+        currentPageItems = [item];
+        currentLinesUsed = totalItemLines;
+        isFirstPage = false;
       }
     });
+
+    if (currentPageItems.length > 0) resultPages.push(currentPageItems);
+    if (resultPages.length === 0) resultPages.push([]);
     
-    if (currentPageContent) resultPages.push(currentPageContent);
     return resultPages;
-  }, [content.body]);
+  }, [content.purchaseItems, content.body]);
 
   return (
     <>
-      {pages.map((pageHtml, pageIndex) => (
+      {pages.map((itemsOnPage, pageIndex) => (
         <PageWrapper key={pageIndex} state={state} pageIndex={pageIndex} totalPages={pages.length} isGenerating={isGenerating}>
           {pageIndex === 0 && (
-            <div className="mb-6">
-              <div className="bg-emerald-600 text-white px-4 py-2 rounded-t-lg font-black text-xs uppercase tracking-[0.2em] mb-4">
+            <div className="mb-6 space-y-4">
+              <div className="bg-emerald-600 text-white px-4 py-2 rounded-t-lg font-black text-[7pt] uppercase tracking-[0.2em] mb-4">
                 Pedido de Compra nº {content.title.split(' ')[2] || '---'}
               </div>
-              <h1 className="font-bold leading-tight tracking-tight text-[22pt] text-emerald-900 border-b-2 border-emerald-100 pb-2">
+
+              {/* Blocos de Endereçamento */}
+              <div className="flex justify-between items-start text-[9.5pt]">
+                {docConfig.showLeftBlock && content.leftBlockText && (
+                  <div 
+                    className="whitespace-pre-wrap max-w-[45%] leading-snug font-semibold text-slate-700"
+                    style={{ 
+                      fontSize: `${docConfig.leftBlockStyle?.size || 9}pt`, 
+                      color: docConfig.leftBlockStyle?.color || '#334155'
+                    }}
+                  >
+                    {content.leftBlockText}
+                  </div>
+                )}
+                {docConfig.showRightBlock && content.rightBlockText && (
+                  <div 
+                    className="whitespace-pre-wrap text-right max-w-[45%] leading-snug font-semibold text-slate-700"
+                    style={{ 
+                      fontSize: `${docConfig.rightBlockStyle?.size || 9}pt`, 
+                      color: docConfig.rightBlockStyle?.color || '#334155'
+                    }}
+                  >
+                    {content.rightBlockText}
+                  </div>
+                )}
+              </div>
+
+              <h1 className="font-bold leading-tight tracking-tight text-[18pt] text-emerald-900 border-b-2 border-emerald-100 pb-2">
                 {content.title}
               </h1>
+
+              {/* Justificativa no Preview */}
+              {content.body && (
+                <div className="bg-slate-50/50 p-4 rounded-xl border-l-4 border-emerald-500 my-4">
+                  <p className="text-[7pt] font-black text-emerald-600 uppercase tracking-widest mb-1">Justificativa do Pedido:</p>
+                  <p className="text-[10pt] text-slate-600 leading-relaxed italic whitespace-pre-wrap">
+                    {content.body}
+                  </p>
+                </div>
+              )}
             </div>
           )}
-          <div className="max-w-none text-gray-700 leading-relaxed text-justify text-[11pt] whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageHtml }} />
+          
+          <div className="flex-1">
+             {itemsOnPage.length > 0 ? (
+                <div className="space-y-3">
+                   {itemsOnPage.map((item, idx) => {
+                      const absoluteIndex = pages.slice(0, pageIndex).reduce((acc, curr) => acc + curr.length, 0) + idx + 1;
+                      return (
+                        <div key={item.id} className="flex items-start gap-3 text-[11pt] border-b border-slate-50 pb-2">
+                           <span className="font-black text-emerald-600 min-w-[30px]">{absoluteIndex.toString().padStart(2, '0')}.</span>
+                           <div className="flex-1">
+                              <span className="text-slate-800 font-medium leading-relaxed">{item.name || '---'}</span>
+                              <div className="flex gap-4 mt-0.5 text-[8.5pt] font-black uppercase tracking-widest text-slate-400">
+                                 <span>Quantidade: <span className="text-emerald-600">{item.quantity}</span></span>
+                                 <span>Unidade: <span className="text-emerald-600">{item.unit}</span></span>
+                              </div>
+                           </div>
+                        </div>
+                      );
+                   })}
+                </div>
+             ) : (
+                pageIndex === 0 && <p className="text-slate-400 italic text-sm">Nenhum item listado.</p>
+             )}
+          </div>
           
           {pageIndex === pages.length - 1 && (
             <div className="mt-auto pt-16 flex justify-center">

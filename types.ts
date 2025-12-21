@@ -56,6 +56,13 @@ export interface EvidenceItem {
   imageUrl: string;
 }
 
+export interface PurchaseItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: 'Pacote' | 'Caixa' | 'Kg' | 'Unidade' | 'Serviço';
+}
+
 export interface ContentData {
   title: string;
   body: string;
@@ -69,6 +76,7 @@ export interface ContentData {
   showExtraField?: boolean;
   extraFieldText?: string;
   evidenceItems?: EvidenceItem[];
+  purchaseItems?: PurchaseItem[];
   // Campos específicos para Diárias e Custeio
   requesterName?: string;
   requesterRole?: string;

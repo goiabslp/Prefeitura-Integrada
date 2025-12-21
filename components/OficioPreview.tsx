@@ -11,15 +11,14 @@ export const OficioPreview: React.FC<OficioPreviewProps> = ({ state, isGeneratin
   const { branding, document: docConfig, content } = state;
 
   const pages = useMemo(() => {
-    // Parâmetros de calibração para folha A4
+    // Calibração para folha A4 com fonte 11pt e entrelinha 1.5
     const CHARS_PER_LINE = 85; 
-    const SECURITY_MARGIN_LINES = 5; 
-    const TOTAL_LINES_CAPACITY = 42; 
+    const SECURITY_MARGIN_LINES = 3; // LIMITE DE 03 LINHAS ANTES DO RODAPÉ
+    const TOTAL_LINES_CAPACITY = 40; 
     
     const LIMIT_NORMAL = TOTAL_LINES_CAPACITY - SECURITY_MARGIN_LINES; 
-    const LIMIT_FIRST_PAGE = 26; 
+    const LIMIT_FIRST_PAGE = 24; // Espaço reduzido na primeira página devido ao cabeçalho/blocos
 
-    // O conteúdo agora vem com \n nativo
     const paragraphs = content.body.split('\n');
     
     const resultPages: string[] = [];
@@ -29,10 +28,9 @@ export const OficioPreview: React.FC<OficioPreviewProps> = ({ state, isGeneratin
 
     const getLimit = () => isFirstPage ? LIMIT_FIRST_PAGE : LIMIT_NORMAL;
 
-    paragraphs.forEach((paragraph, index) => {
+    paragraphs.forEach((paragraph) => {
       const text = paragraph.trim();
       
-      // Se parágrafo vazio (apenas Enter), conta como 1 linha
       if (!text) {
         if (currentLinesUsed + 1 > getLimit()) {
           resultPages.push(currentPageText.trim());
@@ -49,23 +47,18 @@ export const OficioPreview: React.FC<OficioPreviewProps> = ({ state, isGeneratin
       const linesInParagraph = Math.max(1, Math.ceil(text.length / CHARS_PER_LINE));
       const limit = getLimit();
 
-      // Caso o parágrafo caiba inteiro
       if ((currentLinesUsed + linesInParagraph) <= limit) {
-        currentPageText += text + '\n\n'; // \n\n para dar espaçamento entre blocos
+        currentPageText += text + '\n\n';
         currentLinesUsed += linesInParagraph + 1;
-      } 
-      // Caso precise quebrar
-      else {
+      } else {
         const availableLines = limit - currentLinesUsed;
         
         if (availableLines <= 2) {
-          // Move o parágrafo inteiro para a próxima página
           resultPages.push(currentPageText.trim());
           currentPageText = text + '\n\n';
           currentLinesUsed = linesInParagraph + 1;
           isFirstPage = false;
         } else {
-          // Quebra o parágrafo entre as páginas
           const charsFit = availableLines * CHARS_PER_LINE;
           const part1 = text.substring(0, charsFit);
           const part2 = text.substring(charsFit);
@@ -129,7 +122,6 @@ export const OficioPreview: React.FC<OficioPreviewProps> = ({ state, isGeneratin
             </div>
           )}
           
-          {/* Renderização do Texto Puro com white-space: pre-wrap */}
           <div 
             className="text-gray-700 leading-relaxed text-justify text-[11pt] whitespace-pre-wrap word-break-break-word font-sans"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}

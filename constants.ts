@@ -1,3 +1,4 @@
+
 import { AppState, FontFamily, User, Order, Signature } from './types';
 
 export const INITIAL_STATE: AppState = {
@@ -46,7 +47,8 @@ export const INITIAL_STATE: AppState = {
     signatureRole: '',
     signatureSector: '',
     leftBlockText: 'Ofício nº 001/2024\nAssunto: Solicitação de Material',
-    rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade'
+    rightBlockText: 'Ao Excelentíssimo Senhor\nPrefeito Municipal de São José do Goiabal\nNesta Cidade',
+    purchaseItems: []
   },
   ui: {
     loginLogoUrl: null,
