@@ -87,6 +87,17 @@ export const DEFAULT_USERS: User[] = [
     permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
   },
   { 
+    id: 'user_juliana', 
+    username: 'jmv', 
+    password: 'jmv', 
+    name: 'Juliana Miranda Vasconcelos', 
+    role: 'admin', 
+    sector: 'Secretaria de Administração', 
+    jobTitle: 'Tecnico Administrativo', 
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
+    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_diarias', 'parent_compras_pedidos']
+  },
+  { 
     id: 'user_licitacao', 
     username: 'licitacao', 
     password: '123', 
