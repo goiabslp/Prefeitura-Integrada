@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
 } from './types';
-import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES } from './constants';
+import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS } from './constants';
 import * as db from './services/dbService';
 
 // Components
@@ -33,8 +33,8 @@ const App: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   
   const [persons, setPersons] = useState<Person[]>([]);
-  const [sectors, setSectors] = useState<Sector[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>(DEFAULT_SECTORS);
+  const [jobs, setJobs] = useState<Job[]>(DEFAULT_JOBS);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
@@ -61,10 +61,28 @@ const App: React.FC = () => {
         
         const savedPersons = await db.getAllPersons();
         setPersons(savedPersons);
+        
+        // Carregamento de Setores
         const savedSectors = await db.getAllSectors();
-        setSectors(savedSectors);
+        if (savedSectors.length > 0) {
+          setSectors(savedSectors);
+        } else {
+          for (const s of DEFAULT_SECTORS) {
+            await db.saveSector(s);
+          }
+          setSectors(DEFAULT_SECTORS);
+        }
+        
+        // Carregamento de Cargos
         const savedJobs = await db.getAllJobs();
-        setJobs(savedJobs);
+        if (savedJobs.length > 0) {
+          setJobs(savedJobs);
+        } else {
+          for (const j of DEFAULT_JOBS) {
+            await db.saveJob(j);
+          }
+          setJobs(DEFAULT_JOBS);
+        }
 
         const counterValue = await db.getGlobalCounter();
         setGlobalCounter(counterValue);

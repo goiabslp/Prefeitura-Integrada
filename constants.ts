@@ -1,5 +1,5 @@
 
-import { AppState, FontFamily, User, Order, Signature } from './types';
+import { AppState, FontFamily, User, Order, Signature, Sector, Job } from './types';
 
 export const INITIAL_STATE: AppState = {
   branding: {
@@ -72,6 +72,40 @@ export const MOCK_SIGNATURES: Signature[] = [
   { id: 'sig2', name: 'Ailton Geraldo Dos Santos', role: 'Prefeito Municipal', sector: '' },
   { id: 'sig3', name: 'Guilherme Araújo Ferreira dos Santos', role: 'Secretário Administrativo Municipal', sector: 'Administração Municipal' },
   { id: 'sig4', name: 'Tamires Araújo Rufino', role: 'Assitente Social - CRESS MG 33.870', sector: 'EMulti e Proteção Especial' }
+];
+
+export const DEFAULT_SECTORS: Sector[] = [
+  { id: 'sec1', name: 'Secretaria de Administração' },
+  { id: 'sec2', name: 'Secretaria de Saúde' },
+  { id: 'sec3', name: 'Departamento de Cultura' },
+  { id: 'sec4', name: 'Departamento de Turismo' },
+  { id: 'sec5', name: 'Departamento de Assistência Social' },
+  { id: 'sec6', name: 'Departamento de Contabilidade' },
+  { id: 'sec7', name: 'Departamento de Educação' },
+  { id: 'sec8', name: 'Departamento de Transporte' },
+  { id: 'sec9', name: 'Departamento de Recursos Humanos' },
+  { id: 'sec10', name: 'Departamento de Compras' },
+  { id: 'sec11', name: 'Departamento de Tributos' },
+  { id: 'sec12', name: 'Gabinete' }
+];
+
+export const DEFAULT_JOBS: Job[] = [
+  { id: 'job1', name: 'Secretário de Administração e Finanças' },
+  { id: 'job2', name: 'Chefe do Departamento de Educação' },
+  { id: 'job3', name: 'Chefe do Departamento de Turismo' },
+  { id: 'job4', name: 'Chefe do Departamento de Transporte' },
+  { id: 'job5', name: 'Operador de Maquinas' },
+  { id: 'job6', name: 'Motorista' },
+  { id: 'job7', name: 'Prefeito' },
+  { id: 'job8', name: 'Operário' },
+  { id: 'job9', name: 'Auxiliar de serviços de contabilidade' },
+  { id: 'job10', name: 'Chefe dos Serviços de Contabilidade e Orçamento' },
+  { id: 'job11', name: 'Secretario de Saúde' },
+  { id: 'job12', name: 'Chefe de Gabinete' },
+  { id: 'job13', name: 'Chefe do Departamento de Cultura' },
+  { id: 'job14', name: 'Auxiliar Administrativo' },
+  { id: 'job15', name: 'Chefe do departamento de Licitação' },
+  { id: 'job16', name: 'Chefe do Departamento de Compras' }
 ];
 
 export const DEFAULT_USERS: User[] = [
