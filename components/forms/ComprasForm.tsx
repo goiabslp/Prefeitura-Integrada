@@ -217,13 +217,13 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
 
        {/* ITENS DA REQUISIÇÃO */}
        <div className="space-y-4 border-t border-slate-200 pt-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" /> Itens da Requisição
              </h3>
              <button 
                 onClick={handleAddItem}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/25 active:scale-95 transition-all ring-offset-2 focus:ring-2 focus:ring-emerald-500"
+                className="group flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/25 active:scale-95 transition-all ring-offset-2 focus:ring-2 focus:ring-emerald-500"
              >
                 <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
                 Adicionar Item
@@ -235,9 +235,9 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                 const CurrentUnitIcon = UNIT_OPTIONS.find(o => o.value === item.unit)?.icon || Box;
                 
                 return (
-                  <div key={item.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm animate-fade-in group hover:border-emerald-300 hover:shadow-md transition-all">
-                     <div className="grid grid-cols-12 gap-5 items-end">
-                        {/* Descrição do Item */}
+                  <div key={item.id} className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm animate-fade-in group hover:border-emerald-300 hover:shadow-md transition-all">
+                     <div className="grid grid-cols-12 gap-4 sm:gap-5 items-end">
+                        {/* Descrição do Item - Full width em mobile, 5/12 em desktop */}
                         <div className="col-span-12 lg:col-span-5">
                            <label className={labelClass}>Descrição do Item {index + 1}</label>
                            <div className="relative">
@@ -251,15 +251,15 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Quantidade Dinâmica */}
-                        <div className="col-span-6 lg:col-span-3">
+                        {/* Quantidade Dinâmica - 6/12 em mobile/tablet, 3/12 em desktop */}
+                        <div className="col-span-6 sm:col-span-6 lg:col-span-3">
                            <label className={labelClass}>Quantidade</label>
                            <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
                               <button 
                                 onClick={() => adjustQuantity(item.id, -1)}
-                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
+                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
                               >
-                                <Minus className="w-4 h-4" />
+                                <Minus className="w-3.5 h-3.5" />
                               </button>
                               <input 
                                  type="number"
@@ -270,16 +270,16 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                               />
                               <button 
                                 onClick={() => adjustQuantity(item.id, 1)}
-                                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
+                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
                               >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="w-3.5 h-3.5" />
                               </button>
                            </div>
                         </div>
 
-                        {/* Unidade de Medida Dinâmica */}
-                        <div className="col-span-5 lg:col-span-3 relative">
-                           <label className={labelClass}>Unidade de Medida</label>
+                        {/* Unidade de Medida Dinâmica - 6/12 em mobile/tablet, 3/12 em desktop */}
+                        <div className="col-span-6 sm:col-span-5 lg:col-span-3 relative">
+                           <label className={labelClass}>Unidade</label>
                            <div className="relative">
                               <button
                                 onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
@@ -293,7 +293,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                               </button>
 
                               {openDropdownId === item.id && (
-                                <div className="absolute z-[100] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up py-1.5 ring-4 ring-slate-900/5">
+                                <div className="absolute z-[100] right-0 sm:left-0 sm:right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up py-1.5 ring-4 ring-slate-900/5 min-w-[160px]">
                                   {UNIT_OPTIONS.map((opt) => {
                                     const Icon = opt.icon;
                                     const isSelected = item.unit === opt.value;
@@ -323,14 +323,15 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Excluir Item */}
-                        <div className="col-span-1 flex justify-end">
+                        {/* Excluir Item - No mobile ocupa uma linha discreta ou o canto, no desktop 1/12 */}
+                        <div className="col-span-12 sm:col-span-1 lg:col-span-1 flex justify-end pb-1">
                            <button 
                               onClick={() => handleRemoveItem(item.id)}
-                              className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90 border border-transparent hover:border-red-100"
+                              className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90 border border-transparent hover:border-red-100 flex items-center gap-2 sm:block"
                               title="Remover Item"
                            >
                               <Trash2 className="w-5.5 h-5.5" />
+                              <span className="sm:hidden text-xs font-bold uppercase tracking-widest">Remover</span>
                            </button>
                         </div>
                      </div>
@@ -339,12 +340,12 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
              })}
 
              {(!content.purchaseItems || content.purchaseItems.length === 0) && (
-                <div className="p-16 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-center bg-white/50 backdrop-blur-sm">
-                   <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-300 mx-auto mb-6 shadow-inner">
-                      <ShoppingCart className="w-10 h-10" />
+                <div className="p-10 sm:p-16 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-center bg-white/50 backdrop-blur-sm">
+                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-300 mx-auto mb-6 shadow-inner">
+                      <ShoppingCart className="w-8 h-8 sm:w-10 sm:h-10" />
                    </div>
                    <p className="font-black text-slate-700 text-lg">Sua lista está vazia</p>
-                   <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto">Comece a adicionar itens para compor sua requisição de compra oficial.</p>
+                   <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto">Adicione produtos ou serviços para compor sua requisição.</p>
                 </div>
              )}
           </div>
