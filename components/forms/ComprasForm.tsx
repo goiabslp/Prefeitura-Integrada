@@ -1,12 +1,12 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   ShoppingCart, FileText, PenTool, CheckCircle2, Columns, 
   Plus, Trash2, Hash, Layers, MessageSquare, AlignLeft,
   Minus, ChevronDown, Package, Archive, Scale, Briefcase, Box,
-  AlertTriangle, ShieldAlert, Zap, Info
+  AlertTriangle, ShieldAlert, Zap, Info, User, Search, Check, UserCheck
 } from 'lucide-react';
-import { AppState, ContentData, DocumentConfig, Signature, PurchaseItem } from '../../types';
+import { AppState, ContentData, DocumentConfig, Signature, PurchaseItem, Person, Sector, Job } from '../../types';
 
 interface ComprasFormProps {
   state: AppState;
@@ -15,6 +15,9 @@ interface ComprasFormProps {
   allowedSignatures: Signature[];
   handleUpdate: (section: keyof AppState, key: string, value: any) => void;
   onUpdate: (newState: AppState) => void;
+  persons: Person[];
+  sectors: Sector[];
+  jobs: Job[];
 }
 
 const UNIT_OPTIONS = [
@@ -38,20 +41,63 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
   docConfig,
   allowedSignatures, 
   handleUpdate,
-  onUpdate
+  onUpdate,
+  persons,
+  sectors,
+  jobs
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [isRequesterOpen, setIsRequesterOpen] = useState(false);
+  const [requesterSearch, setRequesterSearch] = useState('');
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const requesterDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
+      if (requesterDropdownRef.current && !requesterDropdownRef.current.contains(event.target as Node)) {
+        setIsRequesterOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // FILTRO E ORDENAÇÃO ALFABÉTICA DOS SOLICITANTES
+  const filteredRequesters = useMemo(() => {
+    const term = requesterSearch.toLowerCase();
+    return persons
+      .filter(p => p.name.toLowerCase().includes(term))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [persons, requesterSearch]);
+
+  // ORDENAÇÃO ALFABÉTICA DAS ASSINATURAS
+  const sortedSignatures = useMemo(() => {
+    return [...allowedSignatures].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allowedSignatures]);
+
+  const handlePersonSelect = (personId: string) => {
+    const person = persons.find(p => p.id === personId);
+    if (person) {
+      const job = jobs.find(j => j.id === person.jobId)?.name || '';
+      const sector = sectors.find(s => s.id === person.sectorId)?.name || '';
+      
+      onUpdate({
+        ...state,
+        content: {
+          ...state.content,
+          requesterName: person.name,
+          requesterRole: job,
+          requesterSector: sector
+        }
+      });
+    }
+    setIsRequesterOpen(false);
+    setRequesterSearch('');
+  };
 
   const handleAddItem = () => {
     const newItem: PurchaseItem = {
@@ -96,7 +142,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
           </h3>
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div>
-                <label className={labelClass}>Finalidade</label>
+                <label className={labelClass}>Finalidade do Pedido</label>
                 <input 
                   value={content.title} 
                   onChange={(e) => handleUpdate('content', 'title', e.target.value)} 
@@ -148,6 +194,94 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                   </div>
                 </div>
               )}
+          </div>
+       </div>
+
+       {/* Dados do Solicitante (Dinamizado e Ordenado) */}
+       <div className="space-y-4 border-t border-slate-200 pt-6">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <User className="w-4 h-4 text-emerald-600" /> Dados do Solicitante
+          </h3>
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+             <div className="relative" ref={requesterDropdownRef}>
+                <label className={labelClass}>NOME COMPLETO</label>
+                <div 
+                  onClick={() => setIsRequesterOpen(!isRequesterOpen)}
+                  className={`${inputClass} flex items-center justify-between cursor-pointer py-3 ${isRequesterOpen ? 'border-emerald-500 ring-4 ring-emerald-500/5 bg-white' : ''}`}
+                >
+                  <span className={content.requesterName ? 'text-slate-900 font-bold' : 'text-slate-400'}>
+                    {content.requesterName || 'Selecione o Solicitante...'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isRequesterOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {isRequesterOpen && (
+                  <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50">
+                      <div className="relative">
+                        <input 
+                          type="text"
+                          value={requesterSearch}
+                          onChange={(e) => setRequesterSearch(e.target.value)}
+                          placeholder="Pesquisar pessoa na lista..."
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-emerald-500 transition-all"
+                        />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                      {filteredRequesters.length > 0 ? (
+                        filteredRequesters.map((person, idx) => (
+                          <button
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePersonSelect(person.id);
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-emerald-50 text-left text-sm font-medium text-slate-700 transition-colors group"
+                          >
+                            <div className="flex flex-col">
+                               <span className="group-hover:text-emerald-700">{person.name}</span>
+                               <span className="text-[10px] text-slate-400 font-normal">
+                                 {jobs.find(j => j.id === person.jobId)?.name || 'N/A'} • {sectors.find(s => s.id === person.sectorId)?.name || 'N/A'}
+                               </span>
+                            </div>
+                            {content.requesterName === person.name && <Check className="w-4 h-4 text-emerald-600" />}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center">
+                          <User className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                          <p className="text-xs text-slate-400 font-medium">Nenhuma pessoa encontrada.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+             </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                   <label className={labelClass}>Cargo</label>
+                   <input 
+                      type="text" value={content.requesterRole || ''} 
+                      readOnly
+                      className={`${inputClass} bg-slate-100/50 cursor-not-allowed text-slate-500`} 
+                      placeholder="Cargo automático" 
+                   />
+                </div>
+                <div>
+                   <label className={labelClass}>Setor</label>
+                   <input 
+                      type="text" value={content.requesterSector || ''} 
+                      readOnly
+                      className={`${inputClass} bg-slate-100/50 cursor-not-allowed text-slate-500`} 
+                      placeholder="Setor automático" 
+                   />
+                </div>
+             </div>
           </div>
        </div>
 
@@ -237,7 +371,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                 return (
                   <div key={item.id} className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm animate-fade-in group hover:border-emerald-300 hover:shadow-md transition-all">
                      <div className="grid grid-cols-12 gap-4 sm:gap-5 items-end">
-                        {/* Descrição do Item - Full width em mobile, 5/12 em desktop */}
+                        {/* Descrição do Item */}
                         <div className="col-span-12 lg:col-span-5">
                            <label className={labelClass}>Descrição do Item {index + 1}</label>
                            <div className="relative">
@@ -251,7 +385,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Quantidade Dinâmica - Otimizada para 7/12 no mobile para evitar aperto */}
+                        {/* Quantidade Dinâmica */}
                         <div className="col-span-7 sm:col-span-6 lg:col-span-3">
                            <label className={labelClass}>Quantidade</label>
                            <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 min-w-[120px]">
@@ -279,7 +413,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Unidade de Medida Dinâmica - 5/12 no mobile */}
+                        {/* Unidade de Medida Dinâmica */}
                         <div className="col-span-5 sm:col-span-5 lg:col-span-3 relative">
                            <label className={labelClass}>Unidade</label>
                            <div className="relative">
@@ -353,11 +487,11 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
           </div>
        </div>
 
-       {/* ASSINATURA */}
+       {/* ASSINATURA (Ordenada Alfabeticamente) */}
        <div className="space-y-4 border-t border-slate-200 pt-6">
-         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4 text-indigo-600" /> Solicitante</h3>
+         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4 text-indigo-600" /> Autorizador Responsável</h3>
          <div className="grid grid-cols-1 gap-3">
-            {allowedSignatures.map((sig) => {
+            {sortedSignatures.map((sig) => {
                const isSelected = content.signatureName === sig.name;
                return (
                   <button 

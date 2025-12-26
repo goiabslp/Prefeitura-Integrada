@@ -138,10 +138,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   />
               );
           case 'compras':
+              // Fix: Added missing persons, sectors, and jobs props to ComprasForm
               return (
                   <ComprasForm 
                     state={state} content={content} docConfig={docConfig} 
                     allowedSignatures={allowedSignatures} handleUpdate={handleUpdate} onUpdate={onUpdate} 
+                    persons={persons} sectors={sectors} jobs={jobs}
                   />
               );
           case 'licitacao':

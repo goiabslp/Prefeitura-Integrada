@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
@@ -103,19 +104,26 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   }, []);
 
   const filteredCities = useMemo(() => {
-    if (!citySearch) return cities;
-    const term = citySearch.toLowerCase();
-    return cities.filter(city => city.toLowerCase().includes(term));
+    let list = [...cities];
+    if (citySearch) {
+      const term = citySearch.toLowerCase();
+      list = list.filter(city => city.toLowerCase().includes(term));
+    }
+    return list.sort((a, b) => a.localeCompare(b));
   }, [cities, citySearch]);
 
   const filteredAuthors = useMemo(() => {
     const term = authorizerSearch.toLowerCase();
-    return persons.filter(p => p.name.toLowerCase().includes(term));
+    return persons
+      .filter(p => p.name.toLowerCase().includes(term))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [persons, authorizerSearch]);
 
   const filteredRequesters = useMemo(() => {
     const term = requesterSearch.toLowerCase();
-    return persons.filter(p => p.name.toLowerCase().includes(term));
+    return persons
+      .filter(p => p.name.toLowerCase().includes(term))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [persons, requesterSearch]);
   
   const calculatePaymentForecast = () => {
@@ -313,7 +321,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
               </div>
               {state.document.showLeftBlock && (
                 <div className={inputGroupClass}>
-                  <label className={labelClass}><Hash className="w-3 h-3" /> Texto do Protocolo / Ofício</label>
+                  <label className={labelClass}><HashIcon className="w-3 h-3" /> Texto do Protocolo / Ofício</label>
                   <textarea 
                     value={content.leftBlockText || ''} 
                     onChange={(e) => handleUpdate('content', 'leftBlockText', e.target.value)} 
@@ -331,7 +339,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
               <div className={inputGroupClass}>
                 <div className="grid grid-cols-1 gap-4">
                    <div className="relative" ref={requesterDropdownRef}>
-                      <label className={labelClass}><User className="w-3 h-3" /> Nome Completo</label>
+                      <label className={labelClass}><User className="w-3 h-3" /> NOME COMPLETO</label>
                       <div 
                         onClick={() => setIsRequesterOpen(!isRequesterOpen)}
                         className={`${inputClass} flex items-center justify-between cursor-pointer ${isRequesterOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
@@ -399,13 +407,13 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                         />
                       </div>
                       <div>
-                        <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Setor</label>
+                        <label className={labelClass}><ShieldCheck className="w-3 h-3" /> Setor de Atendimento</label>
                         <input 
                           type="text" 
                           value={content.requesterSector || ''} 
                           onChange={(e) => handleUpdate('content', 'requesterSector', e.target.value)}
                           className={inputClass} 
-                          placeholder="Digite o setor..." 
+                          placeholder="Setor de atendimento do solicitante" 
                         />
                       </div>
                    </div>
@@ -548,7 +556,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
                     </div>
                  </div>
                  
-                 {/* CAMPO AUTORIZADO POR - AGORA DINÂMICO */}
+                 {/* CAMPO AUTORIZADO POR - AGORA DINÂMICO E ORDENADO */}
                  <div className="relative" ref={authorizerDropdownRef}>
                     <label className={labelClass}><UserCheck className="w-3 h-3" /> Autorizado Por</label>
                     <div 
@@ -743,7 +751,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
               </div>
 
               <div className="grid grid-cols-1 gap-3">
-                  {allowedSignatures.map((sig) => {
+                  {allowedSignatures.sort((a,b) => a.name.localeCompare(b.name)).map((sig) => {
                     const isSelected = content.signatureName === sig.name;
                     return (
                         <button 
@@ -774,6 +782,6 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   );
 };
 
-const Hash = ({ className }: { className?: string }) => (
+const HashIcon = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
 );

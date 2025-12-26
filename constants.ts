@@ -1,5 +1,5 @@
 
-import { AppState, FontFamily, User, Order, Signature, Sector, Job } from './types';
+import { AppState, FontFamily, User, Order, Signature, Sector, Job, Person } from './types';
 
 export const INITIAL_STATE: AppState = {
   branding: {
@@ -86,7 +86,9 @@ export const DEFAULT_SECTORS: Sector[] = [
   { id: 'sec9', name: 'Departamento de Recursos Humanos' },
   { id: 'sec10', name: 'Departamento de Compras' },
   { id: 'sec11', name: 'Departamento de Tributos' },
-  { id: 'sec12', name: 'Gabinete' }
+  { id: 'sec12', name: 'Gabinete' },
+  { id: 'sec13', name: 'Departamento De Agricultura' },
+  { id: 'sec14', name: 'Departamento De Obras' }
 ];
 
 export const DEFAULT_JOBS: Job[] = [
@@ -105,7 +107,24 @@ export const DEFAULT_JOBS: Job[] = [
   { id: 'job13', name: 'Chefe do Departamento de Cultura' },
   { id: 'job14', name: 'Auxiliar Administrativo' },
   { id: 'job15', name: 'Chefe do departamento de Licitação' },
-  { id: 'job16', name: 'Chefe do Departamento de Compras' }
+  { id: 'job16', name: 'Chefe do Departamento de Compras' },
+  { id: 'job17', name: 'Chefe do Departamento De Agricultura' },
+  { id: 'job18', name: 'Vice-Prefeito' },
+  { id: 'job19', name: 'Operador De Maquinas Pesadas' }
+];
+
+export const DEFAULT_PERSONS: Person[] = [
+  { id: 'p1', name: 'Gaspar De Castro Andreu', jobId: 'job6', sectorId: 'sec12' },
+  { id: 'p2', name: 'Guilherme Araujo Ferreira Dos Santos', jobId: 'job1', sectorId: 'sec1' },
+  { id: 'p3', name: 'Ailton Geraldo Dos Santos', jobId: 'job7', sectorId: 'sec12' },
+  { id: 'p4', name: 'Elio Vicente', jobId: 'job18', sectorId: 'sec12' },
+  { id: 'p5', name: 'Maria Doroteia Dias Lemos', jobId: 'job12', sectorId: 'sec12' },
+  { id: 'p6', name: 'Ernani Almeida Silva', jobId: 'job4', sectorId: 'sec8' },
+  { id: 'p7', name: 'Allan Cesar Moraes Marques', jobId: 'job6', sectorId: 'sec13' },
+  { id: 'p8', name: 'Rodrigo Ermelindo De Souza', jobId: 'job19', sectorId: 'sec14' },
+  { id: 'p9', name: 'Iaskara Soares Moraes', jobId: 'job2', sectorId: 'sec7' },
+  { id: 'p10', name: 'Ricardo Faraci', jobId: 'job11', sectorId: 'sec2' },
+  { id: 'p11', name: 'Gustavo Andreu Simoes Moraes', jobId: 'job17', sectorId: 'sec13' }
 ];
 
 export const DEFAULT_USERS: User[] = [

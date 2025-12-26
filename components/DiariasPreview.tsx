@@ -71,7 +71,7 @@ export const DiariasPreview: React.FC<DiariasPreviewProps> = ({ state, isGenerat
             <div><span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Nome do Servidor</span><span className="font-bold text-[10pt] text-slate-900">{content.requesterName || '---'}</span></div>
             <div className="grid grid-cols-2 gap-4">
               <div><span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Cargo</span><span className="font-semibold">{content.requesterRole || '---'}</span></div>
-              <div><span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Setor</span><span className="font-semibold">{content.requesterSector || '---'}</span></div>
+              <div><span className="text-[6pt] font-black text-slate-400 uppercase block leading-none">Setor de Atendimento</span><span className="font-semibold">{content.requesterSector || '---'}</span></div>
             </div>
           </div>
         </div>

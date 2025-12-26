@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
 } from './types';
-import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS } from './constants';
+import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS, DEFAULT_PERSONS } from './constants';
 import * as db from './services/dbService';
 
 // Components
@@ -59,8 +59,16 @@ const App: React.FC = () => {
         const savedSettings = await db.getGlobalSettings();
         if (savedSettings) setAppState(savedSettings);
         
+        // Carregamento de Pessoas
         const savedPersons = await db.getAllPersons();
-        setPersons(savedPersons);
+        if (savedPersons.length > 0) {
+          setPersons(savedPersons);
+        } else {
+          for (const p of DEFAULT_PERSONS) {
+            await db.savePerson(p);
+          }
+          setPersons(DEFAULT_PERSONS);
+        }
         
         // Carregamento de Setores
         const savedSectors = await db.getAllSectors();
@@ -416,7 +424,11 @@ const App: React.FC = () => {
           ...INITIAL_STATE.content, 
           title: defaultTitle,
           rightBlockText: defaultRightBlock,
-          protocol: '' 
+          protocol: '',
+          // Reset de campos de solicitante dinâmicos
+          requesterName: '',
+          requesterRole: '',
+          requesterSector: ''
         },
         document: { 
           ...prev.document, 
