@@ -11,84 +11,62 @@ interface ComprasPreviewProps {
 export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerating }) => {
   const { branding, document: docConfig, content } = state;
 
+  const showPriorityNote = content.priority === 'Alta' || content.priority === 'Urgência';
+
   const pages = useMemo(() => {
     // Calibração ultra-conservadora para evitar transbordo no rodapé
-    // Uma linha em 11pt/leading-relaxed tem aprox. 5-6mm. 
-    // O limite de 3 linhas antes do rodapé exige ~18mm de folga extra.
     const SECURITY_MARGIN_LINES = 4; 
-    const TOTAL_LINES_CAPACITY = 32; // Reduzido drasticamente para garantir a margem de 3 linhas em todas as páginas
+    const TOTAL_LINES_CAPACITY = 32; 
     const CHARS_PER_LINE = 65;
     
-    // Calcula linhas ocupadas pela justificativa geral (body) na primeira página
-    const justificationLines = content.body 
-      ? content.body.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 3
-      : 0;
-
-    // Calcula linhas ocupadas pela justificativa de prioridade (nota final)
-    const priorityJustificationLines = content.priorityJustification
-      ? content.priorityJustification.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0) + 4
-      : 0;
-
-    // Espaço para assinatura (aprox 6 linhas + as 2 extras solicitadas)
-    // Aumentado para 9 para o algoritmo de paginação considerar o espaço extra
+    // Espaço para assinatura (aprox 9 linhas)
     const SIGNATURE_LINES = 9;
 
-    // Limites de linhas por página
-    // Na pág 1, o cabeçalho e títulos ocupam cerca de 12-14 linhas "virtuais"
-    const LIMIT_FIRST_PAGE = 20 - justificationLines;
+    // Limite para páginas normais (A partir da 2)
     const LIMIT_NORMAL = TOTAL_LINES_CAPACITY - SECURITY_MARGIN_LINES;
 
     const items = [...(content.purchaseItems || [])];
-    const resultPages: PurchaseItem[][] = [];
+    
+    // SEMPRE começamos com a Página 1 vazia de itens (reservada para justificativas)
+    const resultPages: PurchaseItem[][] = [[]];
+    
+    if (items.length === 0) {
+      return resultPages;
+    }
+
+    // Título "Itens da Requisição" na Página 2 ocupa ~3 linhas + 2 linhas de espaço extra solicitado
+    let currentLinesUsed = 5; 
     let currentPageItems: PurchaseItem[] = [];
-    let currentLinesUsed = 0;
-    let isFirstPage = true;
 
-    // Função para obter o limite da página atual
-    const getCurrentLimit = () => isFirstPage ? LIMIT_FIRST_PAGE : LIMIT_NORMAL;
-
-    // Loop de distribuição de itens
+    // Loop de distribuição de itens começando da Página 2 (índice 1 no array)
     while (items.length > 0) {
       const item = items[0];
       const linesForName = Math.max(1, Math.ceil((item.name || '').length / CHARS_PER_LINE));
-      const totalItemLines = linesForName + 1.2; // Item + margem
+      const totalItemLines = linesForName + 1.2; 
 
-      const limit = getCurrentLimit();
-
-      // Verifica se o item cabe na página atual
-      if ((currentLinesUsed + totalItemLines) <= limit) {
+      if ((currentLinesUsed + totalItemLines) <= LIMIT_NORMAL) {
         currentPageItems.push(items.shift()!);
         currentLinesUsed += totalItemLines;
 
-        // Se for o último item, verifica se o bloco de fechamento cabe nesta página
         if (items.length === 0) {
-          const closingSpaceNeeded = priorityJustificationLines + SIGNATURE_LINES;
-          // Se o fechamento não couber, ele irá para uma nova página (tratado após o loop)
-          if ((currentLinesUsed + closingSpaceNeeded) > limit) {
+          // Checa se cabe a assinatura na última página
+          if ((currentLinesUsed + SIGNATURE_LINES) > LIMIT_NORMAL) {
             resultPages.push(currentPageItems);
-            currentPageItems = []; // Força a criação de uma página de fechamento se necessário
+            resultPages.push([]); // Página extra só para assinatura
           } else {
             resultPages.push(currentPageItems);
-            currentPageItems = [];
           }
         }
       } else {
-        // Página cheia, rotaciona
+        // Virada de página para itens
         resultPages.push(currentPageItems);
         currentPageItems = [];
         currentLinesUsed = 0;
-        isFirstPage = false;
       }
-    }
-
-    // Se terminamos os itens mas não criamos nenhuma página (lista vazia), ou se a última página
-    // de itens foi fechada e não temos onde colocar a assinatura, adicionamos uma página final
-    if (resultPages.length === 0) {
-      resultPages.push([]);
     }
     
     return resultPages;
-  }, [content.purchaseItems, content.body, content.priorityJustification]);
+  }, [content.purchaseItems, content.body, content.priorityJustification, content.priority, showPriorityNote]);
 
   const priorityStyles = {
     'Normal': 'bg-slate-100 text-slate-600 border-slate-200',
@@ -129,10 +107,9 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 )}
               </div>
 
-              {/* Espaço de 02 linhas */}
               <div className="h-10" />
 
-              {/* 2. Cabeçalho de Identificação (Verde Suave) */}
+              {/* 2. Cabeçalho de Identificação */}
               <div className="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-xl flex justify-between items-center">
                 <span className="font-black text-[7pt] uppercase tracking-[0.2em] text-emerald-800">Pedido de Compra Administrativo</span>
                 <span className="font-mono text-[8pt] text-black">
@@ -140,7 +117,6 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 </span>
               </div>
 
-              {/* Espaço de 01 linha */}
               <div className="h-5" />
 
               {/* 3. Título / Finalidade */}
@@ -164,13 +140,31 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                   </p>
                 </div>
               )}
+
+              {/* Justificativa de Prioridade (Condicionado) */}
+              {showPriorityNote && content.priorityJustification && (
+                <div className="bg-rose-50/20 p-4 rounded-xl border-l-4 border-rose-200 my-4">
+                  <p className="text-[7pt] font-black text-rose-800 uppercase tracking-widest mb-1">Nota de Prioridade ({content.priority}):</p>
+                  <p className="text-[10pt] text-black leading-relaxed italic whitespace-pre-wrap">
+                    {content.priorityJustification}
+                  </p>
+                </div>
+              )}
             </div>
           )}
           
-          <div className="flex-1 flex flex-col pb-12"> {/* pb-12 garante o gap visual de 3 linhas antes do rodapé */}
-             {itemsOnPage.length > 0 ? (
+          <div className="flex-1 flex flex-col pb-12">
+             {/* Título da Seção de Itens - Exibido apenas na Página 2 (índice 1) antes dos itens */}
+             {pageIndex === 1 && content.purchaseItems && content.purchaseItems.length > 0 && (
+                <div className="bg-slate-50 border border-slate-100 px-4 py-1 rounded-lg mb-10">
+                  <span className="font-black text-[7pt] uppercase tracking-[0.2em] text-slate-600">Itens da Requisição</span>
+                </div>
+             )}
+
+             {itemsOnPage.length > 0 && (
                 <div className="space-y-3">
                    {itemsOnPage.map((item, idx) => {
+                      // Calcula o índice absoluto baseado nas páginas anteriores
                       const absoluteIndex = pages.slice(0, pageIndex).reduce((acc, curr) => acc + curr.length, 0) + idx + 1;
                       return (
                         <div key={item.id} className="flex items-start gap-3 text-[11pt] border-b border-emerald-50 pb-2">
@@ -186,23 +180,11 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                       );
                    })}
                 </div>
-             ) : (
-                pageIndex === 0 && itemsOnPage.length === 0 && <p className="text-slate-400 italic text-sm">Nenhum item listado.</p>
              )}
 
-             {/* Justificativa de Prioridade e Assinatura na última página */}
+             {/* Assinatura na última página */}
              {pageIndex === pages.length - 1 && (
-               <div className="mt-6">
-                 {content.priorityJustification && (
-                   <div className="mb-8 bg-emerald-50/10 p-4 rounded-xl border-l-4 border-emerald-200">
-                      <p className="text-[7pt] font-black text-emerald-800 uppercase tracking-widest mb-1">Nota de Prioridade ({content.priority}):</p>
-                      <p className="text-[10pt] text-black leading-relaxed italic whitespace-pre-wrap">
-                        {content.priorityJustification}
-                      </p>
-                   </div>
-                 )}
-
-                 {/* Adicionado mais 02 linhas de espaço (pt-24 em vez de pt-12) */}
+               <div className="mt-auto">
                  <div className="pt-24 flex justify-center">
                    <div className="w-72 border-t-2 border-slate-950 pt-2 text-center">
                      <p className="font-black uppercase text-[10pt] text-black">{content.signatureName || 'Solicitante'}</p>

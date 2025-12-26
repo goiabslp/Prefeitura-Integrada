@@ -215,9 +215,9 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
          </div>
        </div>
 
-       {/* ITENS DINÂMICOS */}
+       {/* ITENS DA REQUISIÇÃO */}
        <div className="space-y-4 border-t border-slate-200 pt-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" /> Itens da Requisição
              </h3>

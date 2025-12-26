@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AppState } from '../types';
 
@@ -27,7 +28,7 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
         height: isGenerating ? '296.5mm' : '297mm',
         padding: '20mm', 
         paddingTop: '52mm', 
-        paddingBottom: '35mm', // Aumentado para garantir a zona de segurança antes do rodapé
+        paddingBottom: '35mm', 
         position: 'relative', 
         overflow: 'hidden' 
       }}
@@ -68,7 +69,13 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
         <div className="absolute top-0 right-0 text-right flex flex-col items-end">
           <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">{content.signatureSector || 'Prefeitura Municipal'}</span>
           <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>{docConfig.city}</h2>
-          <p className="text-[10px] text-gray-400 font-mono">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-[10px] text-gray-400 font-mono mb-1">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          {content.protocol && (
+            <div className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+               <span className="text-[8px] font-black text-slate-500 uppercase mr-1">Protocolo:</span>
+               <span className="text-[9px] font-mono font-bold text-slate-900">{content.protocol}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -81,13 +88,18 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
 
       {/* Rodapé - Protegido por posição absoluta no fundo da folha */}
       <div className="absolute bottom-6 left-[20mm] right-[20mm] pt-2 border-t border-gray-300 flex justify-between items-end text-[9px] z-20 bg-white">
-        <div className="flex flex-col gap-0.5 max-w-[80%]">
+        <div className="flex flex-col gap-0.5 max-w-[70%]">
             <span className="font-bold text-gray-800 uppercase tracking-tighter">Prefeitura de São José do Goiabal - Minas Gerais</span>
             <span className="text-gray-400 font-light whitespace-pre-wrap leading-tight">{docConfig.footerText}</span>
         </div>
-        {docConfig.showPageNumbers && (
-          <span className="bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full font-bold">Pág. {pageIndex + 1}/{totalPages}</span>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {content.protocol && (
+            <span className="text-[7px] font-mono font-bold text-slate-400 uppercase">Ref: {content.protocol}</span>
+          )}
+          {docConfig.showPageNumbers && (
+            <span className="bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full font-bold">Pág. {pageIndex + 1}/{totalPages}</span>
+          )}
+        </div>
       </div>
     </div>
   );
