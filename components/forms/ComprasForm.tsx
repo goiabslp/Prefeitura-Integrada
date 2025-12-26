@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShoppingCart, FileText, PenTool, CheckCircle2, Columns, 
@@ -351,7 +352,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
 
        {/* ASSINATURA */}
        <div className="space-y-4 border-t border-slate-200 pt-6">
-         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4 text-emerald-600" /> Solicitante</h3>
+         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><PenTool className="w-4 h-4 text-indigo-600" /> Solicitante</h3>
          <div className="grid grid-cols-1 gap-3">
             {allowedSignatures.map((sig) => {
                const isSelected = content.signatureName === sig.name;
@@ -359,20 +360,20 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                   <button 
                     key={sig.id} 
                     onClick={() => onUpdate({ ...state, content: { ...state.content, signatureName: sig.name, signatureRole: sig.role, signatureSector: sig.sector }})} 
-                    className={`text-left p-5 rounded-[1.5rem] border transition-all duration-300 ${isSelected ? 'bg-emerald-50 border-emerald-500 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50'}`}
+                    className={`text-left p-5 rounded-[1.5rem] border transition-all duration-300 ${isSelected ? 'bg-indigo-50 border-indigo-500 shadow-lg shadow-indigo-500/10' : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}`}
                   >
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm transition-colors ${isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm transition-colors ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
                               {sig.name.charAt(0)}
                            </div>
                            <div>
-                              <p className={`text-sm font-bold ${isSelected ? 'text-emerald-900' : 'text-slate-800'}`}>{sig.name}</p>
+                              <p className={`text-sm font-bold ${isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>{sig.name}</p>
                               <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">{sig.role}</p>
                            </div>
                         </div>
                         {isSelected && (
-                           <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white animate-scale-in">
+                           <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white animate-scale-in">
                               <CheckCircle2 className="w-5 h-5" />
                            </div>
                         )}
