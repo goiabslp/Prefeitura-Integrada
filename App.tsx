@@ -132,21 +132,18 @@ const App: React.FC = () => {
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
       
-      // Lógica de Protocolo Customizada
-      let protocolString = '';
-      if (activeBlock === 'compras') {
-        // Protocolo aleatório para Compras: # + número de 6 dígitos
-        const randomNum = Math.floor(100000 + Math.random() * 900000);
-        protocolString = `#${randomNum}`;
-      } else {
-        // Protocolo sequencial para outros blocos
-        protocolString = `${activeBlock.toUpperCase()}-${nextVal.toString().padStart(3, '0')}/${new Date().getFullYear()}`;
-      }
+      // GERAÇÃO DE PROTOCOLO ALEATÓRIO ÚNICO PARA TODOS OS MÓDULOS
+      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const year = new Date().getFullYear();
+      const prefix = activeBlock === 'oficio' ? 'OFC' : 
+                     activeBlock === 'compras' ? 'COM' : 
+                     activeBlock === 'diarias' ? 'DIA' : 'LIC';
+      
+      const protocolString = `${prefix}-${year}-${randomPart}`;
 
       const finalSnapshot = JSON.parse(JSON.stringify(appState));
       finalSnapshot.content.protocol = protocolString; 
 
-      // Adiciona o status inicial de criação se for o módulo de compras
       const initialHistory: StatusMovement[] = [];
       if (activeBlock === 'compras') {
         initialHistory.push({
@@ -181,15 +178,11 @@ const App: React.FC = () => {
 
   const handleSendOrder = async () => {
     if (!currentUser || !activeBlock) return;
-
     const lastOrder = orders[orders.length - 1];
-    
     setIsDownloading(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsDownloading(false);
-
-    alert(`SUCESSO!\n\nO pedido "${appState.content.title}" foi registrado e enviado com sucesso para análise administrativa.\n\nProtocolo: ${lastOrder?.protocol || '---'}`);
-    
+    alert(`SUCESSO!\n\nDocumento enviado para análise.\n\nProtocolo: ${appState.content.protocol || lastOrder?.protocol}`);
     handleGoHome();
   };
 
@@ -205,32 +198,20 @@ const App: React.FC = () => {
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status'], justification?: string) => {
     if (!currentUser) return;
-    
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
         if (o.status === status) return o;
-        const statusLabelMap = { approved: 'Aprovação Administrativa', rejected: 'Rejeição Administrativa', pending: 'Pendente de Análise', completed: 'Concluído', canceled: 'Cancelado' };
-        const newLabel = statusLabelMap[status] || status;
         const newMovement: StatusMovement = {
-          statusLabel: newLabel,
+          statusLabel: status === 'approved' ? 'Aprovação Administrativa' : 'Rejeição',
           date: new Date().toISOString(),
           userName: currentUser.name,
           justification
         };
-        const updatedHistory = [...(o.statusHistory || []), newMovement];
         const updated = { 
           ...o, 
           status,
-          statusHistory: updatedHistory,
-          purchaseStatus: (status === 'approved' && o.blockType === 'compras') ? 'recebido' as const : o.purchaseStatus
+          statusHistory: [...(o.statusHistory || []), newMovement]
         };
-        if (status === 'approved' && o.blockType === 'compras') {
-           updated.statusHistory.push({
-             statusLabel: 'Pedido Recebido (Início Atendimento)',
-             date: new Date().toISOString(),
-             userName: 'Sistema (Automático)'
-           });
-        }
         db.saveOrder(updated);
         return updated;
       }
@@ -241,50 +222,9 @@ const App: React.FC = () => {
 
   const handleUpdatePurchaseStatus = async (orderId: string, purchaseStatus: Order['purchaseStatus'], justification?: string, budgetFileUrl?: string) => {
     if (!currentUser) return;
-
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
-        if (o.purchaseStatus === purchaseStatus && !budgetFileUrl) return o;
-
-        const purchaseStatusLabelMap = { 
-          recebido: 'Pedido Recebido', 
-          coletando_orcamento: 'Coletando Orçamento',
-          aprovacao_orcamento: 'Aprovação do Orçamento',
-          coletando_dotacao: 'Coletando Dotação',
-          realizado: 'Pedido Realizado', 
-          concluido: 'Concluído',
-          cancelado: 'Cancelado'
-        };
-        
-        const newLabel = purchaseStatusLabelMap[purchaseStatus!] || purchaseStatus!;
-        const newMovement: StatusMovement = {
-          statusLabel: newLabel,
-          date: new Date().toISOString(),
-          userName: currentUser.name,
-          justification
-        };
-
-        const updatedHistory = [...(o.statusHistory || []), newMovement];
-        const updatedAttachments = o.attachments ? [...o.attachments] : [];
-
-        if (budgetFileUrl) {
-          const budgetAttachment: Attachment = {
-            id: `budget-${Date.now()}`,
-            name: 'Orçamento Principal',
-            url: budgetFileUrl,
-            type: budgetFileUrl.startsWith('data:application/pdf') ? 'application/pdf' : 'image/png',
-            date: new Date().toISOString()
-          };
-          updatedAttachments.push(budgetAttachment);
-        }
-
-        const updated = { 
-          ...o, 
-          purchaseStatus,
-          statusHistory: updatedHistory,
-          budgetFileUrl: budgetFileUrl || o.budgetFileUrl,
-          attachments: updatedAttachments
-        };
+        const updated = { ...o, purchaseStatus };
         db.saveOrder(updated);
         return updated;
       }
@@ -336,18 +276,11 @@ const App: React.FC = () => {
   const performDownload = (elementId: string, filename: string) => {
     const element = document.getElementById(elementId);
     if (!element) return Promise.reject("Element not found");
-
     const opt = {
       margin: 0,
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-          scale: 2, 
-          useCORS: true, 
-          letterRendering: true,
-          scrollY: 0,
-          scrollX: 0
-      },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0, scrollX: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: 'css' }
     };
@@ -369,18 +302,12 @@ const App: React.FC = () => {
       try {
         await performDownload('background-preview-scaler', `${order.title || 'documento'}.pdf`);
       } catch (err) {
-        console.error("Erro no download do histórico:", err);
+        console.error(err);
       } finally {
         setSnapshotToDownload(null);
         setIsDownloading(false);
       }
     }, 500);
-  };
-
-  const stats = {
-    totalGenerated: globalCounter,
-    historyCount: orders.length,
-    activeUsers: users.length
   };
 
   const handleOpenAdmin = (tab?: string | null) => {
@@ -410,7 +337,6 @@ const App: React.FC = () => {
   const handleStartEditing = () => {
       let defaultTitle = INITIAL_STATE.content.title;
       let defaultRightBlock = INITIAL_STATE.content.rightBlockText;
-
       if (activeBlock === 'compras') {
           defaultTitle = 'Requisição de Compras e Serviços';
           defaultRightBlock = 'Ao Departamento de Compras da\nPrefeitura de São José do Goiabal-MG';
@@ -425,16 +351,13 @@ const App: React.FC = () => {
           title: defaultTitle,
           rightBlockText: defaultRightBlock,
           protocol: '',
-          // Reset de campos de solicitante dinâmicos
           requesterName: '',
           requesterRole: '',
           requesterSector: ''
         },
         document: { 
           ...prev.document, 
-          showSignature: INITIAL_STATE.document.showSignature,
-          showLeftBlock: INITIAL_STATE.document.showLeftBlock,
-          showRightBlock: INITIAL_STATE.document.showRightBlock
+          showSignature: INITIAL_STATE.document.showSignature
         }
       }));
       setEditingOrder(null);
@@ -459,7 +382,6 @@ const App: React.FC = () => {
           currentView={currentView}
         />
       )}
-
       <div className="flex-1 flex relative overflow-hidden">
         {currentView === 'home' && currentUser && (
           <HomeScreen 
@@ -473,13 +395,11 @@ const App: React.FC = () => {
             permissions={currentUser.permissions}
             activeBlock={activeBlock}
             setActiveBlock={setActiveBlock}
-            stats={stats}
+            stats={{ totalGenerated: globalCounter, historyCount: orders.length, activeUsers: users.length }}
           />
         )}
-
         {(currentView === 'editor' || currentView === 'admin') && currentUser && (
           <div className="flex-1 flex overflow-hidden h-full relative">
-            
             {!isFinalizedView && (
               <AdminSidebar 
                 state={appState}
@@ -487,13 +407,8 @@ const App: React.FC = () => {
                 onPrint={() => window.print()}
                 isOpen={isAdminSidebarOpen}
                 onClose={() => { 
-                  if (currentView === 'editor') {
-                    setIsFinalizedView(true);
-                    setIsAdminSidebarOpen(false);
-                  } else {
-                    setIsAdminSidebarOpen(false);
-                    if (currentView === 'admin') setAdminTab(null);
-                  }
+                  if (currentView === 'editor') { setIsFinalizedView(true); setIsAdminSidebarOpen(false); }
+                  else { setIsAdminSidebarOpen(false); }
                 }}
                 isDownloading={isDownloading}
                 currentUser={currentUser}
@@ -509,12 +424,10 @@ const App: React.FC = () => {
                 jobs={jobs}
               />
             )}
-            
             <main className="flex-1 h-full overflow-hidden flex flex-col relative">
               {currentView === 'admin' && adminTab === 'users' ? (
                 <UserManagementScreen 
-                  users={users}
-                  currentUser={currentUser}
+                  users={users} currentUser={currentUser}
                   onAddUser={u => { db.saveUser(u); setUsers(p => [...p, u]); }}
                   onUpdateUser={u => { db.saveUser(u); setUsers(p => p.map(us => us.id === u.id ? u : us)); }}
                   onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }}
@@ -534,90 +447,47 @@ const App: React.FC = () => {
                   onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }}
                 />
               ) : currentView === 'admin' && adminTab === 'signatures' ? (
-                <SignatureManagementScreen 
-                  signatures={signatures}
-                  currentUser={currentUser}
-                  onAddSignature={s => { db.saveSignature(s); setSignatures(p => [...p, s]); }}
-                  onUpdateSignature={s => { db.saveSignature(s); setSignatures(p => p.map(si => si.id === s.id ? s : si)); }}
-                  onDeleteSignature={id => { db.deleteSignature(id); setSignatures(p => p.filter(s => s.id !== id)); }}
-                />
+                <SignatureManagementScreen signatures={signatures} currentUser={currentUser} onAddSignature={s => { db.saveSignature(s); setSignatures(p => [...p, s]); }} onUpdateSignature={s => { db.saveSignature(s); setSignatures(p => p.map(si => si.id === s.id ? s : si)); }} onDeleteSignature={id => { db.deleteSignature(id); setSignatures(p => p.filter(s => s.id !== id)); }} />
               ) : currentView === 'admin' && adminTab === 'ui' ? (
                 <UIPreviewScreen ui={appState.ui} />
               ) : currentView === 'admin' && adminTab === 'design' ? (
                 <AdminDocumentPreview state={appState} />
               ) : (
                 <DocumentPreview 
-                  ref={componentRef}
-                  state={appState}
-                  isGenerating={isDownloading}
-                  mode={currentView === 'admin' ? 'admin' : 'editor'}
-                  blockType={activeBlock}
+                  ref={componentRef} state={appState} isGenerating={isDownloading}
+                  mode={currentView === 'admin' ? 'admin' : 'editor'} blockType={activeBlock}
                 />
               )}
-
               {isFinalizedView && (
                 <FinalizedActionBar 
-                    onDownload={handleDownloadPdf}
-                    onBack={handleGoHome}
-                    onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }}
-                    onSend={handleSendOrder}
-                    showSendButton={activeBlock === 'compras'}
-                    isDownloading={isDownloading}
-                    documentTitle={appState.content.title}
+                    onDownload={handleDownloadPdf} onBack={handleGoHome} onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }}
+                    onSend={handleSendOrder} showSendButton={activeBlock === 'compras'} isDownloading={isDownloading} documentTitle={appState.content.title}
                 />
               )}
             </main>
           </div>
         )}
-
         {currentView === 'tracking' && currentUser && (
           <TrackingScreen 
-            onBack={() => setCurrentView('home')}
-            currentUser={currentUser}
-            activeBlock={activeBlock}
-            orders={orders}
-            onDownloadPdf={(snapshot) => {
-               const order = orders.find(o => o.documentSnapshot === snapshot);
-               if (order) handleDownloadFromHistory(order);
-            }}
-            onClearAll={() => { db.clearAllOrders(); setOrders([]); }}
-            onEditOrder={handleEditOrder}
-            onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
-            onUpdateAttachments={handleUpdateOrderAttachments}
-            totalCounter={globalCounter}
-            onUpdatePaymentStatus={handleUpdatePaymentStatus}
+            onBack={() => setCurrentView('home')} currentUser={currentUser} activeBlock={activeBlock} orders={orders}
+            onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }}
+            onClearAll={() => { db.clearAllOrders(); setOrders([]); }} onEditOrder={handleEditOrder} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
+            onUpdateAttachments={handleUpdateOrderAttachments} totalCounter={globalCounter} onUpdatePaymentStatus={handleUpdatePaymentStatus}
           />
         )}
-
         {currentView === 'purchase-management' && currentUser && (
           <PurchaseManagementScreen 
-            onBack={() => setCurrentView('home')}
-            currentUser={currentUser}
-            orders={orders}
-            onDownloadPdf={(snapshot) => {
-               const order = orders.find(o => o.documentSnapshot === snapshot);
-               if (order) handleDownloadFromHistory(order);
-            }}
-            onUpdateStatus={handleUpdateOrderStatus}
-            onUpdatePurchaseStatus={handleUpdatePurchaseStatus}
-            onUpdateCompletionForecast={handleUpdateCompletionForecast}
-            onUpdateAttachments={handleUpdateOrderAttachments}
-            onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
+            onBack={() => setCurrentView('home')} currentUser={currentUser} orders={orders}
+            onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }}
+            onUpdateStatus={handleUpdateOrderStatus} onUpdatePurchaseStatus={handleUpdatePurchaseStatus} onUpdateCompletionForecast={handleUpdateCompletionForecast} onUpdateAttachments={handleUpdateOrderAttachments} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
           />
         )}
       </div>
-
-      <div 
-        id="background-pdf-generation-container" 
-        style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}
-        aria-hidden="true"
-      >
+      <div id="background-pdf-generation-container" style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }} aria-hidden="true">
         {snapshotToDownload && (
           <DocumentPreview 
-            ref={backgroundPreviewRef}
-            state={snapshotToDownload}
-            isGenerating={true}
-            blockType={snapshotToDownload.content.subType ? 'diarias' : (activeBlock || 'oficio')}
+            ref={backgroundPreviewRef} state={snapshotToDownload} isGenerating={true}
+            blockType={snapshotToDownload.content.subType ? 'diarias' : (snapshotToDownload.content.purchaseItems ? 'compras' : (activeBlock || 'oficio'))}
             customId="background-preview-scaler"
           />
         )}

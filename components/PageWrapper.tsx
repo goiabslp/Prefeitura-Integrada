@@ -70,10 +70,12 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
           <span className="text-[10px] font-bold uppercase text-gray-500 mb-0.5">{content.signatureSector || 'Prefeitura Municipal'}</span>
           <h2 className="text-sm font-bold tracking-widest uppercase mb-0.5" style={{ color: branding.secondaryColor }}>{docConfig.city}</h2>
           <p className="text-[10px] text-gray-400 font-mono mb-1">{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          
+          {/* Protocolo no Header (Todas as páginas) */}
           {content.protocol && (
-            <div className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-               <span className="text-[8px] font-black text-slate-500 uppercase mr-1">Protocolo:</span>
-               <span className="text-[9px] font-mono font-bold text-slate-900">{content.protocol}</span>
+            <div className="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 shadow-sm mt-1">
+               <span className="text-[7px] font-black text-slate-400 uppercase mr-2 tracking-widest">Protocolo:</span>
+               <span className="text-[10px] font-mono font-bold text-white tracking-wider">{content.protocol}</span>
             </div>
           )}
         </div>
@@ -86,18 +88,22 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
         {children}
       </main>
 
-      {/* Rodapé - Protegido por posição absoluta no fundo da folha */}
+      {/* Rodapé */}
       <div className="absolute bottom-6 left-[20mm] right-[20mm] pt-2 border-t border-gray-300 flex justify-between items-end text-[9px] z-20 bg-white">
-        <div className="flex flex-col gap-0.5 max-w-[70%]">
+        <div className="flex flex-col gap-0.5 max-w-[65%]">
             <span className="font-bold text-gray-800 uppercase tracking-tighter">Prefeitura de São José do Goiabal - Minas Gerais</span>
             <span className="text-gray-400 font-light whitespace-pre-wrap leading-tight">{docConfig.footerText}</span>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1.5 min-w-[140px]">
+          {/* Protocolo no Footer (Todas as páginas) */}
           {content.protocol && (
-            <span className="text-[7px] font-mono font-bold text-slate-400 uppercase">Ref: {content.protocol}</span>
+            <div className="flex items-center gap-2 px-2 py-0.5 bg-slate-50 rounded border border-slate-200">
+               <span className="text-[7px] font-black text-slate-400 uppercase tracking-tight">ID:</span>
+               <span className="text-[8px] font-mono font-bold text-slate-600">{content.protocol}</span>
+            </div>
           )}
           {docConfig.showPageNumbers && (
-            <span className="bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full font-bold">Pág. {pageIndex + 1}/{totalPages}</span>
+            <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold text-[8px] uppercase tracking-widest">Página {pageIndex + 1} de {totalPages}</span>
           )}
         </div>
       </div>
