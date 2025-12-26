@@ -251,13 +251,14 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Quantidade Dinâmica - 6/12 em mobile/tablet, 3/12 em desktop */}
-                        <div className="col-span-6 sm:col-span-6 lg:col-span-3">
+                        {/* Quantidade Dinâmica - Otimizada para 7/12 no mobile para evitar aperto */}
+                        <div className="col-span-7 sm:col-span-6 lg:col-span-3">
                            <label className={labelClass}>Quantidade</label>
-                           <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+                           <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 min-w-[120px]">
                               <button 
+                                type="button"
                                 onClick={() => adjustQuantity(item.id, -1)}
-                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
+                                className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
@@ -266,30 +267,31 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                                  min="1"
                                  value={item.quantity}
                                  onChange={(e) => handleUpdateItem(item.id, 'quantity', Number(e.target.value))}
-                                 className="flex-1 bg-transparent border-none text-center text-sm font-bold text-slate-900 outline-none w-full"
+                                 className="flex-1 min-w-0 bg-transparent border-none text-center text-sm font-bold text-slate-900 outline-none px-1"
                               />
                               <button 
+                                type="button"
                                 onClick={() => adjustQuantity(item.id, 1)}
-                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
+                                className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-white text-slate-500 hover:text-emerald-600 hover:shadow-sm transition-all active:scale-90"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
                            </div>
                         </div>
 
-                        {/* Unidade de Medida Dinâmica - 6/12 em mobile/tablet, 3/12 em desktop */}
-                        <div className="col-span-6 sm:col-span-5 lg:col-span-3 relative">
+                        {/* Unidade de Medida Dinâmica - 5/12 no mobile */}
+                        <div className="col-span-5 sm:col-span-5 lg:col-span-3 relative">
                            <label className={labelClass}>Unidade</label>
                            <div className="relative">
                               <button
                                 onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
-                                className={`${inputClass} py-3 pl-11 text-left flex items-center justify-between group/btn relative hover:bg-slate-100/50`}
+                                className={`${inputClass} py-3 pl-10 sm:pl-11 text-left flex items-center justify-between group/btn relative hover:bg-slate-100/50`}
                               >
                                 <div className="flex items-center gap-2 overflow-hidden">
-                                  <CurrentUnitIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-emerald-500" />
-                                  <span className="truncate">{item.unit}</span>
+                                  <CurrentUnitIcon className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-500" />
+                                  <span className="truncate text-[11px] sm:text-sm">{item.unit}</span>
                                 </div>
-                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${openDropdownId === item.id ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0 ${openDropdownId === item.id ? 'rotate-180' : ''}`} />
                               </button>
 
                               {openDropdownId === item.id && (
@@ -323,7 +325,7 @@ export const ComprasForm: React.FC<ComprasFormProps> = ({
                            </div>
                         </div>
 
-                        {/* Excluir Item - No mobile ocupa uma linha discreta ou o canto, no desktop 1/12 */}
+                        {/* Excluir Item */}
                         <div className="col-span-12 sm:col-span-1 lg:col-span-1 flex justify-end pb-1">
                            <button 
                               onClick={() => handleRemoveItem(item.id)}
