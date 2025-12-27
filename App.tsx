@@ -1,10 +1,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS, DEFAULT_PERSONS } from './constants';
 import * as db from './services/dbService';
+import { Send, CheckCircle2, X } from 'lucide-react';
 
 // Components
 import { LoginScreen } from './components/LoginScreen';
@@ -40,6 +42,9 @@ const App: React.FC = () => {
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<string | null>(null);
   const [isFinalizedView, setIsFinalizedView] = useState(false);
+  
+  // Feedback System (Replacement for Alert)
+  const [successOverlay, setSuccessOverlay] = useState<{ show: boolean, protocol: string } | null>(null);
 
   // States for background download from history
   const [snapshotToDownload, setSnapshotToDownload] = useState<AppState | null>(null);
@@ -146,7 +151,6 @@ const App: React.FC = () => {
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
       
-      // GERAÇÃO DE PROTOCOLO ALEATÓRIO ÚNICO PARA TODOS OS MÓDULOS
       const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
       const year = new Date().getFullYear();
       const prefix = activeBlock === 'oficio' ? 'OFC' : 
@@ -196,8 +200,11 @@ const App: React.FC = () => {
     setIsDownloading(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsDownloading(false);
-    alert(`SUCESSO!\n\nDocumento enviado para análise.\n\nProtocolo: ${appState.content.protocol || lastOrder?.protocol}`);
-    handleGoHome();
+    
+    setSuccessOverlay({
+        show: true,
+        protocol: appState.content.protocol || lastOrder?.protocol || 'ERRO-PROTOCOLO'
+    });
   };
 
   const handleEditOrder = (order: Order) => {
@@ -499,6 +506,38 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      {/* OVERLAY DE SUCESSO (Replacement for Alert) */}
+      {successOverlay?.show && createPortal(
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xl animate-fade-in">
+              <div className="w-full max-w-lg bg-white rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-scale-in">
+                  <div className="p-12 text-center flex flex-col items-center">
+                      <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/20">
+                          <CheckCircle2 className="w-14 h-14" />
+                      </div>
+                      <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-4 uppercase">Pedido Enviado!</h3>
+                      <p className="text-slate-500 text-base font-medium leading-relaxed mb-10">O seu documento foi processado com sucesso e encaminhado para análise do setor competente.</p>
+                      
+                      <div className="w-full bg-slate-50 rounded-3xl p-6 border border-slate-100 flex flex-col items-center mb-10">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Protocolo de Rastreio</span>
+                          <div className="flex items-center gap-3">
+                              <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-lg"><Send className="w-4 h-4" /></div>
+                              <span className="text-2xl font-mono font-bold text-slate-900 tracking-wider">{successOverlay.protocol}</span>
+                          </div>
+                      </div>
+
+                      <button 
+                        onClick={() => { setSuccessOverlay(null); handleGoHome(); }}
+                        className="w-full py-5 bg-slate-900 text-white font-black text-sm uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-emerald-600 transition-all active:scale-[0.98]"
+                      >
+                          Voltar ao Menu Inicial
+                      </button>
+                  </div>
+              </div>
+          </div>,
+          document.body
+      )}
+
       <div id="background-pdf-generation-container" style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }} aria-hidden="true">
         {snapshotToDownload && (
           <DocumentPreview 

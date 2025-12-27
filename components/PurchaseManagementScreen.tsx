@@ -7,7 +7,7 @@ import {
   User, ShoppingBag, Eye, X, Lock, ChevronDown, PackageCheck, Truck, ShoppingCart, CheckCircle,
   History, Calendar, UserCheck, ArrowDown, Landmark, MessageCircle, FileSearch, Scale, ClipboardCheck,
   AlertTriangle, MousePointer2, ChevronRight, Check, Sparkles, Upload, FileText, Paperclip, ExternalLink,
-  Download, Plus, Network
+  Download, Plus, Network, Trash, Send, Info
 } from 'lucide-react';
 import { User as UserType, Order, AppState, StatusMovement, Attachment } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -45,6 +45,13 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
   const [budgetUploadOrder, setBudgetUploadOrder] = useState<Order | null>(null);
   const [attachmentManagerOrder, setAttachmentManagerOrder] = useState<Order | null>(null);
   const [budgetPreviewUrl, setBudgetPreviewUrl] = useState<string | null>(null);
+  
+  // Estados para modais de entrada (Substituindo Prompt/Confirm)
+  const [rejectionModal, setRejectionModal] = useState<{ isOpen: boolean, orderId: string, reason: string }>({ isOpen: false, orderId: '', reason: '' });
+  const [cancelModal, setCancelModal] = useState<{ isOpen: boolean, orderId: string, reason: string }>({ isOpen: false, orderId: '', reason: '' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' }>({
+    isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'warning'
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const genericAttachmentRef = useRef<HTMLInputElement>(null);
@@ -104,7 +111,6 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
         };
         const updatedList = [...(attachmentManagerOrder.attachments || []), newAttachment];
         onUpdateAttachments?.(attachmentManagerOrder.id, updatedList);
-        // Atualiza o estado local para refletir no modal aberto
         setAttachmentManagerOrder({ ...attachmentManagerOrder, attachments: updatedList });
       };
       reader.readAsDataURL(file);
@@ -191,7 +197,6 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
     return (
       <div className="flex flex-col gap-1.5 items-end">
         <div className="flex items-center gap-2">
-          {/* BOTÃO DE ANEXOS */}
           <button 
             onClick={() => setAttachmentManagerOrder(order)}
             className="p-2 rounded-xl border bg-white text-slate-400 border-slate-200 hover:text-emerald-600 hover:border-emerald-200 transition-all hover:bg-emerald-50/50 relative group"
@@ -338,7 +343,6 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                              <div className="flex items-center gap-1.5"><ShoppingBag className="w-3.5 h-3.5" /> {(order.documentSnapshot?.content.purchaseItems || []).length} itens</div>
                           </div>
 
-                          {/* CAMPO DE PREVISÃO DE CONCLUSÃO */}
                           {order.status === 'approved' && (
                             <div className="mt-3 flex items-center gap-3">
                                <div className="flex flex-col">
@@ -393,22 +397,23 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                               )}
 
                               <button 
-                                onClick={() => onUpdateStatus(order.id, 'approved')} 
+                                onClick={() => setConfirmModal({
+                                    isOpen: true,
+                                    title: "Aprovar Pedido",
+                                    message: `Deseja formalizar a aprovação administrativa para o pedido ${order.protocol}?`,
+                                    type: 'warning',
+                                    onConfirm: () => {
+                                        onUpdateStatus(order.id, 'approved');
+                                        setConfirmModal({ ...confirmModal, isOpen: false });
+                                    }
+                                })} 
                                 className={`p-2 rounded-xl transition-all ${order.status === 'approved' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
                                 title="Aprovar Pedido"
                               >
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
                               <button 
-                                onClick={() => {
-                                  const reason = window.prompt("Motivo da Rejeição Administrativa:");
-                                  if (reason === null) return;
-                                  if (!reason.trim()) {
-                                    alert("Justificativa necessária para rejeição.");
-                                    return;
-                                  }
-                                  onUpdateStatus(order.id, 'rejected', reason);
-                                }} 
+                                onClick={() => setRejectionModal({ isOpen: true, orderId: order.id, reason: '' })} 
                                 className={`p-2 rounded-xl transition-all ${order.status === 'rejected' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'}`}
                                 title="Rejeitar Pedido"
                               >
@@ -416,7 +421,16 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                               </button>
                               <div className="w-px h-6 bg-slate-200 mx-1"></div>
                               <button 
-                                onClick={() => { if(window.confirm("Excluir este pedido permanentemente?")) onDeleteOrder(order.id); }} 
+                                onClick={() => setConfirmModal({
+                                    isOpen: true,
+                                    title: "Excluir Pedido",
+                                    message: "Deseja remover permanentemente este pedido da base de dados?",
+                                    type: 'danger',
+                                    onConfirm: () => {
+                                        onDeleteOrder(order.id);
+                                        setConfirmModal({ ...confirmModal, isOpen: false });
+                                    }
+                                })} 
                                 className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                               >
                                 <Trash2 className="w-5 h-5" />
@@ -458,6 +472,118 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
           )}
         </div>
 
+        {/* MODAL DE REJEIÇÃO */}
+        {rejectionModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-slide-up">
+                    <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center shadow-lg"><XCircle className="w-6 h-6 text-white" /></div>
+                            <div><h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Justificar Rejeição</h3></div>
+                        </div>
+                        <button onClick={() => setRejectionModal({ ...rejectionModal, isOpen: false })} className="p-3 hover:bg-white hover:shadow-md rounded-2xl text-slate-400 transition-all"><X className="w-6 h-6" /></button>
+                    </div>
+                    <div className="p-8">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Motivo da Rejeição Administrativa</label>
+                        <textarea 
+                            value={rejectionModal.reason}
+                            onChange={(e) => setRejectionModal({ ...rejectionModal, reason: e.target.value })}
+                            className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-rose-500 transition-all resize-none font-medium"
+                            placeholder="Descreva o motivo para que o solicitante possa corrigir..."
+                        />
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <button onClick={() => setRejectionModal({ ...rejectionModal, isOpen: false })} className="px-6 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Voltar</button>
+                        <button 
+                            disabled={!rejectionModal.reason.trim()}
+                            onClick={() => {
+                                onUpdateStatus(rejectionModal.orderId, 'rejected', rejectionModal.reason);
+                                setRejectionModal({ isOpen: false, orderId: '', reason: '' });
+                            }} 
+                            className="px-8 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 shadow-xl disabled:opacity-50 flex items-center gap-2 transition-all"
+                        >
+                            <XCircle className="w-5 h-5" /> Rejeitar Pedido
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
+
+        {/* MODAL DE CANCELAMENTO */}
+        {cancelModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-slide-up">
+                    <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center shadow-lg"><XCircle className="w-6 h-6 text-white" /></div>
+                            <div><h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Cancelar Processo</h3></div>
+                        </div>
+                        <button onClick={() => setCancelModal({ ...cancelModal, isOpen: false })} className="p-3 hover:bg-white hover:shadow-sm rounded-2xl text-slate-400 transition-all"><X className="w-6 h-6" /></button>
+                    </div>
+                    <div className="p-8">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Motivo do Cancelamento</label>
+                        <textarea 
+                            value={cancelModal.reason}
+                            onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
+                            className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-rose-500 transition-all resize-none font-medium"
+                            placeholder="Informe o motivo do cancelamento definitivo deste ciclo..."
+                        />
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <button onClick={() => setCancelModal({ ...cancelModal, isOpen: false })} className="px-6 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Voltar</button>
+                        <button 
+                            disabled={!cancelModal.reason.trim()}
+                            onClick={() => {
+                                onUpdatePurchaseStatus?.(cancelModal.orderId, 'cancelado', cancelModal.reason);
+                                setCancelModal({ isOpen: false, orderId: '', reason: '' });
+                            }} 
+                            className="px-8 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 shadow-xl disabled:opacity-50 flex items-center gap-2 transition-all"
+                        >
+                            <Trash className="w-5 h-5" /> Cancelar Ciclo
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO PERSONALIZADO */}
+        {confirmModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-white/20">
+                    <div className="p-8 text-center">
+                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-600 shadow-rose-500/10' : 
+                            'bg-indigo-50 text-indigo-600 shadow-indigo-500/10'
+                        }`}>
+                            {confirmModal.type === 'danger' ? <Trash className="w-10 h-10" /> : <Info className="w-10 h-10" />}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 uppercase">{confirmModal.title}</h3>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">{confirmModal.message}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                        <button 
+                            onClick={confirmModal.onConfirm}
+                            className={`w-full py-4 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-[0.98] ${
+                                confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 
+                                'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+                            }`}
+                        >
+                            Confirmar
+                        </button>
+                        <button 
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
+
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
            <div className="flex gap-4">
              {!isComprasUser && <span>Pendentes: {purchaseOrders.filter(o => o.status === 'pending' || !o.status).length}</span>}
@@ -493,10 +619,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                         key={key}
                         onClick={() => {
                           if (key === 'cancelado') {
-                            const reason = window.prompt("Por favor, informe o motivo do cancelamento deste pedido:");
-                            if (reason === null) return;
-                            if (!reason.trim()) { alert("O motivo do cancelamento é obrigatório."); return; }
-                            onUpdatePurchaseStatus?.(statusSelectionOrder.id, key, reason);
+                            setCancelModal({ isOpen: true, orderId: statusSelectionOrder.id, reason: '' });
                           } else if (key === 'aprovacao_orcamento') {
                             setBudgetUploadOrder(statusSelectionOrder);
                           } else {
@@ -650,7 +773,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
              </div>
              <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
                 <button onClick={() => { onUpdatePurchaseStatus?.(confirmApprovalOrder.id, 'coletando_dotacao', 'Orçamento Aprovado pelo Administrador'); setConfirmApprovalOrder(null); }} className="w-full py-4 bg-purple-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-purple-600/20 hover:bg-purple-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar e Liberar</button>
-                <button onClick={() => setConfirmApprovalOrder(null)} className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all">Voltar</button>
+                <button onClick={() => setConfirmApprovalOrder(null)} className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all">Voltar</button>
              </div>
           </div>
         </div>,

@@ -5,7 +5,7 @@ import { User, UserRole, Signature, AppPermission, Job, Sector } from '../types'
 import { 
   Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, 
   PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart, Briefcase, Network, 
-  Eye, EyeOff, RotateCcw, AlertTriangle, Clock, Lock, Copy, Check
+  Eye, EyeOff, RotateCcw, AlertTriangle, Clock, Lock, Copy, Check, Info, Trash
 } from 'lucide-react';
 
 interface UserManagementScreenProps {
@@ -63,6 +63,12 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Estado para Diálogos Customizados (Substituindo Confirm/Alert)
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' | 'info' }>({
+    isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'info'
+  });
+  const [toast, setToast] = useState<{ show: boolean, message: string, type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   const isAdmin = currentUser.role === 'admin';
 
@@ -78,6 +84,11 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     allowedSignatureIds: [],
     permissions: ['parent_criar_oficio']
   });
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ ...toast, show: false }), 3000);
+  };
 
   const filteredUsers = isAdmin 
     ? users.filter(u => 
@@ -163,39 +174,37 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     if (!editingUser || !isAdmin) return;
     
     if (editingUser.id === currentUser.id) {
-        alert("Para alterar sua própria senha, utilize o campo 'Senha de Acesso'.");
+        showToast("Para alterar sua própria senha, utilize o campo 'Segurança de Acesso'.", 'error');
         return;
     }
-    
-    // Geração de senha aleatória de 8 caracteres (sem 0, O, 1, I para evitar confusão)
-    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
-    let newPass = "";
-    for (let i = 0; i < 8; i++) {
-        newPass += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    
-    // Expiração curta para teste e segurança: +3 minutos (180.000 ms)
-    const expiry = Date.now() + (3 * 60 * 1000);
 
-    if (window.confirm(`Confirmar geração de senha temporária para "${editingUser.name}"?\n\nEsta senha será válida por apenas 3 minutos.`)) {
-        const updatedUser = {
-            ...editingUser,
-            tempPassword: newPass,
-            tempPasswordExpiresAt: expiry
-        } as User;
-        
-        // 1. Atualiza o estado global imediatamente
-        onUpdateUser(updatedUser);
+    setConfirmModal({
+        isOpen: true,
+        title: "Resetar Senha",
+        message: `Deseja gerar uma senha temporária de 3 minutos para "${editingUser.name}"?`,
+        type: 'warning',
+        onConfirm: () => {
+            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
+            let newPass = "";
+            for (let i = 0; i < 8; i++) {
+                newPass += charset.charAt(Math.floor(Math.random() * charset.length));
+            }
+            
+            const expiry = Date.now() + (3 * 60 * 1000); // 3 minutos
 
-        // 2. Atualiza o formulário local para exibir no Modal
-        setFormData(prev => ({ 
-            ...prev, 
-            tempPassword: newPass, 
-            tempPasswordExpiresAt: expiry 
-        }));
-
-        setCopied(false);
-    }
+            const updatedUser = {
+                ...editingUser,
+                tempPassword: newPass,
+                tempPasswordExpiresAt: expiry
+            } as User;
+            
+            onUpdateUser(updatedUser);
+            setFormData(prev => ({ ...prev, tempPassword: newPass, tempPasswordExpiresAt: expiry }));
+            setCopied(false);
+            setConfirmModal({ ...confirmModal, isOpen: false });
+            showToast("Senha temporária gerada!");
+        }
+    });
   };
 
   const copyToClipboard = () => {
@@ -208,12 +217,12 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
 
   const handleSave = () => {
     if (!formData.name || !formData.username) {
-      alert("Por favor, preencha nome e usuário.");
+      showToast("Por favor, preencha nome e usuário.", 'error');
       return;
     }
 
     if (!editingUser && !formData.password) {
-        alert("Senha é obrigatória para novos usuários.");
+        showToast("Senha é obrigatória para novos usuários.", 'error');
         return;
     }
 
@@ -224,8 +233,10 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
 
     if (editingUser) {
       onUpdateUser(userData);
+      showToast("Usuário atualizado com sucesso!");
     } else {
       onAddUser(userData);
+      showToast("Novo usuário cadastrado!");
     }
     setIsModalOpen(false);
   };
@@ -308,7 +319,22 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                    <div className="flex items-center gap-1">
                      <button onClick={() => handleOpenModal(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
                      {isAdmin && user.username !== 'admin' && user.id !== currentUser.id && (
-                       <button onClick={() => onDeleteUser(user.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                       <button 
+                        onClick={() => setConfirmModal({
+                            isOpen: true,
+                            title: "Excluir Usuário",
+                            message: `Deseja realmente remover o acesso de "${user.name}"? Esta ação é irreversível.`,
+                            type: 'danger',
+                            onConfirm: () => {
+                                onDeleteUser(user.id);
+                                showToast("Usuário removido.");
+                                setConfirmModal({ ...confirmModal, isOpen: false });
+                            }
+                        })} 
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                       >
+                           <Trash2 className="w-4 h-4" />
+                       </button>
                      )}
                    </div>
                 </div>
@@ -316,6 +342,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
            ))}
         </div>
 
+        {/* MODAL DE EDIÇÃO/CADASTRO */}
         {isModalOpen && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border border-white/20">
@@ -377,7 +404,6 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                       <input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className={inputClass} disabled={!isAdmin} placeholder="ex: nome.sobrenome" />
                     </div>
                     
-                    {/* SEGURANÇA E RESET DE SENHA */}
                     <div>
                       <label className={labelClass}>Segurança de Acesso</label>
                       {isEditingSelf || !editingUser ? (
@@ -548,6 +574,57 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
             </div>
           </div>,
           document.body
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO PERSONALIZADO */}
+        {confirmModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-white/20">
+                    <div className="p-8 text-center">
+                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-600 shadow-rose-500/10' : 
+                            confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600 shadow-amber-500/10' : 
+                            'bg-indigo-50 text-indigo-600 shadow-indigo-500/10'
+                        }`}>
+                            {confirmModal.type === 'danger' ? <Trash className="w-10 h-10" /> : 
+                             confirmModal.type === 'warning' ? <AlertTriangle className="w-10 h-10" /> : 
+                             <Info className="w-10 h-10" />}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 uppercase">{confirmModal.title}</h3>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">{confirmModal.message}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                        <button 
+                            onClick={confirmModal.onConfirm}
+                            className={`w-full py-4 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-[0.98] ${
+                                confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 
+                                confirmModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 
+                                'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+                            }`}
+                        >
+                            Confirmar Ação
+                        </button>
+                        <button 
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                        >
+                            Voltar / Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
+
+        {/* TOAST NOTIFICATION */}
+        {toast.show && createPortal(
+            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-slide-up ${
+                toast.type === 'success' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-rose-600 border-rose-500 text-white'
+            }`}>
+                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                <span className="font-bold text-sm">{toast.message}</span>
+            </div>,
+            document.body
         )}
       </div>
     </div>

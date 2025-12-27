@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Person, Sector, Job } from '../types';
 import { 
   Plus, Search, Edit2, Trash2, Save, X, 
-  User as UserIcon, Network, Briefcase, CheckCircle2 
+  User as UserIcon, Network, Briefcase, CheckCircle2, Trash, AlertTriangle, Info
 } from 'lucide-react';
 
 interface EntityManagementScreenProps {
@@ -33,6 +33,11 @@ export const EntityManagementScreen: React.FC<EntityManagementScreenProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   
+  // Modais customizados
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' }>({
+    isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'warning'
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     jobId: '',
@@ -56,7 +61,6 @@ export const EntityManagementScreen: React.FC<EntityManagementScreenProps> = ({
 
   const handleSave = () => {
     if (!formData.name) {
-      alert("O nome é obrigatório.");
       return;
     }
 
@@ -169,13 +173,18 @@ export const EntityManagementScreen: React.FC<EntityManagementScreenProps> = ({
                 <div className="flex items-center gap-2">
                    <button onClick={() => handleOpenModal(item)} className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
                    <button 
-                     onClick={() => {
-                       if (window.confirm("Deseja realmente excluir este registro?")) {
-                         if (activeTab === 'persons') onDeletePerson(item.id);
-                         else if (activeTab === 'sectors') onDeleteSector(item.id);
-                         else onDeleteJob(item.id);
-                       }
-                     }} 
+                     onClick={() => setConfirmModal({
+                         isOpen: true,
+                         title: "Remover Item",
+                         message: `Deseja realmente excluir "${item.name}"? Esta ação afetará documentos que utilizam esta referência.`,
+                         type: 'danger',
+                         onConfirm: () => {
+                            if (activeTab === 'persons') onDeletePerson(item.id);
+                            else if (activeTab === 'sectors') onDeleteSector(item.id);
+                            else onDeleteJob(item.id);
+                            setConfirmModal({ ...confirmModal, isOpen: false });
+                         }
+                     })} 
                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                    >
                      <Trash2 className="w-4 h-4" />
@@ -250,6 +259,42 @@ export const EntityManagementScreen: React.FC<EntityManagementScreenProps> = ({
             </div>
           </div>,
           document.body
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO PERSONALIZADO */}
+        {confirmModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-white/20">
+                    <div className="p-8 text-center">
+                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-600 shadow-rose-500/10' : 
+                            'bg-indigo-50 text-indigo-600 shadow-indigo-500/10'
+                        }`}>
+                            {confirmModal.type === 'danger' ? <Trash className="w-10 h-10" /> : <Info className="w-10 h-10" />}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 uppercase">{confirmModal.title}</h3>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">{confirmModal.message}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                        <button 
+                            onClick={confirmModal.onConfirm}
+                            className={`w-full py-4 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-[0.98] ${
+                                confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 
+                                'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+                            }`}
+                        >
+                            Confirmar Ação
+                        </button>
+                        <button 
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
         )}
       </div>
     </div>

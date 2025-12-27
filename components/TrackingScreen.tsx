@@ -6,7 +6,7 @@ import {
   FileDown, Calendar, Edit3, TrendingUp, Loader2,
   CheckCircle2, AlertCircle, CalendarCheck, Check, RotateCcw,
   Paperclip, PackageCheck, FileSearch, Scale, Landmark, ShoppingCart, CheckCircle, XCircle,
-  Eye, History, X, Lock, User, MessageCircle, Sparkles, Plus, Upload, Download, AlertTriangle, ShieldAlert, Zap, Info, Network
+  Eye, History, X, Lock, User, MessageCircle, Sparkles, Plus, Upload, Download, AlertTriangle, ShieldAlert, Zap, Info, Network, Trash
 } from 'lucide-react';
 import { User as UserType, Order, AppState, BlockType, Attachment } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -54,6 +54,11 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
   const [attachmentManagerOrder, setAttachmentManagerOrder] = useState<Order | null>(null);
   const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(null);
   const [priorityJustificationOrder, setPriorityJustificationOrder] = useState<Order | null>(null);
+  
+  // Modais customizados
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type: 'danger' | 'warning' }>({
+    isOpen: false, title: '', message: '', onConfirm: () => {}, type: 'warning'
+  });
 
   const genericAttachmentRef = useRef<HTMLInputElement>(null);
 
@@ -65,22 +70,18 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
     const matchesBlock = order.blockType === activeBlock;
     if (!matchesBlock) return false;
 
-    // LÓGICA DE PERMISSÃO POR SETOR (MÓDULO DE COMPRAS)
     let hasPermission = false;
     const isPurchasingManager = currentUser.role === 'admin' || currentUser.role === 'compras';
 
     if (isCompras) {
       if (isPurchasingManager) {
-        // Administradores e Compras veem todos os pedidos do módulo
         hasPermission = true;
       } else {
-        // Outros usuários (Colaboradores/Licitação) veem apenas pedidos do seu PRÓPRIO setor
         const orderSector = order.documentSnapshot?.content.requesterSector || '';
         const userSector = currentUser.sector || '';
         hasPermission = userSector !== '' && orderSector.trim().toLowerCase() === userSector.trim().toLowerCase();
       }
     } else {
-      // Outros módulos mantêm a lógica padrão (Admin/Licitação vê tudo, outros veem os seus)
       hasPermission = isAdmin || currentUser.role === 'licitacao' || order.userId === currentUser.id;
     }
 
@@ -203,7 +204,16 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
             </div>
             {isAdmin && filteredOrders.length > 0 && (
                <button 
-                 onClick={onClearAll}
+                 onClick={() => setConfirmModal({
+                     isOpen: true,
+                     title: "Limpar Histórico",
+                     message: "Deseja realmente apagar TODOS os registros deste bloco? Esta ação removerá os dados permanentemente.",
+                     type: 'danger',
+                     onConfirm: () => {
+                         onClearAll();
+                         setConfirmModal({ ...confirmModal, isOpen: false });
+                     }
+                 })}
                  className="p-3.5 bg-red-50 text-red-500 border border-red-100 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center gap-2 font-bold text-xs uppercase"
                >
                  <Trash2 className="w-5 h-5" />
@@ -458,7 +468,21 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                          >
                            {downloadingId === order.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
                          </button>
-                         <button onClick={() => onDeleteOrder(order.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"><Trash2 className="w-5 h-5" /></button>
+                         <button 
+                            onClick={() => setConfirmModal({
+                                isOpen: true,
+                                title: "Excluir Registro",
+                                message: `Deseja realmente remover o registro "${order.protocol}" do histórico?`,
+                                type: 'danger',
+                                onConfirm: () => {
+                                    onDeleteOrder(order.id);
+                                    setConfirmModal({ ...confirmModal, isOpen: false });
+                                }
+                            })} 
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Excluir"
+                         >
+                            <Trash2 className="w-5 h-5" />
+                         </button>
                       </div>
                     </div>
                   );
@@ -479,6 +503,42 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
            <span>Sistema de Gestão Pública v1.2.0</span>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMAÇÃO PERSONALIZADO */}
+      {confirmModal.isOpen && createPortal(
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-white/20">
+                    <div className="p-8 text-center">
+                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-600 shadow-rose-500/10' : 
+                            'bg-indigo-50 text-indigo-600 shadow-indigo-500/10'
+                        }`}>
+                            {confirmModal.type === 'danger' ? <Trash className="w-10 h-10" /> : <Info className="w-10 h-10" />}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 uppercase">{confirmModal.title}</h3>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">{confirmModal.message}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                        <button 
+                            onClick={confirmModal.onConfirm}
+                            className={`w-full py-4 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-[0.98] ${
+                                confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 
+                                'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+                            }`}
+                        >
+                            Confirmar Ação
+                        </button>
+                        <button 
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="w-full py-4 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-2xl border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
 
       {/* MODAL DE JUSTIFICATIVA DE PRIORIDADE */}
       {priorityJustificationOrder && createPortal(
