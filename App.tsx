@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment, Vehicle 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment, Vehicle, VehicleBrand 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS, DEFAULT_PERSONS } from './constants';
 import * as db from './services/dbService';
@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [sectors, setSectors] = useState<Sector[]>(DEFAULT_SECTORS);
   const [jobs, setJobs] = useState<Job[]>(DEFAULT_JOBS);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [brands, setBrands] = useState<VehicleBrand[]>([]);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
@@ -102,6 +103,25 @@ const App: React.FC = () => {
         // Carregamento de Veículos
         const savedVehicles = await db.getAllVehicles();
         setVehicles(savedVehicles);
+
+        // Carregamento de Marcas
+        const savedBrands = await db.getAllBrands();
+        if (savedBrands.length === 0) {
+          const defaultLeves = ['Toyota', 'Volkswagen', 'Ford', 'Chevrolet', 'Honda', 'Hyundai', 'Renault', 'Nissan', 'Fiat', 'Peugeot', 'Citroën', 'BMW', 'Mercedes-Benz', 'Audi', 'Volvo', 'Kia', 'Mazda', 'Subaru', 'Mitsubishi', 'Jeep', 'RAM', 'Tesla', 'BYD', 'Chery', 'GWM', 'Suzuki', 'Lexus', 'Porsche', 'Land Rover', 'Jaguar', 'Mini', 'Skoda', 'Seat'];
+          const defaultPesados = ['Caterpillar', 'Komatsu', 'Volvo CE', 'John Deere', 'Case', 'New Holland', 'JCB', 'Liebherr', 'Hitachi', 'Doosan', 'Hyundai CE', 'Sany', 'XCMG', 'Zoomlion', 'Terex', 'Bobcat', 'Wirtgen', 'Manitou', 'Bell', 'CNH', 'Sandvik', 'Atlas Copco'];
+          
+          const initialBrands: VehicleBrand[] = [
+            ...defaultLeves.map(n => ({ id: `br-${Date.now()}-${Math.random()}`, name: n, category: 'leve' as const })),
+            ...defaultPesados.map(n => ({ id: `br-${Date.now()}-${Math.random()}`, name: n, category: 'pesado' as const }))
+          ];
+          
+          for (const b of initialBrands) {
+            await db.saveBrand(b);
+          }
+          setBrands(initialBrands);
+        } else {
+          setBrands(savedBrands);
+        }
 
         const counterValue = await db.getGlobalCounter();
         setGlobalCounter(counterValue);
@@ -480,9 +500,13 @@ const App: React.FC = () => {
                 <FleetManagementScreen 
                   vehicles={vehicles}
                   sectors={sectors}
+                  persons={persons}
+                  jobs={jobs}
+                  brands={brands}
                   onAddVehicle={v => { db.saveVehicle(v); setVehicles(p => [...p, v]); }}
                   onUpdateVehicle={v => { db.saveVehicle(v); setVehicles(p => p.map(vi => vi.id === v.id ? v : vi)); }}
                   onDeleteVehicle={id => { db.deleteVehicle(id); setVehicles(p => p.filter(v => v.id !== id)); }}
+                  onAddBrand={b => { db.saveBrand(b); setBrands(p => [...p, b]); }}
                   onBack={() => setAdminTab(null)}
                 />
               ) : currentView === 'admin' && adminTab === 'signatures' ? (

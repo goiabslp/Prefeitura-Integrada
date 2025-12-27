@@ -193,6 +193,12 @@ export type VehicleType = 'leve' | 'pesado' | 'acessorio';
 export type VehicleStatus = 'operacional' | 'manutencao' | 'vistoria' | 'documentacao' | 'nao_liberado' | 'leilao' | 'leiloado' | 'batido';
 export type MaintenanceStatus = 'em_dia' | 'andamento' | 'vencido';
 
+export interface VehicleBrand {
+  id: string;
+  name: string;
+  category: VehicleType;
+}
+
 export interface Vehicle {
   id: string;
   type: VehicleType;
@@ -204,6 +210,7 @@ export interface Vehicle {
   renavam: string;
   chassis: string;
   sectorId: string;
+  responsiblePersonId?: string;
   documentUrl?: string;
   documentName?: string;
   vehicleImageUrl?: string;

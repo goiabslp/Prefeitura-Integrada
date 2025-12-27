@@ -1,8 +1,8 @@
 
-import { Order, User, Signature, AppState, Person, Sector, Job, Vehicle } from '../types';
+import { Order, User, Signature, AppState, Person, Sector, Job, Vehicle, VehicleBrand } from '../types';
 
 const DB_NAME = 'BrandDocDB_v2';
-const DB_VERSION = 4; // Incrementado para nova store de frotas
+const DB_VERSION = 5; // Incrementado para nova store de marcas
 const STORES = {
   ORDERS: 'orders',
   USERS: 'users',
@@ -11,7 +11,8 @@ const STORES = {
   PERSONS: 'persons',
   SECTORS: 'sectors',
   JOBS: 'jobs',
-  VEHICLES: 'vehicles'
+  VEHICLES: 'vehicles',
+  BRANDS: 'vehicles_brands'
 };
 
 export const initDB = (): Promise<IDBDatabase> => {
@@ -46,6 +47,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORES.VEHICLES)) {
         db.createObjectStore(STORES.VEHICLES, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.BRANDS)) {
+        db.createObjectStore(STORES.BRANDS, { keyPath: 'id' });
       }
     };
   });
@@ -121,6 +125,10 @@ export const deleteJob = (id: string) => remove(STORES.JOBS, id);
 export const getAllVehicles = () => getAll<Vehicle>(STORES.VEHICLES);
 export const saveVehicle = (vehicle: Vehicle) => save(STORES.VEHICLES, vehicle);
 export const deleteVehicle = (id: string) => remove(STORES.VEHICLES, id);
+
+export const getAllBrands = () => getAll<VehicleBrand>(STORES.BRANDS);
+export const saveBrand = (brand: VehicleBrand) => save(STORES.BRANDS, brand);
+export const deleteBrand = (id: string) => remove(STORES.BRANDS, id);
 
 export const getGlobalSettings = async (): Promise<AppState | null> => {
   const db = await initDB();

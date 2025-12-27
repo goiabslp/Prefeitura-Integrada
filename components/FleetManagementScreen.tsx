@@ -1,22 +1,26 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Vehicle, VehicleType, Sector, VehicleStatus, MaintenanceStatus } from '../types';
+import { Vehicle, VehicleType, Sector, VehicleStatus, MaintenanceStatus, Person, Job, VehicleBrand } from '../types';
 import { 
   Plus, Search, Edit2, Trash2, Save, X, 
   Car, Truck, Wrench, CheckCircle2, Trash, Info, 
   MapPin, Hash, Palette, Calendar, Layers, Network, ChevronDown, Check,
   PenTool, Upload, FileText, Eye, Download, FileCheck, Camera, Image as ImageIcon,
   ArrowLeft, Fuel, Gauge, ShieldCheck, Activity, AlertTriangle, Hammer, ClipboardCheck,
-  ShieldAlert
+  ShieldAlert, User, Briefcase, Tag
 } from 'lucide-react';
 
 interface FleetManagementScreenProps {
   vehicles: Vehicle[];
   sectors: Sector[];
+  persons: Person[];
+  jobs: Job[];
+  brands: VehicleBrand[];
   onAddVehicle: (v: Vehicle) => void;
   onUpdateVehicle: (v: Vehicle) => void;
   onDeleteVehicle: (id: string) => void;
+  onAddBrand: (b: VehicleBrand) => void;
   onBack: () => void;
 }
 
@@ -47,22 +51,31 @@ const MAINTENANCE_OPTIONS: { value: MaintenanceStatus, label: string, color: str
 ];
 
 export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
-  vehicles, sectors, onAddVehicle, onUpdateVehicle, onDeleteVehicle, onBack
+  vehicles, sectors, persons, jobs, brands, onAddVehicle, onUpdateVehicle, onDeleteVehicle, onAddBrand, onBack
 }) => {
   const [activeTab, setActiveTab] = useState<VehicleType>('leve');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState<{url: string, name: string, type: 'doc' | 'photo'} | null>(null);
   
   const [isSectorDropdownOpen, setIsSectorDropdownOpen] = useState(false);
+  const [isResponsibleDropdownOpen, setIsResponsibleDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isMaintDropdownOpen, setIsMaintDropdownOpen] = useState(false);
+  const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false);
+
   const [sectorSearch, setSectorSearch] = useState('');
+  const [responsibleSearch, setResponsibleSearch] = useState('');
+  const [brandSearch, setBrandSearch] = useState('');
+  const [newBrandName, setNewBrandName] = useState('');
   
   const sectorDropdownRef = useRef<HTMLDivElement>(null);
+  const responsibleDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const maintDropdownRef = useRef<HTMLDivElement>(null);
+  const brandDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,6 +92,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
     renavam: '',
     chassis: '',
     sectorId: '',
+    responsiblePersonId: '',
     documentUrl: '',
     documentName: '',
     vehicleImageUrl: '',
@@ -90,8 +104,10 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (sectorDropdownRef.current && !sectorDropdownRef.current.contains(target)) setIsSectorDropdownOpen(false);
+      if (responsibleDropdownRef.current && !responsibleDropdownRef.current.contains(target)) setIsResponsibleDropdownOpen(false);
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(target)) setIsStatusDropdownOpen(false);
       if (maintDropdownRef.current && !maintDropdownRef.current.contains(target)) setIsMaintDropdownOpen(false);
+      if (brandDropdownRef.current && !brandDropdownRef.current.contains(target)) setIsBrandDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -113,6 +129,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
         renavam: '', 
         chassis: '', 
         sectorId: '',
+        responsiblePersonId: '',
         documentUrl: '',
         documentName: '',
         vehicleImageUrl: '',
@@ -121,9 +138,13 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
       });
     }
     setSectorSearch('');
+    setResponsibleSearch('');
+    setBrandSearch('');
     setIsSectorDropdownOpen(false);
+    setIsResponsibleDropdownOpen(false);
     setIsStatusDropdownOpen(false);
     setIsMaintDropdownOpen(false);
+    setIsBrandDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -156,6 +177,18 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
     }
   };
 
+  const handleSaveBrand = () => {
+    if (!newBrandName.trim()) return;
+    const brand: VehicleBrand = {
+      id: `br-${Date.now()}-${Math.random()}`,
+      name: newBrandName.trim(),
+      category: activeTab
+    };
+    onAddBrand(brand);
+    setNewBrandName('');
+    setIsBrandModalOpen(false);
+  };
+
   const handleSave = () => {
     if (!formData.model || !formData.plate || !formData.sectorId) {
       alert("Por favor, preencha o modelo, a placa e o setor do veículo.");
@@ -186,7 +219,20 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sectors, sectorSearch]);
 
+  const filteredPersons = useMemo(() => {
+    return persons
+      .filter(p => p.name.toLowerCase().includes(responsibleSearch.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [persons, responsibleSearch]);
+
+  const filteredBrands = useMemo(() => {
+    return brands
+      .filter(b => b.category === activeTab && b.name.toLowerCase().includes(brandSearch.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [brands, activeTab, brandSearch]);
+
   const selectedSectorName = sectors.find(s => s.id === formData.sectorId)?.name || 'Selecione o Setor';
+  const selectedResponsibleName = persons.find(p => p.id === formData.responsiblePersonId)?.name || 'Selecione o Responsável';
 
   const inputClass = "w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all text-sm font-bold placeholder:text-slate-400 placeholder:font-normal";
   const labelClass = "block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1";
@@ -250,15 +296,23 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
           ))}
         </div>
 
-        <div className="relative w-full md:w-96 group">
-          <input 
-            type="text" 
-            placeholder="Buscar por placa, modelo ou marca..."
-            className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-96 group">
+            <input 
+              type="text" 
+              placeholder="Buscar por placa, modelo ou marca..."
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          </div>
+          <button 
+            onClick={() => setIsBrandModalOpen(true)}
+            className="whitespace-nowrap px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+          >
+            <Tag className="w-3.5 h-3.5" /> Adicionar Nova Marca
+          </button>
         </div>
       </div>
 
@@ -268,6 +322,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {filteredVehicles.map(v => {
               const statusCfg = getStatusConfig(v.status || 'operacional');
+              const responsibleName = persons.find(p => p.id === v.responsiblePersonId)?.name || 'Responsável não definido';
               return (
                 <div key={v.id} className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all flex flex-col group overflow-hidden animate-fade-in">
                     <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
@@ -332,6 +387,14 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                             </div>
                             <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider leading-tight">
                               {sectors.find(s => s.id === v.sectorId)?.name || 'Sem Setor'}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-tight truncate">
+                              {responsibleName}
                             </span>
                         </div>
                       </div>
@@ -534,9 +597,70 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                             <input value={formData.plate} onChange={e => setFormData({...formData, plate: e.target.value.toUpperCase()})} className={`${inputClass} font-mono uppercase tracking-[0.1em]`} placeholder="ABC-1234" />
                           </div>
 
-                          <div>
-                            <label className={labelClass}><PenTool className="w-4 h-4 inline mr-2 text-indigo-500" /> Marca / Fabricante</label>
-                            <input value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className={inputClass} placeholder="Ex: Mercedes-Benz" />
+                          <div className="relative" ref={brandDropdownRef}>
+                            <label className={labelClass}><Tag className="w-4 h-4 inline mr-2 text-indigo-500" /> Marca / Fabricante</label>
+                            <div 
+                              onClick={() => setIsBrandDropdownOpen(!isBrandDropdownOpen)}
+                              className={`${inputClass} flex items-center justify-between cursor-pointer group/select h-auto ${isBrandDropdownOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-xl transition-colors shrink-0 ${formData.brand ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                  <Tag className="w-4 h-4" />
+                                </div>
+                                <span className={`${formData.brand ? 'text-slate-900 font-bold' : 'text-slate-400'} leading-tight text-left`}>
+                                  {formData.brand || 'Selecione a Marca'}
+                                </span>
+                              </div>
+                              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 shrink-0 ${isBrandDropdownOpen ? 'rotate-180' : ''}`} />
+                            </div>
+
+                            {isBrandDropdownOpen && (
+                              <div className="absolute z-50 left-0 right-0 mt-3 bg-white border border-slate-200 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] overflow-hidden animate-slide-up flex flex-col border-indigo-100">
+                                <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                                  <Search className="w-4 h-4 text-indigo-400" />
+                                  <input 
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Pesquisar fabricante..."
+                                    className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-full"
+                                    value={brandSearch}
+                                    onChange={(e) => setBrandSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div className="max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                   {filteredBrands.length > 0 ? (
+                                     filteredBrands.map((brand) => (
+                                       <button
+                                         key={brand.id}
+                                         type="button"
+                                         onClick={(e) => {
+                                           e.stopPropagation();
+                                           setFormData({...formData, brand: brand.name});
+                                           setIsBrandDropdownOpen(false);
+                                           setBrandSearch('');
+                                         }}
+                                         className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all group/item ${formData.brand === brand.name ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                                       >
+                                         <span className="text-sm font-bold text-left">{brand.name}</span>
+                                         {formData.brand === brand.name && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                                       </button>
+                                     ))
+                                   ) : (
+                                     <div className="p-8 text-center">
+                                       <Tag className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                       <p className="text-xs text-slate-400 font-medium">Nenhuma marca localizada.</p>
+                                       <button 
+                                         onClick={(e) => { e.stopPropagation(); setIsBrandModalOpen(true); setIsBrandDropdownOpen(false); }}
+                                         className="mt-4 text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:underline"
+                                       >
+                                         + Adicionar Nova
+                                       </button>
+                                     </div>
+                                   )}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div>
@@ -595,6 +719,65 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                      >
                                        <span className="text-sm font-bold text-left">{sector.name}</span>
                                        {formData.sectorId === sector.id && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                                     </button>
+                                   ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* CAMPO: RESPONSÁVEL PELO VEÍCULO */}
+                          <div className="md:col-span-2 relative" ref={responsibleDropdownRef}>
+                            <label className={labelClass}><User className="w-4 h-4 inline mr-2 text-indigo-500" /> Responsável pelo Veículo</label>
+                            <div 
+                              onClick={() => setIsResponsibleDropdownOpen(!isResponsibleDropdownOpen)}
+                              className={`${inputClass} flex items-center justify-between cursor-pointer group/select h-auto ${isResponsibleDropdownOpen ? 'border-indigo-500 ring-4 ring-indigo-500/5 bg-white' : ''}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-xl transition-colors shrink-0 ${formData.responsiblePersonId ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                  <User className="w-4 h-4" />
+                                </div>
+                                <span className={`${formData.responsiblePersonId ? 'text-slate-900 font-bold' : 'text-slate-400'} leading-tight text-left`}>
+                                  {selectedResponsibleName}
+                                </span>
+                              </div>
+                              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 shrink-0 ${isResponsibleDropdownOpen ? 'rotate-180' : ''}`} />
+                            </div>
+
+                            {isResponsibleDropdownOpen && (
+                              <div className="absolute z-50 left-0 right-0 mt-3 bg-white border border-slate-200 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] overflow-hidden animate-slide-up flex flex-col border-indigo-100">
+                                <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                                  <Search className="w-4 h-4 text-indigo-400" />
+                                  <input 
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Pesquisar responsável (nome)..."
+                                    className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-full"
+                                    value={responsibleSearch}
+                                    onChange={(e) => setResponsibleSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div className="max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                   {filteredPersons.map((person) => (
+                                     <button
+                                       key={person.id}
+                                       type="button"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         setFormData({...formData, responsiblePersonId: person.id});
+                                         setIsResponsibleDropdownOpen(false);
+                                         setResponsibleSearch('');
+                                       }}
+                                       className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all group/item ${formData.responsiblePersonId === person.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                                     >
+                                       <div className="text-left">
+                                         <span className="text-sm font-bold block">{person.name}</span>
+                                         <span className="text-[10px] uppercase font-medium text-slate-400">
+                                           {jobs.find(j => j.id === person.jobId)?.name || 'Sem Cargo'}
+                                         </span>
+                                       </div>
+                                       {formData.responsiblePersonId === person.id && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
                                      </button>
                                    ))}
                                 </div>
@@ -672,6 +855,48 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
           document.body
         )}
 
+      {/* MODAL PARA ADICIONAR NOVA MARCA */}
+      {isBrandModalOpen && createPortal(
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-white/20">
+                  <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                          <Tag className="w-5 h-5 text-white" />
+                       </div>
+                       <div>
+                          <h3 className="text-base font-black text-slate-900 tracking-tight uppercase leading-none">Nova Marca</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Categoria: {activeTab === 'leve' ? 'Leves' : activeTab === 'pesado' ? 'Pesados' : 'Acessórios'}</p>
+                       </div>
+                    </div>
+                    <button onClick={() => setIsBrandModalOpen(false)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="p-8">
+                     <label className={labelClass}>Nome do Fabricante / Marca</label>
+                     <input 
+                       autoFocus
+                       value={newBrandName}
+                       onChange={e => setNewBrandName(e.target.value)}
+                       className={inputClass}
+                       placeholder="Digite o nome da marca..."
+                       onKeyDown={e => e.key === 'Enter' && handleSaveBrand()}
+                     />
+                  </div>
+                  <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                     <button onClick={() => setIsBrandModalOpen(false)} className="flex-1 py-4 bg-white text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">Cancelar</button>
+                     <button 
+                       onClick={handleSaveBrand}
+                       disabled={!newBrandName.trim()}
+                       className="flex-2 px-8 py-4 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+                     >
+                       Salvar Marca
+                     </button>
+                  </div>
+              </div>
+          </div>,
+          document.body
+      )}
+
       {/* MODAL DE VISUALIZAÇÃO */}
       {viewingDocumentUrl && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl animate-fade-in">
@@ -718,8 +943,8 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                       <p className="text-slate-500 text-sm font-medium leading-relaxed px-4">{confirmModal.message}</p>
                   </div>
                   <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
-                      <button onClick={confirmModal.onConfirm} className="w-full py-5 bg-rose-600 text-white font-black text-xs uppercase tracking-[0.3em] rounded-[1.5rem] shadow-2xl shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95">Sim, Remover Registro</button>
-                      <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="w-full py-5 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.3em] rounded-[1.5rem] border border-slate-200 hover:bg-white hover:text-slate-600 transition-all shadow-sm">Voltar / Cancelar</button>
+                      <button onClick={confirmModal.onConfirm} className="w-full py-5 bg-rose-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] shadow-2xl shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95">Sim, Remover Registro</button>
+                      <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="w-full py-5 bg-white text-slate-400 font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] border border-slate-200 hover:bg-white hover:text-slate-600 transition-all shadow-sm">Voltar / Cancelar</button>
                   </div>
               </div>
           </div>,
