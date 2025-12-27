@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User, UserRole, Signature, AppPermission, Job, Sector } from '../types';
 import { 
   Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, 
-  PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart, Briefcase, Network 
+  PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart, Briefcase, Network, 
+  Eye, EyeOff, RotateCcw, AlertTriangle, Clock, Lock, Copy, Check
 } from 'lucide-react';
 
 interface UserManagementScreenProps {
@@ -17,6 +18,35 @@ interface UserManagementScreenProps {
   jobs: Job[];
   sectors: Sector[];
 }
+
+// Subcomponente para o contador regressivo em tempo real
+const TempPasswordCountdown: React.FC<{ expiresAt: number }> = ({ expiresAt }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    };
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt]);
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
+  if (timeLeft <= 0) {
+    return <span className="text-rose-400 font-black animate-pulse">EXPIRADA</span>;
+  }
+
+  return (
+    <span className="font-mono font-bold">
+      Expira em: {minutes}:{seconds.toString().padStart(2, '0')}
+    </span>
+  );
+};
 
 export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   users,
@@ -31,6 +61,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isAdmin = currentUser.role === 'admin';
 
@@ -38,6 +70,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     name: '',
     username: '',
     password: '',
+    tempPassword: '',
+    tempPasswordExpiresAt: undefined,
     role: 'collaborator',
     sector: '',
     jobTitle: '',
@@ -55,6 +89,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     : users.filter(u => u.id === currentUser.id);
 
   const handleOpenModal = (user?: User) => {
+    setShowPassword(false);
+    setCopied(false);
     if (user) {
       setEditingUser(user);
       setFormData({ 
@@ -68,6 +104,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
         name: '', 
         username: '', 
         password: '', 
+        tempPassword: '',
+        tempPasswordExpiresAt: undefined,
         role: 'collaborator', 
         sector: '', 
         jobTitle: '', 
@@ -118,22 +156,70 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     });
   };
 
+  const handleResetPassword = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!editingUser || !isAdmin) return;
+    
+    if (editingUser.id === currentUser.id) {
+        alert("Para alterar sua própria senha, utilize o campo 'Senha de Acesso'.");
+        return;
+    }
+    
+    // Geração de senha aleatória de 8 caracteres (sem 0, O, 1, I para evitar confusão)
+    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
+    let newPass = "";
+    for (let i = 0; i < 8; i++) {
+        newPass += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    
+    // Expiração curta para teste e segurança: +3 minutos (180.000 ms)
+    const expiry = Date.now() + (3 * 60 * 1000);
+
+    if (window.confirm(`Confirmar geração de senha temporária para "${editingUser.name}"?\n\nEsta senha será válida por apenas 3 minutos.`)) {
+        const updatedUser = {
+            ...editingUser,
+            tempPassword: newPass,
+            tempPasswordExpiresAt: expiry
+        } as User;
+        
+        // 1. Atualiza o estado global imediatamente
+        onUpdateUser(updatedUser);
+
+        // 2. Atualiza o formulário local para exibir no Modal
+        setFormData(prev => ({ 
+            ...prev, 
+            tempPassword: newPass, 
+            tempPasswordExpiresAt: expiry 
+        }));
+
+        setCopied(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (formData.tempPassword) {
+      navigator.clipboard.writeText(formData.tempPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const handleSave = () => {
-    if (!formData.name || !formData.username || !formData.password) {
-      alert("Por favor, preencha nome, usuário e senha.");
+    if (!formData.name || !formData.username) {
+      alert("Por favor, preencha nome e usuário.");
       return;
     }
 
+    if (!editingUser && !formData.password) {
+        alert("Senha é obrigatória para novos usuários.");
+        return;
+    }
+
     const userData = {
+      ...formData,
       id: editingUser ? editingUser.id : Date.now().toString(),
-      name: formData.name,
-      username: formData.username,
-      password: formData.password,
-      role: formData.role as UserRole,
-      sector: formData.sector || '',
-      jobTitle: formData.jobTitle || '',
-      allowedSignatureIds: formData.allowedSignatureIds || [],
-      permissions: formData.permissions || []
     } as User;
 
     if (editingUser) {
@@ -144,6 +230,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     setIsModalOpen(false);
   };
 
+  const isEditingSelf = editingUser?.id === currentUser.id;
   const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed";
   const selectClass = "w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all appearance-none cursor-pointer disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed";
   const labelClass = "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1";
@@ -289,9 +376,80 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                       <label className={labelClass}>Usuário de Acesso</label>
                       <input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className={inputClass} disabled={!isAdmin} placeholder="ex: nome.sobrenome" />
                     </div>
+                    
+                    {/* SEGURANÇA E RESET DE SENHA */}
                     <div>
-                      <label className={labelClass}>Senha</label>
-                      <input type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className={inputClass} placeholder="Senha segura" />
+                      <label className={labelClass}>Segurança de Acesso</label>
+                      {isEditingSelf || !editingUser ? (
+                        <div className="relative">
+                           <input 
+                             type={showPassword ? "text" : "password"} 
+                             value={formData.password} 
+                             onChange={e => setFormData({...formData, password: e.target.value})} 
+                             className={inputClass} 
+                             placeholder="Digite a senha" 
+                           />
+                           <button 
+                             type="button"
+                             onClick={() => setShowPassword(!showPassword)}
+                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                           >
+                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                           </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                           <div className="bg-slate-100 rounded-xl p-3 border border-slate-200 flex items-center gap-3 text-slate-400 italic text-xs">
+                             <Lock className="w-4 h-4" /> Senha protegida (visível apenas ao usuário)
+                           </div>
+                           
+                           {isAdmin && (
+                             <button 
+                               type="button"
+                               onClick={handleResetPassword}
+                               className="w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-[0.98]"
+                             >
+                               <RotateCcw className="w-4 h-4" /> Resetar para Senha Temporária
+                             </button>
+                           )}
+
+                           {formData.tempPassword && formData.tempPasswordExpiresAt && (
+                              <div className="p-5 bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl text-white shadow-xl animate-slide-up border border-white/20 relative overflow-hidden group">
+                                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Key className="w-16 h-16" />
+                                 </div>
+                                 
+                                 <div className="relative z-10 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                       <div className="flex items-center gap-2">
+                                          <AlertTriangle className="w-4 h-4 text-amber-200" />
+                                          <span className="text-[10px] font-black uppercase tracking-widest">Nova Senha Gerada</span>
+                                       </div>
+                                       <button 
+                                         onClick={copyToClipboard}
+                                         className="flex items-center gap-1.5 px-2 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-[9px] font-bold uppercase tracking-wider"
+                                       >
+                                         {copied ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
+                                         {copied ? 'Copiado!' : 'Copiar'}
+                                       </button>
+                                    </div>
+                                    
+                                    <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl flex items-center justify-center border border-white/10 shadow-inner">
+                                       <span className="font-mono text-2xl font-black tracking-[0.2em]">{formData.tempPassword}</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                                       <div className="flex items-center gap-2 text-amber-100">
+                                          <Clock className="w-4 h-4" /> 
+                                          <TempPasswordCountdown expiresAt={formData.tempPasswordExpiresAt} />
+                                       </div>
+                                       <span className="text-[9px] font-medium text-amber-200/60 italic">Troca obrigatória no login</span>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="relative">
@@ -395,7 +553,3 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     </div>
   );
 };
-
-const ChevronDown = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-);

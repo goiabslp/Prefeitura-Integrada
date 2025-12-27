@@ -103,12 +103,26 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = (u: string, p: string) => {
-    const user = users.find(user => user.username === u && user.password === p);
-    if (user) {
+    const user = users.find(user => user.username === u);
+    if (!user) return false;
+
+    // Verifica senha permanente
+    if (user.password === p) {
       setCurrentUser(user);
       setCurrentView('home');
       return true;
     }
+
+    // Verifica senha temporária
+    if (user.tempPassword && user.tempPassword === p && user.tempPasswordExpiresAt) {
+      const now = Date.now();
+      if (now < user.tempPasswordExpiresAt) {
+        setCurrentUser(user);
+        setCurrentView('home');
+        return true;
+      }
+    }
+
     return false;
   };
 

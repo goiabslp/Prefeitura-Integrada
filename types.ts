@@ -120,6 +120,8 @@ export interface User {
   id: string;
   username: string;
   password?: string;
+  tempPassword?: string;
+  tempPasswordExpiresAt?: number;
   name: string;
   role: UserRole;
   sector?: string;
