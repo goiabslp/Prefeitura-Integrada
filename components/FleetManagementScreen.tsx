@@ -8,7 +8,7 @@ import {
   MapPin, Hash, Palette, Calendar, Layers, Network, ChevronDown, Check,
   PenTool, Upload, FileText, Eye, Download, FileCheck, Camera, Image as ImageIcon,
   ArrowLeft, Fuel, Gauge, ShieldCheck, Activity, AlertTriangle, Hammer, ClipboardCheck,
-  ShieldAlert, User, Briefcase, Tag
+  ShieldAlert, User, Briefcase, Tag, Flame
 } from 'lucide-react';
 
 interface FleetManagementScreenProps {
@@ -24,7 +24,6 @@ interface FleetManagementScreenProps {
   onBack: () => void;
 }
 
-// Icones auxiliares que não estão no Lucide padrão
 const Gavel = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m14.5 12.5-8 8a2.11 2.11 0 1 1-3-3l8-8"/><path d="m16 16 2 2"/><path d="m19 13 2 2"/><path d="m5 5 2 2"/><path d="m2 8 2 2"/><path d="m15 7 3 3-4 4-3-3z"/></svg>
 );
@@ -49,6 +48,8 @@ const MAINTENANCE_OPTIONS: { value: MaintenanceStatus, label: string, color: str
   { value: 'andamento', label: 'Em andamento', color: 'amber' },
   { value: 'vencido', label: 'Vencido', color: 'rose' },
 ];
+
+const FUEL_OPTIONS = ['ALCOOL', 'GASOLINA', 'DIESEL'] as const;
 
 export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
   vehicles, sectors, persons, jobs, brands, onAddVehicle, onUpdateVehicle, onDeleteVehicle, onAddBrand, onBack
@@ -97,7 +98,8 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
     documentName: '',
     vehicleImageUrl: '',
     status: 'operacional',
-    maintenanceStatus: 'em_dia'
+    maintenanceStatus: 'em_dia',
+    fuelTypes: []
   });
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
   const handleOpenModal = (v?: Vehicle) => {
     if (v) {
       setEditingVehicle(v);
-      setFormData({ ...v });
+      setFormData({ ...v, fuelTypes: v.fuelTypes || [] });
     } else {
       setEditingVehicle(null);
       setFormData({ 
@@ -134,7 +136,8 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
         documentName: '',
         vehicleImageUrl: '',
         status: 'operacional',
-        maintenanceStatus: 'em_dia'
+        maintenanceStatus: 'em_dia',
+        fuelTypes: []
       });
     }
     setSectorSearch('');
@@ -181,12 +184,23 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
     if (!newBrandName.trim()) return;
     const brand: VehicleBrand = {
       id: `br-${Date.now()}-${Math.random()}`,
-      name: newBrandName.trim(),
+      name: newBrandName.trim().toUpperCase(),
       category: activeTab
     };
     onAddBrand(brand);
     setNewBrandName('');
     setIsBrandModalOpen(false);
+  };
+
+  const toggleFuel = (fuel: string) => {
+    setFormData(prev => {
+      const current = prev.fuelTypes || [];
+      if (current.includes(fuel)) {
+        return { ...prev, fuelTypes: current.filter(f => f !== fuel) };
+      } else {
+        return { ...prev, fuelTypes: [...current, fuel] };
+      }
+    });
   };
 
   const handleSave = () => {
@@ -300,19 +314,13 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
           <div className="relative flex-1 md:w-96 group">
             <input 
               type="text" 
-              placeholder="Buscar por placa, modelo ou marca..."
+              placeholder="Placa, Modelo ou Marca..."
               className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           </div>
-          <button 
-            onClick={() => setIsBrandModalOpen(true)}
-            className="whitespace-nowrap px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
-          >
-            <Tag className="w-3.5 h-3.5" /> Adicionar Nova Marca
-          </button>
         </div>
       </div>
 
@@ -335,7 +343,6 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                         </div>
                       )}
                       
-                      {/* Badge de Status no Card */}
                       <div className={`absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border backdrop-blur-md bg-white/90 text-${statusCfg.color}-700 border-${statusCfg.color}-200 shadow-lg`}>
                         <statusCfg.icon className="w-3 h-3" />
                         {statusCfg.label}
@@ -378,6 +385,13 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                             <span className="bg-slate-900 text-white font-mono text-[9px] px-2 py-0.5 rounded border border-white/10 shadow-sm tracking-[0.15em] shrink-0">{v.plate}</span>
                             <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{v.brand} • {v.year}</span>
                         </div>
+                        {v.fuelTypes && v.fuelTypes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {v.fuelTypes.map(f => (
+                              <span key={f} className="text-[8px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded uppercase tracking-tighter">{f}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-4 border-t border-slate-50 space-y-3">
@@ -455,7 +469,6 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
               <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
                  <div className="grid grid-cols-1 lg:grid-cols-12 h-full">
                     
-                    {/* COLUNA ESQUERDA: IMAGEM + STATUS DINÂMICO */}
                     <div className="lg:col-span-5 p-10 border-r border-slate-100 bg-white flex flex-col gap-8">
                        <div className="space-y-4">
                           <label className={labelClass}><Camera className="w-3.5 h-3.5 inline mr-2" /> Fotografia do Veículo</label>
@@ -484,24 +497,14 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                </div>
                              )}
                           </div>
-                          {formData.vehicleImageUrl && (
-                            <button 
-                              onClick={() => setFormData(prev => ({...prev, vehicleImageUrl: ''}))}
-                              className="w-full py-3.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-2xl transition-all text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2"
-                            >
-                               <Trash2 className="w-4 h-4" /> Descartar Fotografia
-                            </button>
-                          )}
                        </div>
 
-                       {/* Status e Manutenção - CUSTOM DROPDOWNS */}
                        <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 space-y-8">
                           <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                              <Activity className="w-4 h-4" /> Indicadores Operacionais
                           </h4>
                           
                           <div className="space-y-6">
-                            {/* Custom Status Dropdown */}
                             <div className="relative" ref={statusDropdownRef}>
                                <label className={labelClass}>Status de Disponibilidade</label>
                                <button 
@@ -541,7 +544,6 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                )}
                             </div>
 
-                            {/* Custom Maintenance Dropdown */}
                             <div className="relative" ref={maintDropdownRef}>
                                <label className={labelClass}>Condição de Manutenção</label>
                                <button 
@@ -584,12 +586,11 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                        </div>
                     </div>
 
-                    {/* COLUNA DIREITA: INFORMAÇÕES */}
                     <div className="lg:col-span-7 p-10 space-y-10">
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                           <div className="md:col-span-2">
                             <label className={labelClass}><Layers className="w-4 h-4 inline mr-2 text-indigo-500" /> Identificação do Modelo</label>
-                            <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} className={inputClass} placeholder="Ex: Mercedes-Benz Sprinter 415 CDI" />
+                            <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value.toUpperCase()})} className={inputClass} placeholder="Ex: CRONOS" />
                           </div>
                           
                           <div>
@@ -670,9 +671,34 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
 
                           <div>
                             <label className={labelClass}><Palette className="w-4 h-4 inline mr-2 text-indigo-500" /> Cor Predominante</label>
-                            <input value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className={inputClass} placeholder="Ex: Branco Ártico" />
+                            <input value={formData.color} onChange={e => setFormData({...formData, color: e.target.value.toUpperCase()})} className={inputClass} placeholder="Ex: BRANCA" />
                           </div>
                           
+                          {/* CAMPO DE COMBUSTÍVEL - MULTISELEÇÃO MODERNA */}
+                          <div className="md:col-span-2">
+                            <label className={labelClass}><Flame className="w-4 h-4 inline mr-2 text-indigo-500" /> Combustível (Multiseleção)</label>
+                            <div className="flex flex-wrap gap-2 p-4 bg-slate-50/50 border border-slate-200 rounded-[2rem]">
+                              {FUEL_OPTIONS.map(fuel => {
+                                const isSelected = formData.fuelTypes?.includes(fuel);
+                                return (
+                                  <button
+                                    key={fuel}
+                                    type="button"
+                                    onClick={() => toggleFuel(fuel)}
+                                    className={`px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all border-2 flex items-center gap-2 active:scale-95
+                                      ${isSelected 
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                                        : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200 hover:text-indigo-600'}
+                                    `}
+                                  >
+                                    {isSelected ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5 opacity-40" />}
+                                    {fuel}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
                           <div className="md:col-span-2 relative" ref={sectorDropdownRef}>
                             <label className={labelClass}><Network className="w-4 h-4 inline mr-2 text-indigo-500" /> Setor de Lotação / Atribuição</label>
                             <div 
@@ -697,7 +723,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                   <input 
                                     type="text"
                                     autoFocus
-                                    placeholder="Pesquisar setor administrativo..."
+                                    placeholder="Pesquisar setor..."
                                     className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-full"
                                     value={sectorSearch}
                                     onChange={(e) => setSectorSearch(e.target.value)}
@@ -726,7 +752,6 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                             )}
                           </div>
 
-                          {/* CAMPO: RESPONSÁVEL PELO VEÍCULO */}
                           <div className="md:col-span-2 relative" ref={responsibleDropdownRef}>
                             <label className={labelClass}><User className="w-4 h-4 inline mr-2 text-indigo-500" /> Responsável pelo Veículo</label>
                             <div 
@@ -751,7 +776,7 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                   <input 
                                     type="text"
                                     autoFocus
-                                    placeholder="Pesquisar responsável (nome)..."
+                                    placeholder="Pesquisar responsável..."
                                     className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-full"
                                     value={responsibleSearch}
                                     onChange={(e) => setResponsibleSearch(e.target.value)}
@@ -759,6 +784,17 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
                                   />
                                 </div>
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                   <button
+                                     type="button"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setFormData({...formData, responsiblePersonId: ''});
+                                       setIsResponsibleDropdownOpen(false);
+                                     }}
+                                     className="w-full flex items-center p-4 rounded-2xl text-slate-400 hover:bg-slate-50 italic text-sm"
+                                   >
+                                     Remover Responsável
+                                   </button>
                                    {filteredPersons.map((person) => (
                                      <button
                                        key={person.id}
@@ -787,55 +823,11 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
 
                           <div>
                             <label className={labelClass}><Fuel className="w-4 h-4 inline mr-2 text-indigo-500" /> Código Renavam</label>
-                            <input value={formData.renavam} onChange={e => setFormData({...formData, renavam: e.target.value})} className={`${inputClass} font-mono`} placeholder="00000000000" />
+                            <input value={formData.renavam} onChange={e => setFormData({...formData, renavam: e.target.value})} className={`${inputClass} font-mono`} placeholder="01332550344" />
                           </div>
                           <div>
                             <label className={labelClass}><ShieldCheck className="w-4 h-4 inline mr-2 text-indigo-500" /> Número do Chassi (VIN)</label>
-                            <input value={formData.chassis} onChange={e => setFormData({...formData, chassis: e.target.value.toUpperCase()})} className={`${inputClass} font-mono uppercase`} placeholder="9BW..." />
-                          </div>
-                       </div>
-
-                       {/* UPLOAD DE DOCUMENTO (CRLV) */}
-                       <div className="pt-10 border-t border-slate-100">
-                          <label className={labelClass}><FileText className="w-4 h-4 inline mr-2 text-indigo-500" /> Documento CRLV Digitalizado</label>
-                          <div className="flex flex-col sm:flex-row gap-5 items-center">
-                             <div 
-                               onClick={() => fileInputRef.current?.click()}
-                               className={`flex-1 w-full border-2 border-dashed rounded-3xl p-6 flex items-center gap-5 transition-all cursor-pointer group shadow-sm
-                                 ${formData.documentUrl ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 bg-slate-50/50 hover:border-indigo-400 hover:bg-white'}
-                               `}
-                             >
-                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,application/pdf" className="hidden" />
-                                <div className={`p-4 rounded-2xl transition-all shadow-md
-                                  ${formData.documentUrl ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'}
-                                `}>
-                                   <Upload className="w-6 h-6" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                   <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] truncate">{formData.documentUrl ? 'Arquivo Carregado' : 'Anexar Documento CRLV'}</p>
-                                   <p className="text-[9px] text-slate-400 font-bold mt-1 truncate uppercase">{formData.documentName || 'Formatos: PDF, JPG, PNG'}</p>
-                                </div>
-                                {formData.documentUrl && <div className="ml-auto bg-emerald-100 text-emerald-600 p-2 rounded-full"><FileCheck className="w-5 h-5" /></div>}
-                             </div>
-                             
-                             {formData.documentUrl && (
-                                <div className="flex gap-2 w-full sm:w-auto">
-                                   <button 
-                                     onClick={() => setViewingDocumentUrl({url: formData.documentUrl!, name: formData.documentName!, type: 'doc'})}
-                                     className="flex-1 sm:flex-none p-4 bg-white border border-slate-200 text-indigo-600 rounded-3xl shadow-sm hover:shadow-lg transition-all active:scale-95"
-                                     title="Ver Documento"
-                                   >
-                                      <Eye className="w-6 h-6" />
-                                   </button>
-                                   <button 
-                                     onClick={() => setFormData(prev => ({...prev, documentUrl: '', documentName: ''}))}
-                                     className="flex-1 sm:flex-none p-4 bg-white border border-slate-200 text-rose-600 rounded-3xl shadow-sm hover:shadow-lg transition-all active:scale-95"
-                                     title="Remover Documento"
-                                   >
-                                      <Trash2 className="w-6 h-6" />
-                                   </button>
-                                </div>
-                             )}
+                            <input value={formData.chassis} onChange={e => setFormData({...formData, chassis: e.target.value.toUpperCase()})} className={`${inputClass} font-mono uppercase`} placeholder="8AP..." />
                           </div>
                        </div>
                     </div>
@@ -844,11 +836,9 @@ export const FleetManagementScreen: React.FC<FleetManagementScreenProps> = ({
 
               <div className="px-10 py-8 border-t border-slate-100 bg-white flex justify-between items-center shrink-0">
                  <button onClick={() => setIsModalOpen(false)} className="px-8 py-4 font-black text-slate-400 hover:text-rose-600 transition-all uppercase text-[11px] tracking-[0.3em]">Descartar Alterações</button>
-                 <div className="flex items-center gap-4">
-                    <button onClick={handleSave} className="px-12 py-5 bg-slate-900 text-white font-black rounded-3xl hover:bg-indigo-600 shadow-2xl shadow-indigo-600/20 flex items-center gap-4 transition-all uppercase text-[11px] tracking-[0.3em] active:scale-95">
-                        <Save className="w-5 h-5" /> Salvar Registro Patrimonial
-                    </button>
-                 </div>
+                 <button onClick={handleSave} className="px-12 py-5 bg-slate-900 text-white font-black rounded-3xl hover:bg-indigo-600 shadow-2xl flex items-center gap-4 transition-all uppercase text-[11px] tracking-[0.3em] active:scale-95">
+                    <Save className="w-5 h-5" /> Salvar Registro Patrimonial
+                 </button>
               </div>
             </div>
           </div>,

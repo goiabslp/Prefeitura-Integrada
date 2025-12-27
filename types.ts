@@ -111,9 +111,9 @@ export interface AppState {
 
 export type UserRole = 'admin' | 'collaborator' | 'licitacao' | 'compras';
 
-export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias' | 'parent_compras_pedidos' | 'parent_frotas';
+export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias' | 'parent_compras_pedidos' | 'parent_frotas' | 'parent_agendamento_veiculo';
 
-export type BlockType = 'oficio' | 'compras' | 'licitacao' | 'diarias';
+export type BlockType = 'oficio' | 'compras' | 'licitacao' | 'diarias' | 'agendamento';
 
 export interface User {
   id: string;
@@ -216,4 +216,22 @@ export interface Vehicle {
   vehicleImageUrl?: string;
   status: VehicleStatus;
   maintenanceStatus: MaintenanceStatus;
+  fuelTypes?: string[];
+}
+
+export type ScheduleStatus = 'pendente' | 'confirmado' | 'em_curso' | 'concluido' | 'cancelado';
+
+export interface VehicleSchedule {
+  id: string;
+  vehicleId: string;
+  driverId: string;
+  serviceSectorId?: string;
+  requesterPersonId?: string;
+  departureDateTime: string;
+  returnDateTime: string;
+  destination: string;
+  purpose: string;
+  status: ScheduleStatus;
+  requesterId: string;
+  createdAt: string;
 }

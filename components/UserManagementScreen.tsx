@@ -5,7 +5,7 @@ import { User, UserRole, Signature, AppPermission, Job, Sector } from '../types'
 import { 
   Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, 
   PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart, Briefcase, Network, 
-  Eye, EyeOff, RotateCcw, AlertTriangle, Clock, Lock, Copy, Check, Info, Trash
+  Eye, EyeOff, RotateCcw, AlertTriangle, Clock, Lock, Copy, Check, Info, Trash, ToggleRight
 } from 'lucide-react';
 
 interface UserManagementScreenProps {
@@ -82,7 +82,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     sector: '',
     jobTitle: '',
     allowedSignatureIds: [],
-    permissions: ['parent_criar_oficio']
+    permissions: ['parent_criar_oficio', 'parent_agendamento_veiculo']
   });
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -104,10 +104,16 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     setCopied(false);
     if (user) {
       setEditingUser(user);
+      // Garantindo que agendamento de veículo esteja sempre presente no carregamento
+      const basePerms = user.permissions || [];
+      const perms = basePerms.includes('parent_agendamento_veiculo') 
+        ? basePerms 
+        : [...basePerms, 'parent_agendamento_veiculo' as AppPermission];
+
       setFormData({ 
         ...user, 
         allowedSignatureIds: user.allowedSignatureIds || [],
-        permissions: user.permissions || []
+        permissions: perms
       }); 
     } else {
       setEditingUser(null);
@@ -121,7 +127,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
         sector: '', 
         jobTitle: '', 
         allowedSignatureIds: [],
-        permissions: ['parent_criar_oficio']
+        permissions: ['parent_criar_oficio', 'parent_agendamento_veiculo']
       });
     }
     setIsModalOpen(true);
@@ -134,6 +140,11 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     
     if (newRole !== 'admin' && newRole !== 'compras') {
       updatedPermissions = updatedPermissions.filter(p => p !== 'parent_compras_pedidos');
+    }
+
+    // Mantendo agendamento sempre
+    if (!updatedPermissions.includes('parent_agendamento_veiculo')) {
+      updatedPermissions.push('parent_agendamento_veiculo');
     }
     
     setFormData({
@@ -156,7 +167,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   };
 
   const toggleAppPermission = (perm: AppPermission) => {
-    if (!isAdmin) return;
+    if (!isAdmin || perm === 'parent_agendamento_veiculo') return;
     setFormData(prev => {
         const currentPerms = prev.permissions || [];
         if (currentPerms.includes(perm)) {
@@ -226,8 +237,15 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
         return;
     }
 
+    // Injetando agendamento caso tenha sido removido por algum erro
+    const perms = formData.permissions || [];
+    if (!perms.includes('parent_agendamento_veiculo')) {
+      perms.push('parent_agendamento_veiculo');
+    }
+
     const userData = {
       ...formData,
+      permissions: perms,
       id: editingUser ? editingUser.id : Date.now().toString(),
     } as User;
 
@@ -251,6 +269,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     { id: 'parent_compras', label: 'Módulo: Compras' },
     { id: 'parent_licitacao', label: 'Módulo: Licitação' },
     { id: 'parent_diarias', label: 'Módulo: Diárias e Custeio' },
+    { id: 'parent_agendamento_veiculo', label: 'Agendamento de Veículos (Obrigatório)' },
     { id: 'parent_admin', label: 'Administrativo' },
     { id: 'parent_compras_pedidos', label: 'Gestão de Pedidos (Compras)' }
   ];
@@ -522,7 +541,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                     <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><LayoutGrid className="w-4 h-4" /> Módulos Autorizados</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {permissionsList.map(perm => {
-                            const isChecked = formData.permissions?.includes(perm.id);
+                            const isScheduling = perm.id === 'parent_agendamento_veiculo';
+                            const isChecked = isScheduling || formData.permissions?.includes(perm.id);
                             const isPurchaseManagement = perm.id === 'parent_compras_pedidos';
                             const isAllowedForRole = isAdmin && (!isPurchaseManagement || (formData.role === 'admin' || formData.role === 'compras'));
 
@@ -530,18 +550,22 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                                 <label 
                                   key={perm.id} 
                                   className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all 
-                                    ${!isAllowedForRole ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'cursor-pointer'}
+                                    ${(!isAllowedForRole || isScheduling) ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'cursor-pointer'}
                                     ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}
                                   `}
                                 >
                                     <input 
                                       type="checkbox" 
                                       checked={isChecked} 
-                                      disabled={!isAllowedForRole}
+                                      disabled={!isAllowedForRole || isScheduling}
                                       onChange={() => toggleAppPermission(perm.id)} 
                                       className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-indigo-500" 
                                     />
-                                    <span className="text-xs font-bold text-slate-700">{perm.label}</span>
+                                    <div className="flex flex-col">
+                                      <span className={`text-xs font-bold ${isChecked ? 'text-indigo-900' : 'text-slate-700'}`}>{perm.label}</span>
+                                      {isScheduling && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Módulo Global Ativo</span>}
+                                    </div>
+                                    {isChecked && <CheckCircle2 className="w-4 h-4 text-indigo-500 ml-auto" />}
                                 </label>
                             );
                         })}
@@ -596,6 +620,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                     <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
                         <button 
                             onClick={confirmModal.onConfirm}
+                            // Fix: Added missing quotes around the default branch of the ternary operator for button styles
                             className={`w-full py-4 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-[0.98] ${
                                 confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 
                                 confirmModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 

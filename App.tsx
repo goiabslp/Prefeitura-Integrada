@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment, Vehicle, VehicleBrand 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment, Vehicle, VehicleBrand, VehicleSchedule 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS, DEFAULT_PERSONS } from './constants';
 import * as db from './services/dbService';
@@ -19,13 +19,14 @@ import { UserManagementScreen } from './components/UserManagementScreen';
 import { EntityManagementScreen } from './components/EntityManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
 import { FleetManagementScreen } from './components/FleetManagementScreen';
+import { VehicleSchedulingScreen } from './components/VehicleSchedulingScreen';
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
 import { FinalizedActionBar } from './components/FinalizedActionBar';
 import { PurchaseManagementScreen } from './components/PurchaseManagementScreen';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor' | 'purchase-management'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor' | 'purchase-management' | 'vehicle-scheduling'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
   const [activeBlock, setActiveBlock] = useState<BlockType | null>(null);
@@ -40,19 +41,16 @@ const App: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>(DEFAULT_JOBS);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [schedules, setSchedules] = useState<VehicleSchedule[]>([]);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [adminTab, setAdminTab] = useState<string | null>(null);
   const [isFinalizedView, setIsFinalizedView] = useState(false);
   
-  // Feedback System (Replacement for Alert)
   const [successOverlay, setSuccessOverlay] = useState<{ show: boolean, protocol: string } | null>(null);
-
-  // States for background download from history
   const [snapshotToDownload, setSnapshotToDownload] = useState<AppState | null>(null);
   const backgroundPreviewRef = useRef<HTMLDivElement>(null);
-
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,61 +65,89 @@ const App: React.FC = () => {
         const savedSettings = await db.getGlobalSettings();
         if (savedSettings) setAppState(savedSettings);
         
-        // Carregamento de Pessoas
         const savedPersons = await db.getAllPersons();
         if (savedPersons.length > 0) {
           setPersons(savedPersons);
         } else {
-          for (const p of DEFAULT_PERSONS) {
-            await db.savePerson(p);
-          }
+          for (const p of DEFAULT_PERSONS) await db.savePerson(p);
           setPersons(DEFAULT_PERSONS);
         }
         
-        // Carregamento de Setores
         const savedSectors = await db.getAllSectors();
         if (savedSectors.length > 0) {
           setSectors(savedSectors);
         } else {
-          for (const s of DEFAULT_SECTORS) {
-            await db.saveSector(s);
-          }
+          for (const s of DEFAULT_SECTORS) await db.saveSector(s);
           setSectors(DEFAULT_SECTORS);
         }
         
-        // Carregamento de Cargos
         const savedJobs = await db.getAllJobs();
         if (savedJobs.length > 0) {
           setJobs(savedJobs);
         } else {
-          for (const j of DEFAULT_JOBS) {
-            await db.saveJob(j);
-          }
+          for (const j of DEFAULT_JOBS) await db.saveJob(j);
           setJobs(DEFAULT_JOBS);
         }
 
-        // Carregamento de Veículos
-        const savedVehicles = await db.getAllVehicles();
-        setVehicles(savedVehicles);
-
-        // Carregamento de Marcas
+        // MARCAS INICIAIS
         const savedBrands = await db.getAllBrands();
         if (savedBrands.length === 0) {
-          const defaultLeves = ['Toyota', 'Volkswagen', 'Ford', 'Chevrolet', 'Honda', 'Hyundai', 'Renault', 'Nissan', 'Fiat', 'Peugeot', 'Citroën', 'BMW', 'Mercedes-Benz', 'Audi', 'Volvo', 'Kia', 'Mazda', 'Subaru', 'Mitsubishi', 'Jeep', 'RAM', 'Tesla', 'BYD', 'Chery', 'GWM', 'Suzuki', 'Lexus', 'Porsche', 'Land Rover', 'Jaguar', 'Mini', 'Skoda', 'Seat'];
-          const defaultPesados = ['Caterpillar', 'Komatsu', 'Volvo CE', 'John Deere', 'Case', 'New Holland', 'JCB', 'Liebherr', 'Hitachi', 'Doosan', 'Hyundai CE', 'Sany', 'XCMG', 'Zoomlion', 'Terex', 'Bobcat', 'Wirtgen', 'Manitou', 'Bell', 'CNH', 'Sandvik', 'Atlas Copco'];
-          
+          const defaultLeves = ['FIAT', 'TOYOTA', 'VOLKSWAGEN', 'FORD', 'CHEVROLET', 'HONDA', 'HYUNDAI', 'RENAULT', 'NISSAN', 'PEUGEOT', 'CITROËN', 'BMW', 'JEEP', 'RAM', 'BYD', 'GWM'];
+          const defaultPesados = ['CATERPILLAR', 'KOMATSU', 'VOLVO CE', 'JOHN DEERE', 'CASE', 'NEW HOLLAND', 'JCB', 'XCMG'];
           const initialBrands: VehicleBrand[] = [
             ...defaultLeves.map(n => ({ id: `br-${Date.now()}-${Math.random()}`, name: n, category: 'leve' as const })),
             ...defaultPesados.map(n => ({ id: `br-${Date.now()}-${Math.random()}`, name: n, category: 'pesado' as const }))
           ];
-          
-          for (const b of initialBrands) {
-            await db.saveBrand(b);
-          }
+          for (const b of initialBrands) await db.saveBrand(b);
           setBrands(initialBrands);
         } else {
           setBrands(savedBrands);
         }
+
+        // VEÍCULOS INICIAIS
+        const savedVehicles = await db.getAllVehicles();
+        if (savedVehicles.length === 0) {
+          const initialVehicles: Vehicle[] = [
+            {
+              id: 'v-cronos-01',
+              type: 'leve',
+              model: 'CRONOS',
+              plate: 'RVY7C56',
+              brand: 'FIAT',
+              year: '2022',
+              color: 'BRANCA',
+              renavam: '01332550344',
+              chassis: '8AP359AFDNU226571',
+              sectorId: 'sec5',
+              status: 'operacional',
+              maintenanceStatus: 'em_dia',
+              fuelTypes: ['ALCOOL', 'GASOLINA']
+            },
+            {
+              id: 'v-toro-01',
+              type: 'leve',
+              model: 'TORO',
+              plate: 'SIP4E08',
+              brand: 'FIAT',
+              year: '2023',
+              color: 'BRANCA',
+              renavam: '01357061495',
+              chassis: '9882261ZPPKF34145',
+              sectorId: 'sec12',
+              responsiblePersonId: 'p3',
+              status: 'operacional',
+              maintenanceStatus: 'em_dia',
+              fuelTypes: ['DIESEL']
+            }
+          ];
+          for (const v of initialVehicles) await db.saveVehicle(v);
+          setVehicles(initialVehicles);
+        } else {
+          setVehicles(savedVehicles);
+        }
+
+        const savedSchedules = await db.getAllSchedules();
+        setSchedules(savedSchedules);
 
         const counterValue = await db.getGlobalCounter();
         setGlobalCounter(counterValue);
@@ -136,67 +162,39 @@ const App: React.FC = () => {
   const handleLogin = (u: string, p: string) => {
     const user = users.find(user => user.username === u);
     if (!user) return false;
-
-    // Verifica senha permanente
     if (user.password === p) {
       setCurrentUser(user);
       setCurrentView('home');
       return true;
     }
-
-    // Verifica senha temporária
     if (user.tempPassword && user.tempPassword === p && user.tempPasswordExpiresAt) {
-      const now = Date.now();
-      if (now < user.tempPasswordExpiresAt) {
+      if (Date.now() < user.tempPasswordExpiresAt) {
         setCurrentUser(user);
         setCurrentView('home');
         return true;
       }
     }
-
     return false;
   };
 
   const handleFinish = async () => {
     if (!currentUser || !activeBlock) return;
-    
     let finalOrder: Order;
-
     if (editingOrder) {
       const updatedSnapshot = JSON.parse(JSON.stringify(appState));
       updatedSnapshot.content.protocol = editingOrder.protocol; 
-
-      finalOrder = {
-        ...editingOrder,
-        title: appState.content.title,
-        documentSnapshot: updatedSnapshot
-      };
+      finalOrder = { ...editingOrder, title: appState.content.title, documentSnapshot: updatedSnapshot };
       await db.saveOrder(finalOrder);
       setOrders(prev => prev.map(o => o.id === finalOrder.id ? finalOrder : o));
     } else {
       const nextVal = await db.incrementGlobalCounter();
       setGlobalCounter(nextVal);
-      
       const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
       const year = new Date().getFullYear();
-      const prefix = activeBlock === 'oficio' ? 'OFC' : 
-                     activeBlock === 'compras' ? 'COM' : 
-                     activeBlock === 'diarias' ? 'DIA' : 'LIC';
-      
+      const prefix = activeBlock === 'oficio' ? 'OFC' : activeBlock === 'compras' ? 'COM' : activeBlock === 'diarias' ? 'DIA' : 'LIC';
       const protocolString = `${prefix}-${year}-${randomPart}`;
-
       const finalSnapshot = JSON.parse(JSON.stringify(appState));
       finalSnapshot.content.protocol = protocolString; 
-
-      const initialHistory: StatusMovement[] = [];
-      if (activeBlock === 'compras') {
-        initialHistory.push({
-          statusLabel: 'Criação do Pedido',
-          date: new Date().toISOString(),
-          userName: currentUser.name
-        });
-      }
-
       finalOrder = {
         id: Date.now().toString(),
         protocol: protocolString,
@@ -208,14 +206,13 @@ const App: React.FC = () => {
         blockType: activeBlock,
         documentSnapshot: finalSnapshot,
         paymentStatus: activeBlock === 'diarias' ? 'pending' : undefined,
-        statusHistory: initialHistory,
+        statusHistory: activeBlock === 'compras' ? [{ statusLabel: 'Criação do Pedido', date: new Date().toISOString(), userName: currentUser.name }] : [],
         attachments: []
       };
       await db.saveOrder(finalOrder);
       setOrders(prev => [...prev, finalOrder]);
       setAppState(finalSnapshot); 
     }
-    
     setIsFinalizedView(true);
     setIsAdminSidebarOpen(false);
   };
@@ -226,11 +223,7 @@ const App: React.FC = () => {
     setIsDownloading(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsDownloading(false);
-    
-    setSuccessOverlay({
-        show: true,
-        protocol: appState.content.protocol || lastOrder?.protocol || 'ERRO-PROTOCOLO'
-    });
+    setSuccessOverlay({ show: true, protocol: appState.content.protocol || lastOrder?.protocol || 'ERRO-PROTOCOLO' });
   };
 
   const handleEditOrder = (order: Order) => {
@@ -248,17 +241,8 @@ const App: React.FC = () => {
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
         if (o.status === status) return o;
-        const newMovement: StatusMovement = {
-          statusLabel: status === 'approved' ? 'Aprovação Administrativa' : 'Rejeição',
-          date: new Date().toISOString(),
-          userName: currentUser.name,
-          justification
-        };
-        const updated = { 
-          ...o, 
-          status,
-          statusHistory: [...(o.statusHistory || []), newMovement]
-        };
+        const newMovement: StatusMovement = { statusLabel: status === 'approved' ? 'Aprovação Administrativa' : 'Rejeição', date: new Date().toISOString(), userName: currentUser.name, justification };
+        const updated = { ...o, status, statusHistory: [...(o.statusHistory || []), newMovement] };
         db.saveOrder(updated);
         return updated;
       }
@@ -307,11 +291,7 @@ const App: React.FC = () => {
   const handleUpdatePaymentStatus = async (orderId: string, status: 'pending' | 'paid') => {
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
-        const updated = { 
-          ...o, 
-          paymentStatus: status,
-          paymentDate: status === 'paid' ? new Date().toISOString() : undefined
-        };
+        const updated = { ...o, paymentStatus: status, paymentDate: status === 'paid' ? new Date().toISOString() : undefined };
         db.saveOrder(updated);
         return updated;
       }
@@ -320,25 +300,13 @@ const App: React.FC = () => {
     setOrders(updatedOrders);
   };
 
-  const performDownload = (elementId: string, filename: string) => {
-    const element = document.getElementById(elementId);
-    if (!element) return Promise.reject("Element not found");
-    const opt = {
-      margin: 0,
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'css' }
-    };
-    // @ts-ignore
-    return window.html2pdf().from(element).set(opt).save();
-  };
-
   const handleDownloadPdf = () => {
     setIsDownloading(true);
-    performDownload('preview-scaler', `${appState.content.title || 'documento'}.pdf`)
-      .finally(() => setIsDownloading(false));
+    const element = document.getElementById('preview-scaler');
+    if (!element) return;
+    const opt = { margin: 0, filename: `${appState.content.title || 'documento'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0, scrollX: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: 'css' } };
+    // @ts-ignore
+    window.html2pdf().from(element).set(opt).save().finally(() => setIsDownloading(false));
   };
 
   const handleDownloadFromHistory = async (order: Order) => {
@@ -346,14 +314,13 @@ const App: React.FC = () => {
     setIsDownloading(true);
     setSnapshotToDownload(order.documentSnapshot);
     setTimeout(async () => {
-      try {
-        await performDownload('background-preview-scaler', `${order.title || 'documento'}.pdf`);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setSnapshotToDownload(null);
-        setIsDownloading(false);
-      }
+      const element = document.getElementById('background-preview-scaler');
+      if (!element) return;
+      const opt = { margin: 0, filename: `${order.title || 'documento'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0, scrollX: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: 'css' } };
+      // @ts-ignore
+      await window.html2pdf().from(element).set(opt).save();
+      setSnapshotToDownload(null);
+      setIsDownloading(false);
     }, 500);
   };
 
@@ -390,23 +357,7 @@ const App: React.FC = () => {
       }
       if (activeBlock === 'licitacao') defaultTitle = 'Processo Licitatório nº 01/2024';
       if (activeBlock === 'diarias') defaultTitle = 'Requisição de Diária';
-
-      setAppState(prev => ({
-        ...prev,
-        content: { 
-          ...INITIAL_STATE.content, 
-          title: defaultTitle,
-          rightBlockText: defaultRightBlock,
-          protocol: '',
-          requesterName: '',
-          requesterRole: '',
-          requesterSector: ''
-        },
-        document: { 
-          ...prev.document, 
-          showSignature: INITIAL_STATE.document.showSignature
-        }
-      }));
+      setAppState(prev => ({ ...prev, content: { ...INITIAL_STATE.content, title: defaultTitle, rightBlockText: defaultRightBlock, protocol: '', requesterName: '', requesterRole: '', requesterSector: '' }, document: { ...prev.document, showSignature: INITIAL_STATE.document.showSignature } }));
       setEditingOrder(null);
       setCurrentView('editor');
       setAdminTab('content');
@@ -414,101 +365,31 @@ const App: React.FC = () => {
       setIsFinalizedView(false);
   };
 
+  const handleUpdateUserInApp = (updatedUser: User) => {
+    db.saveUser(updatedUser);
+    setUsers(p => p.map(us => us.id === updatedUser.id ? updatedUser : us));
+    if (currentUser && updatedUser.id === currentUser.id) setCurrentUser(updatedUser);
+  };
+
   if (currentView === 'login') return <LoginScreen onLogin={handleLogin} uiConfig={appState.ui} />;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans flex-col">
-      {currentUser && (
-        <AppHeader 
-          currentUser={currentUser}
-          uiConfig={appState.ui}
-          activeBlock={activeBlock}
-          onLogout={handleLogout}
-          onOpenAdmin={handleOpenAdmin}
-          onGoHome={handleGoHome}
-          currentView={currentView}
-        />
-      )}
+      {currentUser && <AppHeader currentUser={currentUser} uiConfig={appState.ui} activeBlock={activeBlock} onLogout={handleLogout} onOpenAdmin={handleOpenAdmin} onGoHome={handleGoHome} currentView={currentView} />}
       <div className="flex-1 flex relative overflow-hidden">
-        {currentView === 'home' && currentUser && (
-          <HomeScreen 
-            onNewOrder={handleStartEditing}
-            onTrackOrder={() => setCurrentView('tracking')}
-            onManagePurchaseOrders={() => setCurrentView('purchase-management')}
-            onLogout={handleLogout}
-            onOpenAdmin={handleOpenAdmin}
-            userRole={currentUser.role}
-            userName={currentUser.name}
-            permissions={currentUser.permissions}
-            activeBlock={activeBlock}
-            setActiveBlock={setActiveBlock}
-            stats={{ totalGenerated: globalCounter, historyCount: orders.length, activeUsers: users.length }}
-          />
-        )}
+        {currentView === 'home' && currentUser && <HomeScreen onNewOrder={handleStartEditing} onTrackOrder={() => setCurrentView('tracking')} onManagePurchaseOrders={() => setCurrentView('purchase-management')} onVehicleScheduling={() => setCurrentView('vehicle-scheduling')} onLogout={handleLogout} onOpenAdmin={handleOpenAdmin} userRole={currentUser.role} userName={currentUser.name} permissions={currentUser.permissions} activeBlock={activeBlock} setActiveBlock={setActiveBlock} stats={{ totalGenerated: globalCounter, historyCount: orders.length, activeUsers: users.length }} />}
         {(currentView === 'editor' || currentView === 'admin') && currentUser && (
           <div className="flex-1 flex overflow-hidden h-full relative">
-            {/* Oculta Sidebar quando Frotas está em tela cheia */}
             {!isFinalizedView && adminTab !== 'fleet' && (
-              <AdminSidebar 
-                state={appState}
-                onUpdate={setAppState}
-                onPrint={() => window.print()}
-                isOpen={isAdminSidebarOpen}
-                onClose={() => { 
-                  if (currentView === 'editor') { setIsFinalizedView(true); setIsAdminSidebarOpen(false); }
-                  else { setIsAdminSidebarOpen(false); }
-                }}
-                isDownloading={isDownloading}
-                currentUser={currentUser}
-                mode={currentView === 'admin' ? 'admin' : 'editor'}
-                onSaveDefault={() => db.saveGlobalSettings(appState)}
-                onFinish={handleFinish}
-                activeTab={adminTab}
-                onTabChange={setAdminTab}
-                availableSignatures={signatures}
-                activeBlock={activeBlock}
-                persons={persons}
-                sectors={sectors}
-                jobs={jobs}
-              />
+              <AdminSidebar state={appState} onUpdate={setAppState} onPrint={() => window.print()} isOpen={isAdminSidebarOpen} onClose={() => { if (currentView === 'editor') { setIsFinalizedView(true); setIsAdminSidebarOpen(false); } else { setIsAdminSidebarOpen(false); } }} isDownloading={isDownloading} currentUser={currentUser} mode={currentView === 'admin' ? 'admin' : 'editor'} onSaveDefault={() => db.saveGlobalSettings(appState)} onFinish={handleFinish} activeTab={adminTab} onTabChange={setAdminTab} availableSignatures={signatures} activeBlock={activeBlock} persons={persons} sectors={sectors} jobs={jobs} />
             )}
             <main className="flex-1 h-full overflow-hidden flex flex-col relative">
               {currentView === 'admin' && adminTab === 'users' ? (
-                <UserManagementScreen 
-                  users={users} currentUser={currentUser}
-                  onAddUser={u => { db.saveUser(u); setUsers(p => [...p, u]); }}
-                  onUpdateUser={u => { db.saveUser(u); setUsers(p => p.map(us => us.id === u.id ? u : us)); }}
-                  onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }}
-                  availableSignatures={signatures}
-                  jobs={jobs}
-                  sectors={sectors}
-                />
+                <UserManagementScreen users={users} currentUser={currentUser} onAddUser={u => { db.saveUser(u); setUsers(p => [...p, u]); }} onUpdateUser={handleUpdateUserInApp} onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }} availableSignatures={signatures} jobs={jobs} sectors={sectors} />
               ) : currentView === 'admin' && adminTab === 'entities' ? (
-                <EntityManagementScreen 
-                  persons={persons} sectors={sectors} jobs={jobs}
-                  onAddPerson={p => { db.savePerson(p); setPersons(prev => [...prev, p]); }}
-                  onUpdatePerson={p => { db.savePerson(p); setPersons(prev => prev.map(x => x.id === p.id ? p : x)); }}
-                  onDeletePerson={id => { db.deletePerson(id); setPersons(prev => prev.filter(x => x.id !== id)); }}
-                  onAddSector={s => { db.saveSector(s); setSectors(prev => [...prev, s]); }}
-                  onUpdateSector={s => { db.saveSector(s); setSectors(prev => prev.map(x => x.id === s.id ? s : x)); }}
-                  onDeleteSector={id => { db.deleteSector(id); setSectors(prev => prev.filter(x => x.id !== id)); }}
-                  onAddJob={j => { db.saveJob(j); setJobs(prev => [...prev, j]); }}
-                  onUpdateJob={j => { db.saveJob(j); setJobs(prev => prev.map(x => x.id === j.id ? j : x)); }}
-                  onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }}
-                />
+                <EntityManagementScreen persons={persons} sectors={sectors} jobs={jobs} onAddPerson={p => { db.savePerson(p); setPersons(prev => [...prev, p]); }} onUpdatePerson={p => { db.savePerson(p); setPersons(prev => prev.map(x => x.id === p.id ? p : x)); }} onDeletePerson={id => { db.deletePerson(id); setPersons(prev => prev.filter(x => x.id !== id)); }} onAddSector={s => { db.saveSector(s); setSectors(prev => [...prev, s]); }} onUpdateSector={s => { db.saveSector(s); setSectors(prev => prev.map(x => x.id === s.id ? s : x)); }} onDeleteSector={id => { db.deleteSector(id); setSectors(prev => prev.filter(x => x.id !== id)); }} onAddJob={j => { db.saveJob(j); setJobs(prev => [...prev, j]); }} onUpdateJob={j => { db.saveJob(j); setJobs(prev => prev.map(x => x.id === j.id ? j : x)); }} onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }} />
               ) : currentView === 'admin' && adminTab === 'fleet' ? (
-                <FleetManagementScreen 
-                  vehicles={vehicles}
-                  sectors={sectors}
-                  persons={persons}
-                  jobs={jobs}
-                  brands={brands}
-                  onAddVehicle={v => { db.saveVehicle(v); setVehicles(p => [...p, v]); }}
-                  onUpdateVehicle={v => { db.saveVehicle(v); setVehicles(p => p.map(vi => vi.id === v.id ? v : vi)); }}
-                  onDeleteVehicle={id => { db.deleteVehicle(id); setVehicles(p => p.filter(v => v.id !== id)); }}
-                  onAddBrand={b => { db.saveBrand(b); setBrands(p => [...p, b]); }}
-                  onBack={() => setAdminTab(null)}
-                />
+                <FleetManagementScreen vehicles={vehicles} sectors={sectors} persons={persons} jobs={jobs} brands={brands} onAddVehicle={v => { db.saveVehicle(v); setVehicles(p => [...p, v]); }} onUpdateVehicle={v => { db.saveVehicle(v); setVehicles(p => p.map(vi => vi.id === v.id ? v : vi)); }} onDeleteVehicle={id => { db.deleteVehicle(id); setVehicles(p => p.filter(v => v.id !== id)); }} onAddBrand={b => { db.saveBrand(b); setBrands(p => [...p, b]); }} onBack={() => setAdminTab(null)} />
               ) : currentView === 'admin' && adminTab === 'signatures' ? (
                 <SignatureManagementScreen signatures={signatures} currentUser={currentUser} onAddSignature={s => { db.saveSignature(s); setSignatures(p => [...p, s]); }} onUpdateSignature={s => { db.saveSignature(s); setSignatures(p => p.map(si => si.id === s.id ? s : si)); }} onDeleteSignature={id => { db.deleteSignature(id); setSignatures(p => p.filter(s => s.id !== id)); }} />
               ) : currentView === 'admin' && adminTab === 'ui' ? (
@@ -516,38 +397,25 @@ const App: React.FC = () => {
               ) : currentView === 'admin' && adminTab === 'design' ? (
                 <AdminDocumentPreview state={appState} />
               ) : (
-                <DocumentPreview 
-                  ref={componentRef} state={appState} isGenerating={isDownloading}
-                  mode={currentView === 'admin' ? 'admin' : 'editor'} blockType={activeBlock}
-                />
+                <DocumentPreview ref={componentRef} state={appState} isGenerating={isDownloading} mode={currentView === 'admin' ? 'admin' : 'editor'} blockType={activeBlock} />
               )}
               {isFinalizedView && (
-                <FinalizedActionBar 
-                    onDownload={handleDownloadPdf} onBack={handleGoHome} onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }}
-                    onSend={handleSendOrder} showSendButton={activeBlock === 'compras'} isDownloading={isDownloading} documentTitle={appState.content.title}
-                />
+                <FinalizedActionBar onDownload={handleDownloadPdf} onBack={handleGoHome} onEdit={() => { setIsFinalizedView(false); setIsAdminSidebarOpen(true); }} onSend={handleSendOrder} showSendButton={activeBlock === 'compras'} isDownloading={isDownloading} documentTitle={appState.content.title} />
               )}
             </main>
           </div>
         )}
         {currentView === 'tracking' && currentUser && (
-          <TrackingScreen 
-            onBack={() => setCurrentView('home')} currentUser={currentUser} activeBlock={activeBlock} orders={orders}
-            onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }}
-            onClearAll={() => { db.clearAllOrders(); setOrders([]); }} onEditOrder={handleEditOrder} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
-            onUpdateAttachments={handleUpdateOrderAttachments} totalCounter={globalCounter} onUpdatePaymentStatus={handleUpdatePaymentStatus}
-          />
+          <TrackingScreen onBack={handleGoHome} currentUser={currentUser} activeBlock={activeBlock} orders={orders} onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }} onClearAll={() => { db.clearAllOrders(); setOrders([]); }} onEditOrder={handleEditOrder} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }} onUpdateAttachments={handleUpdateOrderAttachments} totalCounter={globalCounter} onUpdatePaymentStatus={handleUpdatePaymentStatus} />
         )}
         {currentView === 'purchase-management' && currentUser && (
-          <PurchaseManagementScreen 
-            onBack={() => setCurrentView('home')} currentUser={currentUser} orders={orders}
-            onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }}
-            onUpdateStatus={handleUpdateOrderStatus} onUpdatePurchaseStatus={handleUpdatePurchaseStatus} onUpdateCompletionForecast={handleUpdateCompletionForecast} onUpdateAttachments={handleUpdateOrderAttachments} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }}
-          />
+          <PurchaseManagementScreen onBack={handleGoHome} currentUser={currentUser} orders={orders} onDownloadPdf={(snapshot) => { const order = orders.find(o => o.documentSnapshot === snapshot); if (order) handleDownloadFromHistory(order); }} onUpdateStatus={handleUpdateOrderStatus} onUpdatePurchaseStatus={handleUpdatePurchaseStatus} onUpdateCompletionForecast={handleUpdateCompletionForecast} onUpdateAttachments={handleUpdateOrderAttachments} onDeleteOrder={id => { db.deleteOrder(id); setOrders(p => p.filter(o => o.id !== id)); }} />
+        )}
+        {currentView === 'vehicle-scheduling' && currentUser && (
+          <VehicleSchedulingScreen schedules={schedules} vehicles={vehicles} persons={persons} sectors={sectors} onAddSchedule={s => { db.saveSchedule(s); setSchedules(prev => [...prev, s]); }} onUpdateSchedule={s => { db.saveSchedule(s); setSchedules(prev => prev.map(x => x.id === s.id ? s : x)); }} onDeleteSchedule={id => { db.deleteSchedule(id); setSchedules(prev => prev.filter(x => x.id !== id)); }} onBack={handleGoHome} currentUserId={currentUser.id} />
         )}
       </div>
 
-      {/* OVERLAY DE SUCESSO (Replacement for Alert) */}
       {successOverlay?.show && createPortal(
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xl animate-fade-in">
               <div className="w-full max-w-lg bg-white rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col animate-scale-in">
@@ -557,7 +425,6 @@ const App: React.FC = () => {
                       </div>
                       <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-4 uppercase">Pedido Enviado!</h3>
                       <p className="text-slate-500 text-base font-medium leading-relaxed mb-10">O seu documento foi processado com sucesso e encaminhado para análise do setor competente.</p>
-                      
                       <div className="w-full bg-slate-50 rounded-3xl p-6 border border-slate-100 flex flex-col items-center mb-10">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Protocolo de Rastreio</span>
                           <div className="flex items-center gap-3">
@@ -565,13 +432,7 @@ const App: React.FC = () => {
                               <span className="text-2xl font-mono font-bold text-slate-900 tracking-wider">{successOverlay.protocol}</span>
                           </div>
                       </div>
-
-                      <button 
-                        onClick={() => { setSuccessOverlay(null); handleGoHome(); }}
-                        className="w-full py-5 bg-slate-900 text-white font-black text-sm uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-emerald-600 transition-all active:scale-[0.98]"
-                      >
-                          Voltar ao Menu Inicial
-                      </button>
+                      <button onClick={() => { setSuccessOverlay(null); handleGoHome(); }} className="w-full py-5 bg-slate-900 text-white font-black text-sm uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-slate-900/20 hover:bg-emerald-600 transition-all active:scale-[0.98]">Voltar ao Menu Inicial</button>
                   </div>
               </div>
           </div>,
@@ -580,11 +441,7 @@ const App: React.FC = () => {
 
       <div id="background-pdf-generation-container" style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }} aria-hidden="true">
         {snapshotToDownload && (
-          <DocumentPreview 
-            ref={backgroundPreviewRef} state={snapshotToDownload} isGenerating={true}
-            blockType={snapshotToDownload.content.subType ? 'diarias' : (snapshotToDownload.content.purchaseItems ? 'compras' : (activeBlock || 'oficio'))}
-            customId="background-preview-scaler"
-          />
+          <DocumentPreview ref={backgroundPreviewRef} state={snapshotToDownload} isGenerating={true} blockType={snapshotToDownload.content.subType ? 'diarias' : (snapshotToDownload.content.purchaseItems ? 'compras' : (activeBlock || 'oficio'))} customId="background-preview-scaler" />
         )}
       </div>
     </div>

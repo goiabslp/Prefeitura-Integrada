@@ -159,7 +159,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Secretaria de Administração', 
     jobTitle: 'Secretário de Administração e Finanças', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos', 'parent_agendamento_veiculo']
   },
   { 
     id: 'user_juliana', 
@@ -170,7 +170,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Secretaria de Administração', 
     jobTitle: 'Tecnico Administrativo', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos', 'parent_agendamento_veiculo']
   },
   { 
     id: 'user_maria', 
@@ -181,7 +181,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Gabinete', 
     jobTitle: 'Chefe De Gabinete', 
     allowedSignatureIds: ['sig1', 'sig2'],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_agendamento_veiculo']
   },
   { 
     id: 'user_apoliana', 
@@ -192,7 +192,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Departamento de Compras', 
     jobTitle: 'Chefe Do Servico De Compras', 
     allowedSignatureIds: [],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_compras_pedidos']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_compras_pedidos', 'parent_agendamento_veiculo']
   },
   { 
     id: 'user_vitoria', 
@@ -203,7 +203,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Departamento de Licitação', 
     jobTitle: 'Agente De Contratacao', 
     allowedSignatureIds: [],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_agendamento_veiculo']
   },
   { 
     id: 'user_marcos', 
@@ -214,7 +214,7 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Departamento de Informática', 
     jobTitle: 'Tecnico de TI', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos', 'parent_agendamento_veiculo']
   }
 ];
 
