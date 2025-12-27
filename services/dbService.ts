@@ -1,8 +1,8 @@
 
-import { Order, User, Signature, AppState, Person, Sector, Job } from '../types';
+import { Order, User, Signature, AppState, Person, Sector, Job, Vehicle } from '../types';
 
 const DB_NAME = 'BrandDocDB_v2';
-const DB_VERSION = 3; 
+const DB_VERSION = 4; // Incrementado para nova store de frotas
 const STORES = {
   ORDERS: 'orders',
   USERS: 'users',
@@ -10,7 +10,8 @@ const STORES = {
   SETTINGS: 'settings',
   PERSONS: 'persons',
   SECTORS: 'sectors',
-  JOBS: 'jobs'
+  JOBS: 'jobs',
+  VEHICLES: 'vehicles'
 };
 
 export const initDB = (): Promise<IDBDatabase> => {
@@ -42,6 +43,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORES.JOBS)) {
         db.createObjectStore(STORES.JOBS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.VEHICLES)) {
+        db.createObjectStore(STORES.VEHICLES, { keyPath: 'id' });
       }
     };
   });
@@ -114,6 +118,10 @@ export const getAllJobs = () => getAll<Job>(STORES.JOBS);
 export const saveJob = (job: Job) => save(STORES.JOBS, job);
 export const deleteJob = (id: string) => remove(STORES.JOBS, id);
 
+export const getAllVehicles = () => getAll<Vehicle>(STORES.VEHICLES);
+export const saveVehicle = (vehicle: Vehicle) => save(STORES.VEHICLES, vehicle);
+export const deleteVehicle = (id: string) => remove(STORES.VEHICLES, id);
+
 export const getGlobalSettings = async (): Promise<AppState | null> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
@@ -129,7 +137,6 @@ export const saveGlobalSettings = async (settings: AppState): Promise<void> => {
   return save(STORES.SETTINGS, { id: 'global_config', data: settings });
 };
 
-// Funções para Contador Global Persistente
 export const getGlobalCounter = async (): Promise<number> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {

@@ -80,7 +80,6 @@ export interface ContentData {
   purchaseItems?: PurchaseItem[];
   priority?: 'Normal' | 'Média' | 'Alta' | 'Urgência';
   priorityJustification?: string;
-  // Campos específicos para Diárias e Custeio
   requesterName?: string;
   requesterRole?: string;
   requesterSector?: string;
@@ -112,7 +111,7 @@ export interface AppState {
 
 export type UserRole = 'admin' | 'collaborator' | 'licitacao' | 'compras';
 
-export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias' | 'parent_compras_pedidos';
+export type AppPermission = 'parent_criar_oficio' | 'parent_admin' | 'parent_compras' | 'parent_licitacao' | 'parent_diarias' | 'parent_compras_pedidos' | 'parent_frotas';
 
 export type BlockType = 'oficio' | 'compras' | 'licitacao' | 'diarias';
 
@@ -171,7 +170,6 @@ export interface Order {
   completionForecast?: string;
 }
 
-// Novas Interfaces para o Módulo de Pessoas, Setores e Cargos
 export interface Person {
   id: string;
   name: string;
@@ -187,4 +185,28 @@ export interface Sector {
 export interface Job {
   id: string;
   name: string;
+}
+
+// Fleet Module Types
+export type VehicleType = 'leve' | 'pesado' | 'acessorio';
+
+export type VehicleStatus = 'operacional' | 'manutencao' | 'vistoria' | 'documentacao' | 'nao_liberado' | 'leilao' | 'leiloado' | 'batido';
+export type MaintenanceStatus = 'em_dia' | 'andamento' | 'vencido';
+
+export interface Vehicle {
+  id: string;
+  type: VehicleType;
+  model: string;
+  plate: string;
+  brand: string;
+  year: string;
+  color: string;
+  renavam: string;
+  chassis: string;
+  sectorId: string;
+  documentUrl?: string;
+  documentName?: string;
+  vehicleImageUrl?: string;
+  status: VehicleStatus;
+  maintenanceStatus: MaintenanceStatus;
 }

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment 
+  AppState, User, Order, Signature, BlockType, Person, Sector, Job, StatusMovement, Attachment, Vehicle 
 } from './types';
 import { INITIAL_STATE, DEFAULT_USERS, MOCK_SIGNATURES, DEFAULT_SECTORS, DEFAULT_JOBS, DEFAULT_PERSONS } from './constants';
 import * as db from './services/dbService';
@@ -18,6 +18,7 @@ import { AdminDocumentPreview } from './components/AdminDocumentPreview';
 import { UserManagementScreen } from './components/UserManagementScreen';
 import { EntityManagementScreen } from './components/EntityManagementScreen';
 import { SignatureManagementScreen } from './components/SignatureManagementScreen';
+import { FleetManagementScreen } from './components/FleetManagementScreen';
 import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
 import { FinalizedActionBar } from './components/FinalizedActionBar';
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [persons, setPersons] = useState<Person[]>([]);
   const [sectors, setSectors] = useState<Sector[]>(DEFAULT_SECTORS);
   const [jobs, setJobs] = useState<Job[]>(DEFAULT_JOBS);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
@@ -96,6 +98,10 @@ const App: React.FC = () => {
           }
           setJobs(DEFAULT_JOBS);
         }
+
+        // Carregamento de Veículos
+        const savedVehicles = await db.getAllVehicles();
+        setVehicles(savedVehicles);
 
         const counterValue = await db.getGlobalCounter();
         setGlobalCounter(counterValue);
@@ -421,7 +427,8 @@ const App: React.FC = () => {
         )}
         {(currentView === 'editor' || currentView === 'admin') && currentUser && (
           <div className="flex-1 flex overflow-hidden h-full relative">
-            {!isFinalizedView && (
+            {/* Oculta Sidebar quando Frotas está em tela cheia */}
+            {!isFinalizedView && adminTab !== 'fleet' && (
               <AdminSidebar 
                 state={appState}
                 onUpdate={setAppState}
@@ -468,6 +475,15 @@ const App: React.FC = () => {
                   onAddJob={j => { db.saveJob(j); setJobs(prev => [...prev, j]); }}
                   onUpdateJob={j => { db.saveJob(j); setJobs(prev => prev.map(x => x.id === j.id ? j : x)); }}
                   onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }}
+                />
+              ) : currentView === 'admin' && adminTab === 'fleet' ? (
+                <FleetManagementScreen 
+                  vehicles={vehicles}
+                  sectors={sectors}
+                  onAddVehicle={v => { db.saveVehicle(v); setVehicles(p => [...p, v]); }}
+                  onUpdateVehicle={v => { db.saveVehicle(v); setVehicles(p => p.map(vi => vi.id === v.id ? v : vi)); }}
+                  onDeleteVehicle={id => { db.deleteVehicle(id); setVehicles(p => p.filter(v => v.id !== id)); }}
+                  onBack={() => setAdminTab(null)}
                 />
               ) : currentView === 'admin' && adminTab === 'signatures' ? (
                 <SignatureManagementScreen signatures={signatures} currentUser={currentUser} onAddSignature={s => { db.saveSignature(s); setSignatures(p => [...p, s]); }} onUpdateSignature={s => { db.saveSignature(s); setSignatures(p => p.map(si => si.id === s.id ? s : si)); }} onDeleteSignature={id => { db.deleteSignature(id); setSignatures(p => p.filter(s => s.id !== id)); }} />
