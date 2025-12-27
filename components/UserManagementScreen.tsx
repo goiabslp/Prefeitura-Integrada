@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { User, UserRole, Signature, AppPermission } from '../types';
+import { User, UserRole, Signature, AppPermission, Job, Sector } from '../types';
 import { 
   Plus, Search, Edit2, Trash2, ShieldCheck, Users, Save, X, Key, 
-  PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart 
+  PenTool, LayoutGrid, User as UserIcon, CheckCircle2, Gavel, ShoppingCart, Briefcase, Network 
 } from 'lucide-react';
 
 interface UserManagementScreenProps {
@@ -14,6 +14,8 @@ interface UserManagementScreenProps {
   onUpdateUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
   availableSignatures: Signature[]; 
+  jobs: Job[];
+  sectors: Sector[];
 }
 
 export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
@@ -22,7 +24,9 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
   onAddUser,
   onUpdateUser,
   onDeleteUser,
-  availableSignatures
+  availableSignatures,
+  jobs,
+  sectors
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,6 +76,22 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleRoleChange = (newRole: UserRole) => {
+    if (!isAdmin) return;
+    
+    let updatedPermissions = [...(formData.permissions || [])];
+    
+    if (newRole !== 'admin' && newRole !== 'compras') {
+      updatedPermissions = updatedPermissions.filter(p => p !== 'parent_compras_pedidos');
+    }
+    
+    setFormData({
+      ...formData, 
+      role: newRole,
+      permissions: updatedPermissions
+    });
   };
 
   const toggleSignaturePermission = (sigId: string) => {
@@ -124,7 +144,8 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     setIsModalOpen(false);
   };
 
-  const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all";
+  const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed";
+  const selectClass = "w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all appearance-none cursor-pointer disabled:opacity-60 disabled:bg-slate-100 disabled:cursor-not-allowed";
   const labelClass = "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1";
 
   const permissionsList: { id: AppPermission, label: string }[] = [
@@ -217,7 +238,6 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
               </div>
               
               <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
-                 {/* Seletor Dinâmico de Perfil */}
                  <div className="space-y-4">
                     <label className={labelClass}>Tipo de Perfil</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -228,18 +248,18 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                          { id: 'collaborator', label: 'Colaborador', desc: 'Operação básica.', icon: <UserIcon className="w-5 h-5" />, color: 'slate' }
                        ].map((role) => {
                          const isSelected = formData.role === role.id;
-                         const disabled = !isAdmin && formData.role !== role.id;
+                         const canEditRole = isAdmin;
                          
                          return (
                            <button
                              key={role.id}
                              type="button"
-                             disabled={disabled}
-                             onClick={() => isAdmin && setFormData({...formData, role: role.id as UserRole})}
+                             disabled={!canEditRole}
+                             onClick={() => handleRoleChange(role.id as UserRole)}
                              className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-300 group ${
                                isSelected 
                                  ? `bg-${role.color}-50 border-${role.color}-600 ring-4 ring-${role.color}-600/10` 
-                                 : `bg-white border-slate-100 hover:border-slate-300 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`
+                                 : `bg-white border-slate-100 hover:border-slate-300 ${!canEditRole ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`
                              }`}
                            >
                              <div className="flex items-start justify-between">
@@ -273,56 +293,94 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
                       <label className={labelClass}>Senha</label>
                       <input type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className={inputClass} placeholder="Senha segura" />
                     </div>
-                    {isAdmin && (
-                      <>
-                        <div>
-                          <label className={labelClass}>Cargo / Função</label>
-                          <input value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} className={inputClass} placeholder="Ex: Secretário" />
+                    
+                    <div className="relative">
+                      <label className={labelClass}>Cargo / Função</label>
+                      <div className="relative group">
+                        <select 
+                          value={formData.jobTitle} 
+                          onChange={e => setFormData({...formData, jobTitle: e.target.value})} 
+                          className={selectClass}
+                          disabled={!isAdmin}
+                        >
+                          <option value="">Selecione um Cargo</option>
+                          {jobs.sort((a, b) => a.name.localeCompare(b.name)).map(j => (
+                            <option key={j.id} value={j.name}>{j.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none opacity-40 group-focus-within:opacity-100 transition-opacity">
+                           <Briefcase className="w-4 h-4" />
                         </div>
-                        <div>
-                          <label className={labelClass}>Setor</label>
-                          <input value={formData.sector} onChange={e => setFormData({...formData, sector: e.target.value})} className={inputClass} placeholder="Ex: Gabinete" />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <label className={labelClass}>Setor</label>
+                      <div className="relative group">
+                        <select 
+                          value={formData.sector} 
+                          onChange={e => setFormData({...formData, sector: e.target.value})} 
+                          className={selectClass}
+                          disabled={!isAdmin}
+                        >
+                          <option value="">Selecione um Setor</option>
+                          {sectors.sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                            <option key={s.id} value={s.name}>{s.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none opacity-40 group-focus-within:opacity-100 transition-opacity">
+                           <Network className="w-4 h-4" />
                         </div>
-                      </>
-                    )}
+                      </div>
+                    </div>
                  </div>
 
-                 {isAdmin && (
-                   <>
-                     <div className="border-t border-slate-100 pt-8">
-                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><LayoutGrid className="w-4 h-4" /> Módulos Autorizados</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {permissionsList.map(perm => {
-                                const isChecked = formData.permissions?.includes(perm.id);
-                                return (
-                                    <label key={perm.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                                        <input type="checkbox" checked={isChecked} onChange={() => toggleAppPermission(perm.id)} className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-indigo-500" />
-                                        <span className="text-xs font-bold text-slate-700">{perm.label}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                     </div>
+                 <div className="border-t border-slate-100 pt-8">
+                    <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><LayoutGrid className="w-4 h-4" /> Módulos Autorizados</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {permissionsList.map(perm => {
+                            const isChecked = formData.permissions?.includes(perm.id);
+                            const isPurchaseManagement = perm.id === 'parent_compras_pedidos';
+                            const isAllowedForRole = isAdmin && (!isPurchaseManagement || (formData.role === 'admin' || formData.role === 'compras'));
 
-                     <div className="border-t border-slate-100 pt-8">
-                        <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Permitidas</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {availableSignatures.map(sig => {
-                                const isChecked = formData.allowedSignatureIds?.includes(sig.id);
-                                return (
-                                    <label key={sig.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
-                                        <input type="checkbox" checked={isChecked} onChange={() => toggleSignaturePermission(sig.id)} className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
-                                        <div>
-                                            <div className="font-bold text-xs text-slate-800">{sig.name}</div>
-                                            <div className="text-[10px] text-slate-500 uppercase font-medium">{sig.role}</div>
-                                        </div>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                     </div>
-                   </>
-                 )}
+                            return (
+                                <label 
+                                  key={perm.id} 
+                                  className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all 
+                                    ${!isAllowedForRole ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'cursor-pointer'}
+                                    ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}
+                                  `}
+                                >
+                                    <input 
+                                      type="checkbox" 
+                                      checked={isChecked} 
+                                      disabled={!isAllowedForRole}
+                                      onChange={() => toggleAppPermission(perm.id)} 
+                                      className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-indigo-500" 
+                                    />
+                                    <span className="text-xs font-bold text-slate-700">{perm.label}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                 </div>
+
+                 <div className="border-t border-slate-100 pt-8">
+                    <label className={`${labelClass} mb-4 flex items-center gap-2 text-indigo-600`}><PenTool className="w-4 h-4" /> Assinaturas Permitidas</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableSignatures.map(sig => {
+                            const isChecked = formData.allowedSignatureIds?.includes(sig.id);
+                            return (
+                                <label key={sig.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${!isAdmin ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'cursor-pointer'} ${isChecked ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                    <input type="checkbox" checked={isChecked} disabled={!isAdmin} onChange={() => toggleSignaturePermission(sig.id)} className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                                    <div>
+                                        <div className="font-bold text-xs text-slate-800">{sig.name}</div>
+                                        <div className="text-[10px] text-slate-500 uppercase font-medium">{sig.role}</div>
+                                    </div>
+                                </label>
+                            );
+                        })}
+                    </div>
+                 </div>
               </div>
 
               <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
@@ -337,3 +395,7 @@ export const UserManagementScreen: React.FC<UserManagementScreenProps> = ({
     </div>
   );
 };
+
+const ChevronDown = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+);

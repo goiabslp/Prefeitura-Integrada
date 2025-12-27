@@ -432,6 +432,8 @@ const App: React.FC = () => {
                   onUpdateUser={u => { db.saveUser(u); setUsers(p => p.map(us => us.id === u.id ? u : us)); }}
                   onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }}
                   availableSignatures={signatures}
+                  jobs={jobs}
+                  sectors={sectors}
                 />
               ) : currentView === 'admin' && adminTab === 'entities' ? (
                 <EntityManagementScreen 

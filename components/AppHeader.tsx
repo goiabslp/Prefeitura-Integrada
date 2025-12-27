@@ -16,7 +16,7 @@ interface AppHeaderProps {
   activeBlock: BlockType | null;
   onLogout: () => void;
   onOpenAdmin: (tab?: string | null) => void;
-  onGoHome: () => void; // Prop para navegar para a home
+  onGoHome: () => void; 
   currentView: string;
 }
 
@@ -29,9 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onGoHome,
   currentView
 }) => {
-  // Apenas role 'admin' acessa o Administrativo conforme solicitado.
-  // Usuários de licitacao e compras, embora tenham permissão de módulo, não devem ver o Painel Admin.
-  const canAccessAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.role === 'admin';
   const isNotHome = currentView !== 'home';
   
   const getModuleTitle = () => {
@@ -94,7 +92,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           )}
 
-          {canAccessAdmin && currentView !== 'admin' && (
+          {isAdmin && currentView !== 'admin' && (
             <button 
               onClick={() => onOpenAdmin(null)} 
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
@@ -123,20 +121,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                </button>
                
-               {/* Dropdown de Perfil Simples */}
                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
                   <div className="px-4 py-2 mb-2 border-b border-slate-50">
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acesso {currentUser.role}</p>
                   </div>
-                  {canAccessAdmin && (
-                    <button 
-                      onClick={() => onOpenAdmin('users')}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      Meu Perfil
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => onOpenAdmin('users')}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    Meu Perfil
+                  </button>
                   <button 
                     onClick={onGoHome}
                     className="w-full sm:hidden flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"

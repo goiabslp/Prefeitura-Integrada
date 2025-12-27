@@ -27,7 +27,7 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
 
     const items = [...(content.purchaseItems || [])];
     
-    // SEMPRE começamos com a Página 1 vazia de itens (reservada para justificativas)
+    // SEMPRE começamos com a Página 1 vazia de itens (reservada para justificativas e dados do solicitante)
     const resultPages: PurchaseItem[][] = [[]];
     
     if (items.length === 0) {
@@ -107,7 +107,7 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 )}
               </div>
 
-              <div className="h-10" />
+              <div className="h-6" />
 
               {/* 2. Cabeçalho de Identificação */}
               <div className="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-xl flex justify-between items-center">
@@ -117,10 +117,29 @@ export const ComprasPreview: React.FC<ComprasPreviewProps> = ({ state, isGenerat
                 </span>
               </div>
 
-              <div className="h-5" />
+              {/* 3. Dados do Solicitante (SOLICITADO) */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden my-4">
+                <div className="bg-slate-50 px-3 py-1 border-b border-slate-200">
+                  <span className="font-black text-[6.5pt] text-slate-500 uppercase tracking-wider">Identificação do Solicitante</span>
+                </div>
+                <div className="p-3 grid grid-cols-12 gap-4">
+                  <div className="col-span-6">
+                    <span className="text-[5.5pt] font-black text-slate-400 uppercase block leading-none mb-1">Nome Completo</span>
+                    <span className="font-bold text-[10pt] text-black leading-none">{content.requesterName || '---'}</span>
+                  </div>
+                  <div className="col-span-3 border-l border-slate-100 pl-3">
+                    <span className="text-[5.5pt] font-black text-slate-400 uppercase block leading-none mb-1">Cargo / Função</span>
+                    <span className="font-semibold text-[8.5pt] text-slate-700 leading-none">{content.requesterRole || '---'}</span>
+                  </div>
+                  <div className="col-span-3 border-l border-slate-100 pl-3">
+                    <span className="text-[5.5pt] font-black text-slate-400 uppercase block leading-none mb-1">Setor Origem</span>
+                    <span className="font-semibold text-[8.5pt] text-slate-700 leading-none">{content.requesterSector || '---'}</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* 3. Título / Finalidade */}
-              <div className="flex items-center gap-3 border-b-2 border-emerald-100 pb-2">
+              {/* 4. Título / Finalidade */}
+              <div className="flex items-center gap-3 border-b-2 border-emerald-100 pb-2 mt-6">
                 <div className="flex-1 flex flex-col gap-1">
                   <h1 className="font-bold leading-tight tracking-tight text-[16pt] text-black">
                     {content.title}

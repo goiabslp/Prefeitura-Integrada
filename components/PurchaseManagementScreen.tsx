@@ -7,7 +7,7 @@ import {
   User, ShoppingBag, Eye, X, Lock, ChevronDown, PackageCheck, Truck, ShoppingCart, CheckCircle,
   History, Calendar, UserCheck, ArrowDown, Landmark, MessageCircle, FileSearch, Scale, ClipboardCheck,
   AlertTriangle, MousePointer2, ChevronRight, Check, Sparkles, Upload, FileText, Paperclip, ExternalLink,
-  Download, Plus
+  Download, Plus, Network
 } from 'lucide-react';
 import { User as UserType, Order, AppState, StatusMovement, Attachment } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -55,8 +55,9 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
   const purchaseOrders = orders.filter(order => order.blockType === 'compras');
 
   const filteredOrders = purchaseOrders.filter(order => {
+    const sector = order.documentSnapshot?.content.requesterSector || '';
     const matchesSearch = order.protocol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (order.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          sector.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (order.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
@@ -292,7 +293,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                  type="text"
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
-                 placeholder="Buscar por Protocolo, Título ou Solicitante..."
+                 placeholder="Buscar por Protocolo, Setor ou Solicitante..."
                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
                />
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -324,7 +325,14 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
                                </span>
                              )}
                           </div>
-                          <h3 className="text-base font-bold text-slate-900 leading-tight mb-1">{order.title}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                             <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
+                                <Network className="w-4 h-4" />
+                             </div>
+                             <h3 className="text-base font-bold text-slate-900 leading-tight">
+                                {order.documentSnapshot?.content.requesterSector || 'Setor não informado'}
+                             </h3>
+                          </div>
                           <div className="flex items-center gap-4 text-xs text-slate-500 font-medium">
                              <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {order.userName}</div>
                              <div className="flex items-center gap-1.5"><ShoppingBag className="w-3.5 h-3.5" /> {(order.documentSnapshot?.content.purchaseItems || []).length} itens</div>
@@ -718,7 +726,7 @@ export const PurchaseManagementScreen: React.FC<PurchaseManagementScreenProps> =
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
           <div className="w-full h-full max-w-6xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col relative animate-slide-up">
             <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-               <div className="flex items-center gap-4"><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><Eye className="w-5 h-5 text-white" /></div><div><h3 className="text-lg font-extrabold text-slate-900">Visualização do Documento</h3><p className="text-xs text-slate-500 font-medium">{previewOrder.protocol} • {previewOrder.title}</p></div></div>
+               <div className="flex items-center gap-4"><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><Eye className="w-5 h-5 text-white" /></div><div><h3 className="text-lg font-extrabold text-slate-900">Visualização do Documento</h3><p className="text-xs text-slate-500 font-medium">{previewOrder.protocol} • {previewOrder.documentSnapshot.content.requesterSector || 'Sem Setor'}</p></div></div>
                <div className="flex items-center gap-3"><button onClick={() => handleDownload(previewOrder)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-bold transition-all"><FileDown className="w-4 h-4" /> Download PDF</button><button onClick={() => setPreviewOrder(null)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"><X className="w-6 h-6" /></button></div>
             </div>
             <div className="flex-1 overflow-hidden relative bg-slate-200/50"><div className="h-full overflow-y-auto custom-scrollbar p-8"><div className="flex justify-center"><DocumentPreview state={previewOrder.documentSnapshot} mode="admin" blockType="compras" /></div></div><div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-slate-900/90 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl border border-white/10 pointer-events-none flex items-center gap-2"><Lock className="w-3.5 h-3.5" /> Modo de Visualização Protegido</div></div>

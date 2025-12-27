@@ -88,7 +88,10 @@ export const DEFAULT_SECTORS: Sector[] = [
   { id: 'sec11', name: 'Departamento de Tributos' },
   { id: 'sec12', name: 'Gabinete' },
   { id: 'sec13', name: 'Departamento De Agricultura' },
-  { id: 'sec14', name: 'Departamento De Obras' }
+  { id: 'sec14', name: 'Departamento De Obras' },
+  { id: 'sec15', name: 'Departamento de Licitação' },
+  { id: 'sec16', name: 'Departamento de Meio Ambiente' },
+  { id: 'sec17', name: 'Departamento de Informática' }
 ];
 
 export const DEFAULT_JOBS: Job[] = [
@@ -110,7 +113,17 @@ export const DEFAULT_JOBS: Job[] = [
   { id: 'job16', name: 'Chefe do Departamento de Compras' },
   { id: 'job17', name: 'Chefe do Departamento De Agricultura' },
   { id: 'job18', name: 'Vice-Prefeito' },
-  { id: 'job19', name: 'Operador De Maquinas Pesadas' }
+  { id: 'job19', name: 'Operador De Maquinas Pesadas' },
+  { id: 'job20', name: 'Chefe Do Servico De Compras' },
+  { id: 'job21', name: 'Gestor De Contratos' },
+  { id: 'job22', name: 'Agente De Contratacao' },
+  { id: 'job23', name: 'Controle Interno' },
+  { id: 'job24', name: 'Auxiliar De Secretaria' },
+  { id: 'job25', name: 'Chefe do Departamento de Saúde' },
+  { id: 'job26', name: 'Bioquimico' },
+  { id: 'job27', name: 'Farmaceutico' },
+  { id: 'job28', name: 'Tecnico Administrativo' },
+  { id: 'job29', name: 'Tecnico de TI' }
 ];
 
 export const DEFAULT_PERSONS: Person[] = [
@@ -124,20 +137,29 @@ export const DEFAULT_PERSONS: Person[] = [
   { id: 'p8', name: 'Rodrigo Ermelindo De Souza', jobId: 'job19', sectorId: 'sec14' },
   { id: 'p9', name: 'Iaskara Soares Moraes', jobId: 'job2', sectorId: 'sec7' },
   { id: 'p10', name: 'Ricardo Faraci', jobId: 'job11', sectorId: 'sec2' },
-  { id: 'p11', name: 'Gustavo Andreu Simoes Moraes', jobId: 'job17', sectorId: 'sec13' }
+  { id: 'p11', name: 'Gustavo Andreu Simoes Moraes', jobId: 'job17', sectorId: 'sec13' },
+  { id: 'p12', name: 'Apoliana Teixeira Silva', jobId: 'job20', sectorId: 'sec10' },
+  { id: 'p13', name: 'Ramon Sandalo De Castro Perdigao', jobId: 'job21', sectorId: 'sec10' },
+  { id: 'p14', name: 'Vitoria Eduarda Silva De Souza', jobId: 'job22', sectorId: 'sec15' },
+  { id: 'p15', name: 'Edimeia Aparecida Silvestre', jobId: 'job23', sectorId: 'sec15' },
+  { id: 'p16', name: 'Sheila Mara M M Rodrigues', jobId: 'job24', sectorId: 'sec2' },
+  { id: 'p17', name: 'Cleunice Lourenco Carvalho', jobId: 'job25', sectorId: 'sec2' },
+  { id: 'p18', name: 'Amanda Beatriz Ferreira', jobId: 'job26', sectorId: 'sec2' },
+  { id: 'p19', name: 'Natalia Aparecida Da Silva', jobId: 'job27', sectorId: 'sec2' },
+  { id: 'p20', name: 'Marcos Vinicios Felix Martins', jobId: 'job29', sectorId: 'sec17' }
 ];
 
 export const DEFAULT_USERS: User[] = [
   { 
-    id: '1', 
-    username: 'GAF', 
-    password: 'GAF', 
-    name: 'Guilherme Araújo (GAF)', 
+    id: 'user_guilherme', 
+    username: 'gaf', 
+    password: 'gaf', 
+    name: 'Guilherme Araújo Ferreira dos Santos', 
     role: 'admin', 
-    sector: 'Administração Municipal', 
-    jobTitle: 'Secretário Municipal', 
-    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
+    sector: 'Secretaria de Administração', 
+    jobTitle: 'Secretário de Administração e Finanças', 
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
   },
   { 
     id: 'user_juliana', 
@@ -148,40 +170,51 @@ export const DEFAULT_USERS: User[] = [
     sector: 'Secretaria de Administração', 
     jobTitle: 'Tecnico Administrativo', 
     allowedSignatureIds: ['sig1', 'sig2', 'sig3'],
-    permissions: ['parent_criar_oficio', 'parent_admin', 'parent_compras', 'parent_diarias', 'parent_compras_pedidos']
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
   },
   { 
-    id: 'user_licitacao', 
-    username: 'licitacao', 
-    password: '123', 
-    name: 'Operador de Licitação', 
-    role: 'licitacao', 
-    sector: 'Setor de Licitação', 
-    jobTitle: 'Analista de Licitação', 
-    allowedSignatureIds: [],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
-  },
-  { 
-    id: 'user_compras', 
-    username: 'compras', 
-    password: '123', 
-    name: 'Responsável Compras', 
-    role: 'compras', 
-    sector: 'Setor de Compras', 
-    jobTitle: 'Analista de Compras', 
-    allowedSignatureIds: [],
-    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_licitacao', 'parent_diarias', 'parent_compras_pedidos']
-  },
-  { 
-    id: '2', 
-    username: 'colaborador', 
-    password: '123', 
-    name: 'Colaborador Padrão', 
+    id: 'user_maria', 
+    username: 'mdl', 
+    password: 'mdl', 
+    name: 'Maria Doroteia Dias Lemos', 
     role: 'collaborator', 
-    sector: 'Secretaria Geral', 
-    jobTitle: 'Técnico Administrativo', 
+    sector: 'Gabinete', 
+    jobTitle: 'Chefe De Gabinete', 
+    allowedSignatureIds: ['sig1', 'sig2'],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias']
+  },
+  { 
+    id: 'user_apoliana', 
+    username: 'apoliana', 
+    password: '123', 
+    name: 'Apoliana Teixeira Silva', 
+    role: 'compras', 
+    sector: 'Departamento de Compras', 
+    jobTitle: 'Chefe Do Servico De Compras', 
+    allowedSignatureIds: [],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_compras_pedidos']
+  },
+  { 
+    id: 'user_vitoria', 
+    username: 'ves', 
+    password: 'ves', 
+    name: 'Vitoria Eduarda Silva De Souza', 
+    role: 'licitacao', 
+    sector: 'Departamento de Licitação', 
+    jobTitle: 'Agente De Contratacao', 
     allowedSignatureIds: [],
     permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias']
+  },
+  { 
+    id: 'user_marcos', 
+    username: 'mvf', 
+    password: 'mvf', 
+    name: 'Marcos Vinicios Felix Martins', 
+    role: 'admin', 
+    sector: 'Departamento de Informática', 
+    jobTitle: 'Tecnico de TI', 
+    allowedSignatureIds: ['sig1', 'sig2', 'sig3', 'sig4'],
+    permissions: ['parent_criar_oficio', 'parent_compras', 'parent_diarias', 'parent_admin', 'parent_compras_pedidos']
   }
 ];
 

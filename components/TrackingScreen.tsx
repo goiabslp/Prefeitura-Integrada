@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
@@ -5,7 +6,7 @@ import {
   FileDown, Calendar, Edit3, TrendingUp, Loader2,
   CheckCircle2, AlertCircle, CalendarCheck, Check, RotateCcw,
   Paperclip, PackageCheck, FileSearch, Scale, Landmark, ShoppingCart, CheckCircle, XCircle,
-  Eye, History, X, Lock, User, MessageCircle, Sparkles, Plus, Upload, Download, AlertTriangle, ShieldAlert, Zap, Info
+  Eye, History, X, Lock, User, MessageCircle, Sparkles, Plus, Upload, Download, AlertTriangle, ShieldAlert, Zap, Info, Network
 } from 'lucide-react';
 import { User as UserType, Order, AppState, BlockType, Attachment } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -64,15 +65,33 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
     const matchesBlock = order.blockType === activeBlock;
     if (!matchesBlock) return false;
 
-    const hasPermission = isAdmin || currentUser.role === 'licitacao' || (isCompras && currentUser.role === 'compras')
-        ? true 
-        : order.userId === currentUser.id;
+    // LÓGICA DE PERMISSÃO POR SETOR (MÓDULO DE COMPRAS)
+    let hasPermission = false;
+    const isPurchasingManager = currentUser.role === 'admin' || currentUser.role === 'compras';
+
+    if (isCompras) {
+      if (isPurchasingManager) {
+        // Administradores e Compras veem todos os pedidos do módulo
+        hasPermission = true;
+      } else {
+        // Outros usuários (Colaboradores/Licitação) veem apenas pedidos do seu PRÓPRIO setor
+        const orderSector = order.documentSnapshot?.content.requesterSector || '';
+        const userSector = currentUser.sector || '';
+        hasPermission = userSector !== '' && orderSector.trim().toLowerCase() === userSector.trim().toLowerCase();
+      }
+    } else {
+      // Outros módulos mantêm a lógica padrão (Admin/Licitação vê tudo, outros veem os seus)
+      hasPermission = isAdmin || currentUser.role === 'licitacao' || order.userId === currentUser.id;
+    }
+
+    if (!hasPermission) return false;
     
     const matchesSearch = order.protocol.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (order.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (order.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
+                          (order.userName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (order.documentSnapshot?.content.requesterSector || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    return hasPermission && matchesSearch;
+    return matchesSearch;
   });
 
   const handleDownload = (order: Order) => {
@@ -154,7 +173,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                  Histórico: {activeBlock?.toUpperCase()}
                </h2>
                <p className="text-slate-500 text-sm mt-1 font-medium">
-                 {isAdmin ? 'Gerenciamento global de registros.' : 'Seus documentos gerados neste módulo.'}
+                 {isAdmin ? 'Gerenciamento global de registros.' : isCompras ? 'Pedidos de compra autorizados para seu setor.' : 'Seus documentos gerados neste módulo.'}
                </p>
              </div>
              
@@ -177,7 +196,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                  type="text"
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
-                 placeholder="Buscar por Solicitante, Protocolo ou Título..."
+                 placeholder="Buscar por Setor, Solicitante, Protocolo..."
                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
                />
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -211,8 +230,8 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                 <div className={`${isCompras ? 'md:col-span-1' : 'md:col-span-2'} text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center ${isCompras ? 'justify-center' : 'gap-2'} whitespace-nowrap`}>
                   <HashIcon className="w-3 h-3" /> {isCompras ? 'ID' : 'Protocolo'}
                 </div>
-                <div className={`${isDiarias ? 'md:col-span-4' : isCompras ? 'md:col-span-3' : 'md:col-span-6'} text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center ${isCompras ? 'justify-center' : 'gap-2'} whitespace-nowrap`}>
-                  <FileText className="w-3 h-3" /> {isDiarias ? 'Solicitante + Destino' : 'Solicitante'}
+                <div className={`${isDiarias ? 'md:col-span-4' : isCompras ? 'md:col-span-3 text-center' : 'md:col-span-6'} text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center ${isCompras ? 'justify-center' : 'gap-2'} whitespace-nowrap`}>
+                  {isDiarias ? <><FileText className="w-3 h-3" /> Solicitante + Destino</> : isCompras ? <><Network className="w-3 h-3" /> Setor / Solicitante</> : <><FileText className="w-3 h-3" /> Solicitante</>}
                 </div>
                 {isDiarias && (
                   <div className="md:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
@@ -289,13 +308,17 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                       
                       <div className={`${isDiarias ? 'md:col-span-4' : isCompras ? 'md:col-span-3 text-center' : 'md:col-span-6'}`}>
                          <h3 className="text-sm font-bold text-slate-800 leading-tight">
-                           {isDiarias ? (content?.requesterName || '---') : order.userName}
+                           {isDiarias ? (content?.requesterName || '---') : isCompras ? (content?.requesterSector || 'Sem Setor') : order.userName}
                          </h3>
-                         {isDiarias && (
+                         {isDiarias ? (
                            <p className="text-[10px] text-slate-400 font-medium">
                              {content?.destination || '---'}
                            </p>
-                         )}
+                         ) : isCompras ? (
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              {order.userName}
+                            </p>
+                         ) : null}
                       </div>
 
                       {isDiarias && (
@@ -349,7 +372,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                                   className={`relative group flex items-center justify-between w-full max-w-[120px] px-3 py-2 rounded-xl border transition-all duration-300 active:scale-95 ${
                                     isPaid 
                                       ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-500/10' 
-                                      : 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm shadow-amber-500/10'
+                                      : 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm shadow-emerald-500/10'
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
@@ -374,7 +397,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
                                  <div className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border w-fit ${
                                    isPaid 
                                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-500/5' 
-                                     : 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-amber-500/5'
+                                     : 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-emerald-500/5'
                                  }`}>
                                    {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
                                    {isPaid ? 'Pago' : 'Pendente'}
@@ -446,7 +469,7 @@ export const TrackingScreen: React.FC<TrackingScreenProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-slate-400 p-12">
                <PackageX className="w-12 h-12 opacity-30 mb-4" />
                <p className="text-lg font-bold text-slate-500">Histórico Vazio</p>
-               <p className="text-sm text-slate-400 mt-1 text-center">Nenhum registro encontrado para este módulo.</p>
+               <p className="text-sm text-slate-400 mt-1 text-center">Nenhum registro encontrado para seu setor ou módulo.</p>
             </div>
           )}
         </div>
