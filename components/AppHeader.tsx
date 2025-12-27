@@ -35,13 +35,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const getModuleTitle = () => {
     if (currentView === 'admin') return "Painel Administrativo";
     if (currentView === 'tracking') return `Histórico: ${activeBlock?.toUpperCase()}`;
+    if (currentView === 'vehicle-scheduling') return "Gestão de Veículos Municipais";
     
     switch (activeBlock) {
       case 'oficio': return "Módulo de Ofícios";
       case 'compras': return "Módulo de Compras";
       case 'licitacao': return "Módulo de Licitação";
       case 'diarias': return "Diárias e Custeio";
-      default: return "Dashboard Inicial";
+      default: return "Painel de Controle";
     }
   };
 
@@ -73,7 +74,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
           
           <div className="hidden md:flex flex-col">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Módulo Atual</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Tela Atual</span>
             <span className="text-sm font-bold text-slate-900 tracking-tight">{getModuleTitle()}</span>
           </div>
         </div>
@@ -81,14 +82,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {/* Lado Direito: Ações e Perfil */}
         <div className="flex items-center gap-2 md:gap-4">
           
-          {/* Botão Tela Inicial - Visível apenas fora da home */}
           {isNotHome && (
             <button 
               onClick={onGoHome}
               className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all active:scale-95"
             >
               <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">Tela Inicial</span>
+              <span className="hidden sm:inline">Início</span>
             </button>
           )}
 
@@ -98,7 +98,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
             >
               <Settings className="w-4 h-4" />
-              Painel Admin
+              Administração
             </button>
           )}
 
@@ -123,7 +123,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                
                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
                   <div className="px-4 py-2 mb-2 border-b border-slate-50">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acesso {currentUser.role}</p>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nível: {currentUser.role}</p>
                   </div>
                   <button 
                     onClick={() => onOpenAdmin('users')}
@@ -133,18 +133,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     Meu Perfil
                   </button>
                   <button 
-                    onClick={onGoHome}
-                    className="w-full sm:hidden flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <Home className="w-4 h-4" />
-                    Tela Inicial
-                  </button>
-                  <button 
                     onClick={onLogout}
                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    Sair do Sistema
+                    Sair
                   </button>
                </div>
             </div>

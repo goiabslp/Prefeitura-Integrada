@@ -234,4 +234,5 @@ export interface VehicleSchedule {
   status: ScheduleStatus;
   requesterId: string;
   createdAt: string;
+  vehicleLocation?: string;
 }
