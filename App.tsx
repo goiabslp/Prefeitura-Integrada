@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
@@ -24,6 +23,7 @@ import { UIPreviewScreen } from './components/UIPreviewScreen';
 import { AppHeader } from './components/AppHeader';
 import { FinalizedActionBar } from './components/FinalizedActionBar';
 import { PurchaseManagementScreen } from './components/PurchaseManagementScreen';
+import { AdminDashboard } from './components/AdminDashboard';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'login' | 'home' | 'admin' | 'tracking' | 'editor' | 'purchase-management' | 'vehicle-scheduling'>('login');
@@ -375,7 +375,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans flex-col">
-      {/* Fix: Corrected the prop onGoHome from 'onGoHome' to 'handleGoHome' to resolve name not found error */}
       {currentUser && <AppHeader currentUser={currentUser} uiConfig={appState.ui} activeBlock={activeBlock} onLogout={handleLogout} onOpenAdmin={handleOpenAdmin} onGoHome={handleGoHome} currentView={currentView} />}
       <div className="flex-1 flex relative overflow-hidden">
         {currentView === 'home' && currentUser && <HomeScreen onNewOrder={handleStartEditing} onTrackOrder={() => setCurrentView('tracking')} onManagePurchaseOrders={() => setCurrentView('purchase-management')} onVehicleScheduling={() => setCurrentView('vehicle-scheduling')} onLogout={handleLogout} onOpenAdmin={handleOpenAdmin} userRole={currentUser.role} userName={currentUser.name} permissions={currentUser.permissions} activeBlock={activeBlock} setActiveBlock={setActiveBlock} stats={{ totalGenerated: globalCounter, historyCount: orders.length, activeUsers: users.length }} />}
@@ -384,8 +383,19 @@ const App: React.FC = () => {
             {!isFinalizedView && adminTab !== 'fleet' && (
               <AdminSidebar state={appState} onUpdate={setAppState} onPrint={() => window.print()} isOpen={isAdminSidebarOpen} onClose={() => { if (currentView === 'editor') { setIsFinalizedView(true); setIsAdminSidebarOpen(false); } else { setIsAdminSidebarOpen(false); } }} isDownloading={isDownloading} currentUser={currentUser} mode={currentView === 'admin' ? 'admin' : 'editor'} onSaveDefault={() => db.saveGlobalSettings(appState)} onFinish={handleFinish} activeTab={adminTab} onTabChange={setAdminTab} availableSignatures={signatures} activeBlock={activeBlock} persons={persons} sectors={sectors} jobs={jobs} />
             )}
-            <main className="flex-1 h-full overflow-hidden flex flex-col relative">
-              {currentView === 'admin' && adminTab === 'users' ? (
+            <main className="flex-1 h-full overflow-hidden flex flex-col relative bg-slate-50">
+              {currentView === 'admin' && adminTab === null ? (
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                  <AdminDashboard 
+                    userName={currentUser.name}
+                    onNewOrder={() => { setActiveBlock('oficio'); handleStartEditing(); }}
+                    onManageUsers={() => setAdminTab('users')}
+                    onSettings={() => setAdminTab('design')}
+                    onHistory={() => setCurrentView('tracking')}
+                    onSignatures={() => setAdminTab('signatures')}
+                  />
+                </div>
+              ) : currentView === 'admin' && adminTab === 'users' ? (
                 <UserManagementScreen users={users} currentUser={currentUser} onAddUser={u => { db.saveUser(u); setUsers(p => [...p, u]); }} onUpdateUser={handleUpdateUserInApp} onDeleteUser={id => { db.deleteUser(id); setUsers(p => p.filter(u => u.id !== id)); }} availableSignatures={signatures} jobs={jobs} sectors={sectors} />
               ) : currentView === 'admin' && adminTab === 'entities' ? (
                 <EntityManagementScreen persons={persons} sectors={sectors} jobs={jobs} onAddPerson={p => { db.savePerson(p); setPersons(prev => [...prev, p]); }} onUpdatePerson={p => { db.savePerson(p); setPersons(prev => prev.map(x => x.id === p.id ? p : x)); }} onDeletePerson={id => { db.deletePerson(id); setPersons(prev => prev.filter(x => x.id !== id)); }} onAddSector={s => { db.saveSector(s); setSectors(prev => [...prev, s]); }} onUpdateSector={s => { db.saveSector(s); setSectors(prev => prev.map(x => x.id === s.id ? s : x)); }} onDeleteSector={id => { db.deleteSector(id); setSectors(prev => prev.filter(x => x.id !== id)); }} onAddJob={j => { db.saveJob(j); setJobs(prev => [...prev, j]); }} onUpdateJob={j => { db.saveJob(j); setJobs(prev => prev.map(x => x.id === j.id ? j : x)); }} onDeleteJob={id => { db.deleteJob(id); setJobs(prev => prev.filter(x => x.id !== id)); }} />

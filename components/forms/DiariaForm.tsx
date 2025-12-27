@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Wallet, Banknote, CheckCircle2, FileText, PenTool, ClipboardList,
@@ -31,6 +30,14 @@ interface IBGECity {
   }
 }
 
+// Fallback de cidades caso a API do IBGE falhe
+const FALLBACK_CITIES = [
+  'SÃO JOSÉ DO GOIABAL - MG', 'JOÃO MONLEVADE - MG', 'BELO HORIZONTE - MG',
+  'IPATINGA - MG', 'ITABIRA - MG', 'ALVINÓPOLIS - MG', 'RIO PIRACICABA - MG',
+  'PONTE NOVA - MG', 'DOM SILVÉRIO - MG', 'DIONÍSIO - MG', 'SÃO DOMINGOS DO PRATA - MG',
+  'RAUL SOARES - MG', 'NOVA ERA - MG', 'CARATINGA - MG', 'TIMÓTEO - MG'
+];
+
 export const DiariaForm: React.FC<DiariaFormProps> = ({ 
   state, 
   content, 
@@ -56,7 +63,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   const authorizerDropdownRef = useRef<HTMLDivElement>(null);
   const requesterDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Carregar cidades do IBGE
+  // Carregar cidades do IBGE com Tratamento de Erro e Fallback
   useEffect(() => {
     const fetchCities = async () => {
       setIsCityLoading(true);
@@ -70,7 +77,7 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
           .map(city => {
             const uf = city.microrregiao?.mesorregiao?.UF?.sigla;
             if (city.nome && uf) {
-              return `${city.nome} - ${uf}`;
+              return `${city.nome.toUpperCase()} - ${uf}`;
             }
             return null;
           })
@@ -78,7 +85,8 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
           
         setCities(formattedCities);
       } catch (error) {
-        console.error("Erro ao carregar cidades:", error);
+        console.warn("Usando fallback de cidades devido a erro na API IBGE:", error);
+        setCities(FALLBACK_CITIES);
       } finally {
         setIsCityLoading(false);
       }
@@ -257,7 +265,6 @@ export const DiariaForm: React.FC<DiariaFormProps> = ({
   const inputGroupClass = "bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4";
   const labelClass = "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5";
   const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all";
-  const selectClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all appearance-none cursor-pointer";
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
